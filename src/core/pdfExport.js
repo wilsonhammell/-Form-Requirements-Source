@@ -43,9 +43,8 @@ import { fieldScripts } from '../starter/fieldScripts.js';
 import { deriveSignerRows } from './specialFields.js';
 import { normalizeRotation } from './coords.js';
 
-// Annotation flags, PDF 32000-1 table 165, 1 based bit positions there.
+// Annotation flag, PDF 32000-1 table 165, 1 based bit positions there.
 const FLAG_HIDDEN = 1 << 1;
-const FLAG_PRINT = 1 << 2;
 
 // Button field flags, PDF 32000-1 table 226, also 1 based there. Not exported
 // by pdf-lib, so they are spelled out.
@@ -97,25 +96,14 @@ export async function exportPdf({
     if (reusable) {
       const widgets = alignWidgets(prior.acroField.getWidgets(), group.rects, pages);
       group.rects.forEach((target, index) => {
-        const widget = widgets[index];
-        widget.setRectangle(target.rect);
-        widget.setP(pages[target.page].ref);
-        ensurePageAnnot(pdfDoc, pages[target.page], prior, widget);
-        applyRotation(widget, pages[target.page]);
-        applyVisibility(widget, target.hidden);
+        const page = pages[target.page];
+        // A reused widget can have moved page, which means fixing the Annots
+        // arrays as well. A new one is added to the right page already.
+        widgets[index].setP(page.ref);
+        ensurePageAnnot(pdfDoc, page, prior, widgets[index]);
+        applyPlacement(widgets[index], target, page, group.type);
       });
-      // The on-state belongs to the widget, not the field, for both types.
-      // Two placements of one checkbox carrying different values is a Yes/No
-      // pair: one field, two boxes, one answer. Renaming only the first left
-      // the second on pdf-lib's default and silently broke the pair.
-      if (ON_STATE_TYPES.includes(group.type)) {
-        group.rects.forEach((target, index) => renameOnState(widgets[index], target.exportValue));
-      }
-      if (group.type === 'radio') applyRadioFlags(prior, group);
-      setReadOnly(prior, !group.editable);
-      applyFont(prior, group, fontsByFamily, true, widgets);
-      applyTextLayout(prior, group);
-      applyButton(prior, group, fontsByFamily);
+      applyFieldSettings(prior, group, fontsByFamily, widgets, true);
       continue;
     }
 
@@ -169,7 +157,30 @@ export async function exportPdf({
 
 // Both carry their on-state on the widget rather than the field, so each
 // placement names its own. For a checkbox that is how a Yes/No pair works.
+// Renaming only the first left the second on pdf-lib's default, and the
+// question could only ever answer yes.
 const ON_STATE_TYPES = ['radio', 'checkbox'];
+
+// Everything the tool owns on one widget. Both paths write the same set, so
+// they cannot drift on what a placement carries.
+function applyPlacement(widget, target, page, type) {
+  // The stored rect verbatim, whatever pdf-lib computed.
+  widget.setRectangle(target.rect);
+  applyRotation(widget, page);
+  applyVisibility(widget, target.hidden);
+  if (ON_STATE_TYPES.includes(type)) renameOnState(widget, target.exportValue);
+}
+
+// The field level half, once every widget is in place. fromSource says the
+// field came out of the uploaded PDF, which is what lets applyFont leave a /DA
+// the designer never touched alone.
+function applyFieldSettings(field, group, fontsByFamily, widgets, fromSource) {
+  if (group.type === 'radio') applyRadioFlags(field, group);
+  setReadOnly(field, !group.editable);
+  applyFont(field, group, fontsByFamily, fromSource, widgets);
+  applyTextLayout(field, group);
+  applyButton(field, group, fontsByFamily);
+}
 
 // What clearAllRequired walks. A pushbutton has no value to clear.
 const SCRIPTABLE_TYPES = ['text', 'checkbox', 'dropdown'];
@@ -527,31 +538,19 @@ function createField(form, pages, name, group, fontsByFamily, warnings) {
       field.addToPage(target, geometry);
     }
 
-    const widget = field.acroField.getWidgets().at(-1);
-    // The stored rect verbatim, whatever pdf-lib computed.
-    widget.setRectangle(placement.rect);
-    applyRotation(widget, target);
-    applyVisibility(widget, placement.hidden);
-
-    if (ON_STATE_TYPES.includes(group.type)) {
-      renameOnState(widget, placement.exportValue);
-    }
+    applyPlacement(field.acroField.getWidgets().at(-1), placement, target, group.type);
   });
 
   if (group.type === 'radio') {
     // pdf-lib's index to label map contradicts the states once they carry the
     // real values.
     field.acroField.dict.delete(PDFName.of('Opt'));
-    applyRadioFlags(field, group);
   }
   if (group.type === 'dropdown' && group.options.length > 0) {
     writeOptions(field, group.options);
   }
 
-  setReadOnly(field, !group.editable);
-  applyFont(field, group, fontsByFamily, false, field.acroField.getWidgets());
-  applyTextLayout(field, group);
-  applyButton(field, group, fontsByFamily);
+  applyFieldSettings(field, group, fontsByFamily, field.acroField.getWidgets(), false);
 }
 
 // Caption, look and action are all ours, the button list fixing all three. One

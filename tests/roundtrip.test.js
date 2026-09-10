@@ -1421,3 +1421,61 @@ describe('a checkbox placed more than once', () => {
     expect(onStates(await PDFDocument.load(again.pdfBytes), 'Q')).toEqual(['/Yes', '/No']);
   });
 });
+
+// The checks above read on-states in getWidgets order, which a permutation
+// survives as long as it permutes both. That is how the /Annots against /Kids
+// ordering bug hid, so these key the on-state to the widget's own rect instead.
+describe('an on-state stays on the widget it was drawn for', () => {
+  const byRect = async (bytes, name) => {
+    const doc = await PDFDocument.load(bytes);
+    const field = doc.getForm().getFields().find((f) => f.getName() === name);
+    const out = {};
+    for (const w of field.acroField.getWidgets()) {
+      const ap = doc.context.lookupMaybe(w.dict.get(PDFName.of('AP')), PDFDict);
+      const normal = ap && doc.context.lookupMaybe(ap.get(PDFName.of('N')), PDFDict);
+      const on = (normal ? normal.keys().map((k) => k.asString()) : []).filter((k) => k !== '/Off');
+      const r = w.getRectangle();
+      out[Math.round(Math.min(r.x, r.x + r.width))] = on.join('|');
+    }
+    return out;
+  };
+  const box = (v, x) =>
+    createField({ name: 'Q', type: 'checkbox', exportValue: v, page: 0, rect: { x, y: 700, width: 14, height: 14 } });
+  const opt = (v, x) =>
+    createField({ name: 'R', type: 'radio', exportValue: v, page: 0, rect: { x, y: 600, width: 14, height: 14 } });
+  const drawn = () => [box('Yes', 50), box('No', 200), opt('Choice1', 50), opt('Choice2', 200)];
+
+  it('on the path that creates the field', async () => {
+    const { pdfBytes } = await exportPdf({
+      originalBytes: await buildFlatForm(), fields: drawn(), buttons: [],
+    });
+    expect(await byRect(pdfBytes, 'Q')).toEqual({ 50: '/Yes', 200: '/No' });
+    expect(await byRect(pdfBytes, 'R')).toEqual({ 50: '/Choice1', 200: '/Choice2' });
+  });
+
+  it('on the path that reuses the widgets already there', async () => {
+    const first = await exportPdf({
+      originalBytes: await buildFlatForm(), fields: drawn(), buttons: [],
+    });
+    const reopened = await importPdf(first.pdfBytes, dbIndex, [], []);
+    const again = await exportPdf({
+      originalBytes: first.pdfBytes, fields: reopened.fields, buttons: [],
+    });
+    expect(await byRect(again.pdfBytes, 'Q')).toEqual({ 50: '/Yes', 200: '/No' });
+    expect(await byRect(again.pdfBytes, 'R')).toEqual({ 50: '/Choice1', 200: '/Choice2' });
+  });
+
+  it('and after a move, which is what makes that path realign them', async () => {
+    const first = await exportPdf({
+      originalBytes: await buildFlatForm(), fields: [box('Yes', 50), box('No', 200)], buttons: [],
+    });
+    const reopened = await importPdf(first.pdfBytes, dbIndex, [], []);
+    const moved = reopened.fields.map((f) =>
+      Math.round(f.rect.x) === 50 ? { ...f, rect: { ...f.rect, x: 400 } } : f
+    );
+    const third = await exportPdf({
+      originalBytes: first.pdfBytes, fields: moved, buttons: [],
+    });
+    expect(await byRect(third.pdfBytes, 'Q')).toEqual({ 200: '/No', 400: '/Yes' });
+  });
+});
