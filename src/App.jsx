@@ -6,6 +6,7 @@ import { fieldScope, FIELD_SCOPES } from './core/fieldTone.js';
 import PropertyPanel from './components/PropertyPanel.jsx';
 import BulkPanel from './components/BulkPanel.jsx';
 import FormConfigPanel from './components/FormConfigPanel.jsx';
+import { PanelTabs, ScopeBar, IssueList } from './components/SidePanel.jsx';
 import { usePdfDocument } from './hooks/usePdfDocument.js';
 import { loadDbFields, buildDbIndex, buildCaseInsensitiveIndex } from './core/dbFields.js';
 import {
@@ -494,8 +495,50 @@ export default function App() {
     say([`Exported ${sidecarName(fileName)}.`]);
   };
 
-  // Bulk reset, not a lock: any field can still be tweaked afterward from the
-  // property panel.
+  // The three Config actions that place fields. Each follows the change to the
+  // scope that shows it, since a field appearing in a scope you are not looking
+  // at reads as nothing having happened.
+
+  // Puts back a part deleted from a row, or starts a joint one, without having
+  // to draw a box and know the name.
+  const placeSpecialField = useCallback(
+    (name) => {
+      setFields((current) => {
+        const anchor = current.find((f) => f.name.trim() === ESIGN_ANCHOR);
+        return addSpecialField(current, name, pageBox, pageIndex, anchor?.rect ?? null);
+      });
+      showScope(isEsignField(name) ? 'submission' : 'signers');
+    },
+    [pageBox, pageIndex, showScope]
+  );
+
+  // Rows land stacked and out of the way, since only the artwork knows where
+  // they belong.
+  const addSignerRowHere = useCallback(() => {
+    setFields((current) => addSignerRow(current, pageBox, pageIndex));
+    showScope('signers');
+  }, [pageBox, pageIndex, showScope]);
+
+  const toggleButton = useCallback(
+    (entry, on) => {
+      setFields((current) => {
+        const next = on
+          ? addButton(current, entry, buttons, pageBox, pageIndex)
+          : removeButton(current, entry.identifier);
+        // The label and code box are part of the Remote eSign channel, so they
+        // come and go with its button.
+        if (entry.identifier !== ESIGN_ANCHOR) return next;
+        const button = next.find((f) => f.name.trim() === ESIGN_ANCHOR);
+        return on && button
+          ? addEsignFields(next, button.rect, button.page)
+          : removeEsignFields(next);
+      });
+      if (on) showScope('submission');
+    },
+    [buttons, pageBox, pageIndex, showScope]
+  );
+
+  // A reset rather than a lock, any field can be changed again afterwards.
   const handleEnforceFontStandards = () => {
     setFields((current) => current.map((f) => ({ ...f, font: { ...DEFAULT_FONT } })));
     say([
@@ -558,29 +601,11 @@ export default function App() {
         </main>
 
         <aside className="flex w-[340px] shrink-0 flex-col border-l border-slate-200 bg-white">
-          <div className="flex border-b border-slate-200">
-            {[
-              ['fields', 'Fields', fields.length],
-              ['config', 'Config', config.productCodes.length || null],
-            ].map(([id, label, count]) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={panel === id}
-                className={`flex flex-1 items-baseline justify-center gap-1.5 px-3 py-2 text-xs font-semibold uppercase tracking-wide ${
-                  panel === id
-                    ? 'border-b-2 border-sky-600 text-slate-700'
-                    : 'border-b-2 border-transparent text-slate-400 hover:text-slate-600'
-                }`}
-                onClick={() => setPanel(id)}
-              >
-                {label}
-                {count !== null && (
-                  <span className="text-[10px] font-normal text-slate-400">{count}</span>
-                )}
-              </button>
-            ))}
-          </div>
+          <PanelTabs
+            panel={panel}
+            onPick={setPanel}
+            counts={{ fields: fields.length, config: config.productCodes.length || null }}
+          />
 
           {panel === 'config' ? (
             <div className="min-h-0 flex-1 overflow-auto">
@@ -594,39 +619,9 @@ export default function App() {
                 hasCombined={hasCombined}
                 maxSignerRows={MAX_SIGNER_ROWS}
                 maxJointRows={MAX_JOINT_ROWS}
-                // Puts back a part deleted from a row, or starts a joint one,
-                // without having to draw a box and find the name first.
-                onPlaceSpecial={(name) => {
-                  setFields((current) => {
-                    const anchor = current.find((f) => f.name.trim() === ESIGN_ANCHOR);
-                    return addSpecialField(current, name, pageBox, pageIndex, anchor?.rect ?? null);
-                  });
-                  showScope(isEsignField(name) ? 'submission' : 'signers');
-                }}
-                // Rows land stacked, out of the way, since only the artwork
-                // knows where they belong. Follow to the scope that shows them.
-                onAddSignerRow={() => {
-                  setFields((current) => addSignerRow(current, pageBox, pageIndex));
-                  showScope('signers');
-                }}
-                // Buttons live in their own scope, so turning one on while
-                // looking at another scope looks like nothing happened. Follow
-                // the change to where it is visible.
-                onToggleButton={(entry, on) => {
-                  setFields((current) => {
-                    const next = on
-                      ? addButton(current, entry, buttons, pageBox, pageIndex)
-                      : removeButton(current, entry.identifier);
-                    // The label and code box are part of the Remote eSign
-                    // channel, so they come and go with its button.
-                    if (entry.identifier !== ESIGN_ANCHOR) return next;
-                    const button = next.find((f) => f.name.trim() === ESIGN_ANCHOR);
-                    return on && button
-                      ? addEsignFields(next, button.rect, button.page)
-                      : removeEsignFields(next);
-                  });
-                  if (on) showScope('submission');
-                }}
+                onPlaceSpecial={placeSpecialField}
+                onAddSignerRow={addSignerRowHere}
+                onToggleButton={toggleButton}
               />
             </div>
           ) : (
@@ -698,87 +693,6 @@ export default function App() {
   );
 }
 
-// Independent toggles rather than tabs. Every field is in exactly one group, so
-// any subset is a legible view and All is simply all four on, which doubles as
-// the way back. The labels come off FIELD_SCOPES so a fifth group cannot be
-// added to the model and quietly go missing here.
-const scopeLabel = (id) => id[0].toUpperCase() + id.slice(1);
-
-function ScopeBar({ scopes, onShowAll, onToggle, issueFilter, onClearFilter, shown, total }) {
-  const all = scopes.size === FIELD_SCOPES.length;
-  const pill = (on) =>
-    `rounded px-1.5 py-0.5 text-[11px] font-medium ${
-      on ? 'bg-slate-700 text-white' : 'text-slate-500 hover:bg-slate-100'
-    }`;
-
-  return (
-    <div className="flex gap-1 border-b border-slate-200 px-3 py-1.5">
-      <button type="button" aria-pressed={all} className={pill(all)} onClick={onShowAll}>
-        All
-      </button>
-      {FIELD_SCOPES.map((id) => (
-        <button
-          key={id}
-          type="button"
-          aria-pressed={scopes.has(id)}
-          className={pill(scopes.has(id))}
-          onClick={() => onToggle(id)}
-        >
-          {scopeLabel(id)}
-        </button>
-      ))}
-      {issueFilter ? (
-        <button
-          type="button"
-          className="ml-auto self-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-900 hover:bg-amber-200"
-          onClick={onClearFilter}
-          title={issueFilter.text}
-        >
-          showing {shown} from an issue, clear
-        </button>
-      ) : (
-        <span className="ml-auto self-center text-[10px] text-slate-400">
-          {shown} of {total}
-        </span>
-      )}
-    </div>
-  );
-}
-
-const ISSUE_TONE = { error: 'text-red-700', warn: 'text-amber-700' };
-
-function IssueList({ issues, openText, onPick }) {
-  return (
-    <ul className="border-t border-slate-200 px-3 py-2 text-xs">
-      {issues.map((issue, i) => {
-        const tone = ISSUE_TONE[issue.level] ?? 'text-slate-500';
-        // Only an issue that named fields can be filtered to. A missing signer
-        // row has none, since the whole complaint is that it is not there.
-        if (!issue.ids || issue.ids.length === 0) {
-          return (
-            <li key={i} className={tone}>
-              {issue.text}
-            </li>
-          );
-        }
-        const open = openText === issue.text;
-        return (
-          <li key={i}>
-            <button
-              type="button"
-              className={`w-full text-left underline decoration-dotted underline-offset-2 hover:decoration-solid ${tone} ${
-                open ? 'font-semibold decoration-solid' : ''
-              }`}
-              onClick={() => onPick(open ? null : issue)}
-            >
-              {issue.text}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
 
 function EmptyState() {
   return (
