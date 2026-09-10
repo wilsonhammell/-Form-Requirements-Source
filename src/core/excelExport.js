@@ -210,7 +210,7 @@ export function buildRequirementsWorkbook({
   // Follows you down, as the originals do and as a table this long needs.
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
 
-  const bold = (row, cols) => cols.forEach((c) => (row.getCell(c).font = { bold: true }));
+  const lastCol = COL.test + testHeaders.length - 1;
 
   const header = sheet.getRow(1);
   header.getCell(1).value = 'Future Enhancement Notes';
@@ -243,42 +243,25 @@ export function buildRequirementsWorkbook({
     at += 1;
     return row;
   };
-  const LAST = () => COL.test + testHeaders.length - 1;
-
-  // Banded across the table so the eye finds it.
-  const heading = (text) => {
-    const row = write(text);
-    for (let col = COL.section; col <= LAST(); col += 1) {
-      const cell = row.getCell(col);
-      cell.font = { bold: true };
-      fill(cell, INK.section);
-      edged(cell);
-    }
-    return row;
-  };
-
-  const subHeading = (row) => {
-    for (let col = COL.section; col <= LAST(); col += 1) {
-      const cell = row.getCell(col);
-      cell.font = { bold: true };
-      fill(cell, INK.subSection);
-      edged(cell);
-    }
-    return row;
-  };
-  const blank = () => {
-    at += 1;
-  };
-
-  // Rules across the table columns only, so the picture band stays clean.
-  const edgedRow = (row, shade) => {
-    for (let col = COL.section; col <= LAST(); col += 1) {
+  // Ruled across the table columns only, so the picture band stays clean.
+  const band = (row, { shade, bold, wrap } = {}) => {
+    for (let col = COL.section; col <= lastCol; col += 1) {
       const cell = row.getCell(col);
       edged(cell);
       if (shade) fill(cell, shade);
-      cell.alignment = { vertical: 'top', wrapText: true };
+      if (bold) cell.font = { bold: true };
+      if (wrap) cell.alignment = { vertical: 'top', wrapText: true };
     }
     return row;
+  };
+
+  // Banded so the eye finds it.
+  const heading = (text) => band(write(text), { shade: INK.section, bold: true });
+  const subHeading = (row) => band(row, { shade: INK.subSection, bold: true });
+  const edgedRow = (row, shade) => band(row, { shade, wrap: true });
+
+  const blank = () => {
+    at += 1;
   };
 
   heading('FO Processing');
@@ -347,43 +330,7 @@ export function buildRequirementsWorkbook({
     keyAt += 1;
   }
 
-  const tableTop = at;
-  const rows = requirementRows(doc, { systemIndex, buttonIndex, dbIndex });
-  const pageStart = new Map();
-
-  // Grouped by page so each page's block can be lined up against its picture.
-  const byPage = new Map();
-  for (const row of rows) {
-    if (!byPage.has(row.page)) byPage.set(row.page, []);
-    byPage.get(row.page).push(row);
-  }
-  const imageByPage = new Map(pageImages.map((image) => [image.page, image]));
-  let index = 0;
-
-  for (const page of [...byPage.keys()].sort((a, b) => a - b)) {
-    const start = at;
-    pageStart.set(page, start);
-    const image = imageByPage.get(page);
-    // Without a picture there is nothing to line up against, so the rows follow
-    // each other.
-    const scale = image ? BAND_WIDTH_PX / image.width : 0;
-
-    for (const row of byPage.get(page)) {
-      if (image) {
-        // PDF user space counts up from the bottom, so this measures down from
-        // the page top.
-        const fromTop = (image.height - (row.top + (row.height ?? 0))) * scale;
-        const target = start + Math.round(fromTop / ROW_HEIGHT_PX);
-        // Never backwards, so two fields close together take consecutive rows
-        // rather than landing on top of each other.
-        if (target > at) at = target;
-      }
-      writeFieldRow(row, index);
-      index += 1;
-    }
-  }
-
-  function writeFieldRow(row, index) {
+  const writeFieldRow = (row, index) => {
     const written = write(
       ACCESS[row.editable],
       // Form Field is left empty on purpose. It is the label a member reads
@@ -397,15 +344,12 @@ export function buildRequirementsWorkbook({
       saveMark(row),
       row.note
     );
+    const name = written.getCell(COL.comment);
     // The identifier the filler matches on, the one column their documents
     // never carried.
-    written.getCell(COL.comment).value = row.name;
-    written.getCell(COL.comment).font = {
-      name: 'Consolas',
-      size: 10,
-      color: { argb: TONE_HEX[row.tone] ?? TONE_HEX.standard },
-    };
-    written.getCell(COL.comment).note = TONE_TITLE[row.tone];
+    name.value = row.name;
+    name.font = { name: 'Consolas', size: 10, color: { argb: TONE_HEX[row.tone] ?? TONE_HEX.standard } };
+    name.note = TONE_TITLE[row.tone];
     if (row.pages.length > 1) {
       written.getCell(COL.logic).value = [row.note, `Appears on pages ${row.pages.map((p) => p + 1).join(', ')}`]
         .filter(Boolean)
@@ -413,9 +357,41 @@ export function buildRequirementsWorkbook({
     }
     // Banded, since this is the part someone reads across to a Pass column.
     edgedRow(written, index % 2 ? INK.band : undefined);
+  };
+
+  const tableTop = at;
+  const pageStart = new Map();
+  const imageByPage = new Map(pageImages.map((image) => [image.page, image]));
+
+  // Grouped by page so each page's block lines up against its picture.
+  const byPage = new Map();
+  for (const row of requirementRows(doc, { systemIndex, buttonIndex, dbIndex })) {
+    if (!byPage.has(row.page)) byPage.set(row.page, []);
+    byPage.get(row.page).push(row);
   }
-  sheet.getCell(1, COL.comment).value = 'Field Name';
-  sheet.getCell(1, COL.comment).font = { bold: true };
+
+  let index = 0;
+  for (const page of [...byPage.keys()].sort((a, b) => a - b)) {
+    const start = at;
+    pageStart.set(page, start);
+    const image = imageByPage.get(page);
+    // Without a picture there is nothing to line up against, so the rows follow
+    // each other.
+    const scale = image ? BAND_WIDTH_PX / image.width : 0;
+
+    for (const row of byPage.get(page)) {
+      if (image) {
+        // PDF user space counts up from the bottom, so this measures down from
+        // the page top.
+        const fromTop = (image.height - (row.top + (row.height ?? 0))) * scale;
+        // Never backwards, so two fields close together take consecutive rows
+        // rather than landing on top of each other.
+        at = Math.max(at, start + Math.round(fromTop / ROW_HEIGHT_PX));
+      }
+      writeFieldRow(row, index);
+      index += 1;
+    }
+  }
 
   for (const image of pageImages) {
     const id = book.addImage({ buffer: image.data, extension: 'png' });
