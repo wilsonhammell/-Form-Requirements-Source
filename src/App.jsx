@@ -68,6 +68,14 @@ import { renderPageImages } from './core/pageImages.js';
 const DEFAULT_FONT_LABEL =
   FONT_FAMILIES.find((f) => f.value === DEFAULT_FONT.family)?.label ?? DEFAULT_FONT.family;
 
+// Adding and removing one member, for the two Sets the UI toggles.
+const toggled = (set, id) => {
+  const next = new Set(set);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  return next;
+};
+
 export default function App() {
   const [dbFields, setDbFields] = useState([]);
   const [dbError, setDbError] = useState(null);
@@ -97,6 +105,7 @@ export default function App() {
   // system plumbing, which is the usual way of working.
   const [scopes, setScopes] = useState(() => new Set(['standard']));
   const showScope = useCallback((...names) => setScopes(new Set(names)), []);
+  const toggleScope = useCallback((id) => setScopes((current) => toggled(current, id)), []);
 
   const { doc, error: pdfError } = usePdfDocument(originalBytes);
   const pageCount = doc?.numPages ?? 0;
@@ -176,12 +185,7 @@ export default function App() {
       }
 
       if (modifiers.toggle) {
-        setSelectedIds((current) => {
-          const next = new Set(current);
-          if (next.has(id)) next.delete(id);
-          else next.add(id);
-          return next;
-        });
+        setSelectedIds((current) => toggled(current, id));
         setSelectedId(id);
         return;
       }
@@ -245,31 +249,44 @@ export default function App() {
     setNotices(Array.isArray(messages) ? messages : [messages]);
   }, []);
 
-  const handleOpenPdf = async (file) => {
-    setBusy(true);
-    try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const result = await importPdf(bytes, dbIndex, systemFields, buttons);
-      setOriginalBytes(bytes);
-      setFileName(file.name);
-      // A signer name saved as a text field elsewhere comes back a dropdown,
-      // the same correction system field types get.
-      setFields(reconcileSpecialTypes(result.fields));
-      setConfig(result.config);
-      setSelectedId(null);
-      setPageIndex(0);
-      const label = {
-        [SOURCE.EMBEDDED]: 'Embedded requirements found',
-        [SOURCE.ACROFORM]: 'Existing AcroForm found',
-        [SOURCE.FLAT]: 'Flat PDF',
-      }[result.source];
-      say([`${label}. ${result.notes.join(' ')}`]);
-    } catch (err) {
-      say([`Could not open ${file.name}: ${err.message}`]);
-    } finally {
-      setBusy(false);
-    }
-  };
+  // The three jobs slow enough to disable the toolbar. Whatever they throw is
+  // said out loud rather than leaving the button looking like it did nothing.
+  const whileBusy = useCallback(
+    async (run, describeError) => {
+      setBusy(true);
+      try {
+        await run();
+      } catch (err) {
+        say([describeError(err)]);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [say]
+  );
+
+  const handleOpenPdf = (file) =>
+    whileBusy(
+      async () => {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const result = await importPdf(bytes, dbIndex, systemFields, buttons);
+        setOriginalBytes(bytes);
+        setFileName(file.name);
+        // A signer name saved as a text field elsewhere comes back a dropdown,
+        // the same correction system field types get.
+        setFields(reconcileSpecialTypes(result.fields));
+        setConfig(result.config);
+        setSelectedId(null);
+        setPageIndex(0);
+        const label = {
+          [SOURCE.EMBEDDED]: 'Embedded requirements found',
+          [SOURCE.ACROFORM]: 'Existing AcroForm found',
+          [SOURCE.FLAT]: 'Flat PDF',
+        }[result.source];
+        say([`${label}. ${result.notes.join(' ')}`]);
+      },
+      (err) => `Could not open ${file.name}: ${err.message}`
+    );
 
   const handleImportJson = async (file) => {
     try {
@@ -429,56 +446,45 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [selectedId, deleteField, duplicateField, scopedFields, fields, selectField]);
 
-  // The requirements workbook, in the shape the business writes by hand today.
-  // Its own path: nothing here touches the PDF export.
-  const handleExportRequirements = async () => {
-    setBusy(true);
-    try {
-      const pageImages = await renderPageImages(doc);
-      const bytes = await requirementsWorkbookBytes({
-        doc: serializeDocument(fields, { sourceFileName: fileName, config }),
-        buttons,
-        systemIndex,
-        buttonIndex,
-        dbIndex,
-        pageImages,
-        sheetName: fileName.replace(/\.pdf$/i, '') || 'Form',
-      });
-      downloadBytes(
-        bytes,
-        requirementsName(fileName),
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      );
-      say([`Exported ${requirementsName(fileName)}.`]);
-    } catch (err) {
-      say([`Requirements export failed: ${err.message}`]);
-    } finally {
-      setBusy(false);
-    }
-  };
+  // Its own path, so nothing here touches the PDF export.
+  const handleExportRequirements = () =>
+    whileBusy(
+      async () => {
+        const bytes = await requirementsWorkbookBytes({
+          doc: serializeDocument(fields, { sourceFileName: fileName, config }),
+          buttons,
+          systemIndex,
+          buttonIndex,
+          dbIndex,
+          pageImages: await renderPageImages(doc),
+          sheetName: fileName.replace(/\.pdf$/i, '') || 'Form',
+        });
+        downloadBytes(
+          bytes,
+          requirementsName(fileName),
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+        say([`Exported ${requirementsName(fileName)}.`]);
+      },
+      (err) => `Requirements export failed: ${err.message}`
+    );
 
-  const handleExportPdf = async () => {
-    setBusy(true);
-    try {
-      const { pdfBytes, jsonBytes, warnings } = await exportPdf({
-        originalBytes,
-        fields,
-        buttons,
-        systemFields,
-        meta: { sourceFileName: fileName, config },
-      });
-      downloadBytes(pdfBytes, exportedPdfName(fileName), 'application/pdf');
-      downloadBytes(jsonBytes, sidecarName(fileName), 'application/json');
-      say([
-        `Exported ${exportedPdfName(fileName)} and ${sidecarName(fileName)}.`,
-        ...warnings,
-      ]);
-    } catch (err) {
-      say([`Export failed: ${err.message}`]);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const handleExportPdf = () =>
+    whileBusy(
+      async () => {
+        const { pdfBytes, jsonBytes, warnings } = await exportPdf({
+          originalBytes,
+          fields,
+          buttons,
+          systemFields,
+          meta: { sourceFileName: fileName, config },
+        });
+        downloadBytes(pdfBytes, exportedPdfName(fileName), 'application/pdf');
+        downloadBytes(jsonBytes, sidecarName(fileName), 'application/json');
+        say([`Exported ${exportedPdfName(fileName)} and ${sidecarName(fileName)}.`, ...warnings]);
+      },
+      (err) => `Export failed: ${err.message}`
+    );
 
   const handleExportJson = () => {
     const bytes = serializeJsonBytes(
@@ -628,63 +634,15 @@ export default function App() {
           {/* The list gives way to the property panel rather than the other way
               round. The panel has a fixed set of controls that all need to be
               reachable, the list is just longer or shorter. */}
-          <div className="flex gap-1 border-b border-slate-200 px-3 py-1.5">
-            {/* Independent toggles, not tabs. All is on when every group is,
-                so it doubles as the way back to seeing everything. */}
-            <button
-              type="button"
-              aria-pressed={scopes.size === FIELD_SCOPES.length}
-              className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                scopes.size === FIELD_SCOPES.length
-                  ? 'bg-slate-700 text-white'
-                  : 'text-slate-500 hover:bg-slate-100'
-              }`}
-              onClick={() => showScope(...FIELD_SCOPES)}
-            >
-              All
-            </button>
-            {[
-              ['standard', 'Standard'],
-              ['system', 'System'],
-              ['signers', 'Signers'],
-              ['submission', 'Submission'],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={scopes.has(id)}
-                className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
-                  scopes.has(id)
-                    ? 'bg-slate-700 text-white'
-                    : 'text-slate-500 hover:bg-slate-100'
-                }`}
-                onClick={() =>
-                  setScopes((current) => {
-                    const next = new Set(current);
-                    if (next.has(id)) next.delete(id);
-                    else next.add(id);
-                    return next;
-                  })
-                }
-              >
-                {label}
-              </button>
-            ))}
-            {issueFilter ? (
-              <button
-                type="button"
-                className="ml-auto self-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-900 hover:bg-amber-200"
-                onClick={() => setIssueFilter(null)}
-                title={issueFilter.text}
-              >
-                showing {scopedFields.length} from an issue, clear
-              </button>
-            ) : (
-              <span className="ml-auto self-center text-[10px] text-slate-400">
-                {scopedFields.length} of {fields.length}
-              </span>
-            )}
-          </div>
+          <ScopeBar
+            scopes={scopes}
+            onShowAll={() => showScope(...FIELD_SCOPES)}
+            onToggle={toggleScope}
+            issueFilter={issueFilter}
+            onClearFilter={() => setIssueFilter(null)}
+            shown={scopedFields.length}
+            total={fields.length}
+          />
 
           <div className="min-h-[6rem] flex-1 overflow-auto">
             <FieldList
@@ -700,40 +658,7 @@ export default function App() {
           </div>
 
           {issues.length > 0 && (
-            <ul className="border-t border-slate-200 px-3 py-2 text-xs">
-              {issues.map((issue, i) => {
-                const tone =
-                  issue.level === 'error'
-                    ? 'text-red-700'
-                    : issue.level === 'warn'
-                      ? 'text-amber-700'
-                      : 'text-slate-500';
-                // Only an issue that named fields can be filtered to. A missing
-                // signer row has none, since the whole complaint is that it is
-                // not there.
-                if (!issue.ids || issue.ids.length === 0) {
-                  return (
-                    <li key={i} className={tone}>
-                      {issue.text}
-                    </li>
-                  );
-                }
-                const active = issueFilter?.text === issue.text;
-                return (
-                  <li key={i}>
-                    <button
-                      type="button"
-                      className={`w-full text-left underline decoration-dotted underline-offset-2 hover:decoration-solid ${tone} ${
-                        active ? 'font-semibold decoration-solid' : ''
-                      }`}
-                      onClick={() => setIssueFilter(active ? null : issue)}
-                    >
-                      {issue.text}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            <IssueList issues={issues} openText={issueFilter?.text} onPick={setIssueFilter} />
           )}
 
           {/* Capped, or the panel takes whatever height its controls want and
@@ -770,6 +695,88 @@ export default function App() {
         </aside>
       </div>
     </div>
+  );
+}
+
+// Independent toggles rather than tabs. Every field is in exactly one group, so
+// any subset is a legible view and All is simply all four on, which doubles as
+// the way back. The labels come off FIELD_SCOPES so a fifth group cannot be
+// added to the model and quietly go missing here.
+const scopeLabel = (id) => id[0].toUpperCase() + id.slice(1);
+
+function ScopeBar({ scopes, onShowAll, onToggle, issueFilter, onClearFilter, shown, total }) {
+  const all = scopes.size === FIELD_SCOPES.length;
+  const pill = (on) =>
+    `rounded px-1.5 py-0.5 text-[11px] font-medium ${
+      on ? 'bg-slate-700 text-white' : 'text-slate-500 hover:bg-slate-100'
+    }`;
+
+  return (
+    <div className="flex gap-1 border-b border-slate-200 px-3 py-1.5">
+      <button type="button" aria-pressed={all} className={pill(all)} onClick={onShowAll}>
+        All
+      </button>
+      {FIELD_SCOPES.map((id) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={scopes.has(id)}
+          className={pill(scopes.has(id))}
+          onClick={() => onToggle(id)}
+        >
+          {scopeLabel(id)}
+        </button>
+      ))}
+      {issueFilter ? (
+        <button
+          type="button"
+          className="ml-auto self-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-900 hover:bg-amber-200"
+          onClick={onClearFilter}
+          title={issueFilter.text}
+        >
+          showing {shown} from an issue, clear
+        </button>
+      ) : (
+        <span className="ml-auto self-center text-[10px] text-slate-400">
+          {shown} of {total}
+        </span>
+      )}
+    </div>
+  );
+}
+
+const ISSUE_TONE = { error: 'text-red-700', warn: 'text-amber-700' };
+
+function IssueList({ issues, openText, onPick }) {
+  return (
+    <ul className="border-t border-slate-200 px-3 py-2 text-xs">
+      {issues.map((issue, i) => {
+        const tone = ISSUE_TONE[issue.level] ?? 'text-slate-500';
+        // Only an issue that named fields can be filtered to. A missing signer
+        // row has none, since the whole complaint is that it is not there.
+        if (!issue.ids || issue.ids.length === 0) {
+          return (
+            <li key={i} className={tone}>
+              {issue.text}
+            </li>
+          );
+        }
+        const open = openText === issue.text;
+        return (
+          <li key={i}>
+            <button
+              type="button"
+              className={`w-full text-left underline decoration-dotted underline-offset-2 hover:decoration-solid ${tone} ${
+                open ? 'font-semibold decoration-solid' : ''
+              }`}
+              onClick={() => onPick(open ? null : issue)}
+            >
+              {issue.text}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
