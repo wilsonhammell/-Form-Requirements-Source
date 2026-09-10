@@ -1,0 +1,377 @@
+// Reading an uploaded PDF into the field model.
+//
+// Three cases, in priority order:
+//   1. embedded requirements JSON, an exact round trip
+//   2. an AcroForm with no JSON, rebuilt from the real widgets and flagged as
+//      imported because the result is inferred
+//   3. neither, a flat PDF and an empty field set
+//
+// A radio group is one field whose options are its widgets, so each option
+// arrives as its own placement sharing the group's name, the same shape a name
+// placed more than once takes.
+
+import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib';
+import {
+  createField,
+  parseDocument,
+  reconcileFields,
+  DEFAULT_FONT,
+  createConfig,
+  alignmentFromQuadding,
+  TEXT_RENDERING_TYPES,
+  EXPORT_VALUE_TYPES,
+} from './schema.js';
+import { rectFromPdfArray } from './coords.js';
+import {
+  ensureSystemFields,
+  reconcileSystemTypes,
+  buildSystemIndex,
+} from './systemFields.js';
+import { extractRequirements } from './pdfEmbed.js';
+import { fontFromDa } from './defaultAppearance.js';
+import { completeEsignPair } from './specialFields.js';
+import { buildButtonIndex } from './signingButtons.js';
+import { readDocumentScripts } from './pdfScripts.js';
+import { declaredValidation, declaredValidationNotes } from './declaredValidation.js';
+import {
+  replacedFunctions,
+  OWNED_SCRIPTS,
+  ownScripts,
+  lateScripts,
+} from '../starter/buildScripts.js';
+
+// Field flags, PDF 32000-1 tables 221, 226 and 228.
+const FLAG_READ_ONLY = 1 << 0;
+const FLAG_RADIO = 1 << 15;
+const FLAG_PUSHBUTTON = 1 << 16;
+const FLAG_COMBO = 1 << 17;
+
+// Annotation flag, PDF 32000-1 table 165 bit 2.
+const ANNOT_HIDDEN = 1 << 1;
+
+// Text field flag, PDF 32000-1 table 228 bit 13.
+const FLAG_MULTILINE = 1 << 12;
+
+export const SOURCE = {
+  EMBEDDED: 'embedded',
+  ACROFORM: 'acroform',
+  FLAT: 'flat',
+};
+
+export async function loadPdfBytes(bytes) {
+  return PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+}
+
+// bytes is the raw file. Returns the field set plus what it came from.
+export async function importPdf(bytes, dbIndex, systemFields = [], buttons = []) {
+  const pdfDoc = await loadPdfBytes(bytes);
+
+  // System fields belong on every form, so whichever way this document arrives,
+  // any that are missing get added and any carrying the wrong type are put
+  // right. Ones already placed correctly keep their position.
+  const systemIndex = buildSystemIndex(systemFields);
+  const systemNotes = [];
+  const withSystem = (fields) => {
+    const { fields: retyped, corrected } = reconcileSystemTypes(fields, systemIndex);
+    if (corrected.length > 0) {
+      systemNotes.push(
+        `Corrected the type of ${corrected.length} system field${
+          corrected.length === 1 ? '' : 's'
+        } the starter code reads as text: ${corrected.join(', ')}.`
+      );
+    }
+    // The eSign label and code box go together, and only a hand edit in Acrobat
+    // can leave one without the other. Where it goes is fully determined, so it
+    // is put back rather than reported.
+    const { fields: paired, added: pairAdded } = completeEsignPair(retyped);
+    if (pairAdded.length > 0) {
+      systemNotes.push(`Replaced ${pairAdded.join(', ')}, which the Remote eSign pair needs.`);
+    }
+
+    const crop = pdfDoc.getPage(0)?.getCropBox();
+    if (!crop) return paired;
+    const box = [crop.x, crop.y, crop.x + crop.width, crop.y + crop.height];
+    const complete = ensureSystemFields(paired, systemFields, box);
+    const added = complete.length - paired.length;
+    if (added > 0) {
+      systemNotes.push(`Placed ${added} missing system field${added === 1 ? '' : 's'}.`);
+    }
+    return complete;
+  };
+
+  // Export rewrites Helper_Functions and Main wholesale, so anything the form
+  // keeps in them that this tool does not generate is about to go. Keeping the
+  // bodies would not help, every call site is in regenerated code too.
+  //
+  // The warning is deliberately blunt. Working out which lines are bespoke and
+  // which are an older version of the same flow needs guesswork, and a detector
+  // that guesses wrong is worse than one that states the plain fact.
+  const documentScripts = readDocumentScripts(pdfDoc);
+  if (OWNED_SCRIPTS.some((name) => documentScripts.has(name))) {
+    systemNotes.push(
+      'Helper_Functions and Main are replaced on export. Anything in them this tool does not generate is lost, apart from CustomSaveValidation, which is carried across. Code of your own belongs in its own document script, which is never touched, run from CustomAfterValidation, CustomAfterLoad or CustomBeforeSubmit.'
+    );
+  }
+
+  // The scripts export leaves alone, which is the safe place for a form's own
+  // code. Saying which they are is how someone checks their code is in one.
+  const own = ownScripts(documentScripts);
+  if (own.length > 0) {
+    systemNotes.push(`Export leaves these scripts untouched: ${own.join(', ')}.`);
+  }
+
+  // Sorting after Main means loading after Main() has already run, so a hook
+  // defined there never fires and nothing reports an error.
+  const late = lateScripts(documentScripts);
+  if (late.length > 0) {
+    systemNotes.push(
+      `${late.join(', ')} sorts after Main, so it loads too late to define a hook. Rename it to sort before Main, such as Form_Custom.`
+    );
+  }
+
+  // A form that has been through the old process states its own validation in
+  // Main. Reported, never applied: filling the requirements in from the form
+  // they describe would leave a tester ticking Pass against inherited values.
+  systemNotes.push(...declaredValidationNotes(declaredValidation(documentScripts), dbIndex));
+
+  // Named functions can be reported exactly, so they are.
+  const replaced = replacedFunctions(documentScripts);
+  if (replaced.length > 0) {
+    systemNotes.push(
+      `This form defines ${replaced.length} function${
+        replaced.length === 1 ? '' : 's'
+      } the starter code does not: ${replaced.join(', ')}. Export will replace ${
+        replaced.length === 1 ? 'it' : 'them'
+      }.`
+    );
+  }
+
+  const embedded = extractRequirements(pdfDoc);
+  if (embedded) {
+    const { fields, config } = parseDocument(embedded, dbIndex);
+    return {
+      pdfDoc,
+      fields: withSystem(fields),
+      config,
+      source: SOURCE.EMBEDDED,
+      notes: [
+        `Loaded ${fields.length} field${fields.length === 1 ? '' : 's'} from embedded JSON.`,
+        ...systemNotes,
+      ],
+    };
+  }
+
+  const { fields, notes } = reconstructFromAcroForm(pdfDoc, buildButtonIndex(buttons));
+  if (fields.length > 0) {
+    return {
+      pdfDoc,
+      fields: withSystem(reconcileFields(fields, dbIndex)),
+      config: createConfig(),
+      source: SOURCE.ACROFORM,
+      notes: [...notes, ...systemNotes],
+    };
+  }
+
+  return {
+    pdfDoc,
+    fields: withSystem([]),
+    config: createConfig(),
+    source: SOURCE.FLAT,
+    notes: ['No form fields found, starting empty.', ...systemNotes],
+  };
+}
+
+// Walk the pages rather than form.getFields(), because the page a widget sits on
+// is part of the model and walking pages is the only place that is unambiguous.
+export function reconstructFromAcroForm(pdfDoc, buttonIndex = new Map()) {
+  const context = pdfDoc.context;
+  const fields = [];
+  const notes = [];
+  const seenNames = new Set();
+  const repeatedNames = new Set();
+  let unsupported = 0;
+
+  const pages = pdfDoc.getPages();
+  for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+    const annots = pages[pageIndex].node.Annots();
+    if (!annots) continue;
+
+    for (let i = 0; i < annots.size(); i += 1) {
+      const annot = context.lookup(annots.get(i));
+      if (!annot || typeof annot.get !== 'function') continue;
+      if (annot.get(PDFName.of('Subtype'))?.asString?.() !== '/Widget') continue;
+
+      const fieldType = inherited(context, annot, 'FT')?.asString?.();
+      const flags = numberOf(inherited(context, annot, 'Ff'));
+      const name = fullyQualifiedName(context, annot);
+      if (!name) {
+        unsupported += 1;
+        continue;
+      }
+
+      const type = mapType(fieldType, flags, name, buttonIndex);
+      if (!type) {
+        unsupported += 1;
+        continue;
+      }
+      const font = TEXT_RENDERING_TYPES.includes(type) ? readFont(context, annot) : DEFAULT_FONT;
+      const exportValue = EXPORT_VALUE_TYPES.includes(type) ? readExportValue(context, annot) : '';
+      const options = type === 'dropdown' ? readOptions(context, annot) : [];
+      const alignment = TEXT_RENDERING_TYPES.includes(type)
+        ? alignmentFromQuadding(numberOf(inherited(context, annot, 'Q')))
+        : 'left';
+      const multiline = type === 'text' && (flags & FLAG_MULTILINE) !== 0;
+      // Visibility rides on the widget, so it is read per placement.
+      const hidden = (numberOf(context.lookup(annot.get(PDFName.of('F')))) & ANNOT_HIDDEN) !== 0;
+      // Every widget becomes its own entry, matching how Acrobat treats one
+      // field placed several times: one name, one shared value, a separate
+      // placement per widget. Export groups them back into a single field.
+      if (seenNames.has(name)) repeatedNames.add(name);
+      seenNames.add(name);
+
+      const rectArray = context.lookup(annot.get(PDFName.of('Rect')));
+      if (!rectArray?.asRectangle && !rectArray?.get) continue;
+      const nums = [0, 1, 2, 3].map((k) => numberOf(context.lookup(rectArray.get(k))));
+
+      fields.push(
+        createField({
+          name,
+          type,
+          editable: (flags & FLAG_READ_ONLY) === 0,
+          page: pageIndex,
+          rect: rectFromPdfArray(nums),
+          font,
+          hidden,
+          alignment,
+          multiline,
+          exportValue,
+          options,
+          // Nothing in a PDF records what a field is called on the printed
+          // form, so this is left for someone to fill in.
+          customerFacingName: '',
+          // Never trust a validation flag that was not written by this tool.
+          loadValidated: false,
+          saveValidated: false,
+          customSaveValidated: false,
+          imported: true,
+        })
+      );
+    }
+  }
+
+  if (fields.length > 0) {
+    notes.push(
+      `Rebuilt ${fields.length} field${fields.length === 1 ? '' : 's'} from the PDF's AcroForm. Names and rects are inferred, check them before exporting.`
+    );
+  }
+  if (repeatedNames.size > 0) {
+    notes.push(
+      `${repeatedNames.size} name${repeatedNames.size === 1 ? ' is' : 's are'} placed more than once, each placement shares one value.`
+    );
+  }
+  if (unsupported > 0) {
+    notes.push(
+      `${unsupported} field${unsupported === 1 ? '' : 's'} of an unsupported type skipped and preserved unchanged.`
+    );
+  }
+  return { fields, notes };
+}
+
+// Signatures carry no value to fill, so they are left alone. /Ch is both
+// dropdowns and list boxes, and only the dropdown is modelled, so a list box
+// passes through untouched rather than being silently converted.
+//
+// A pushbutton is only recognised when its name is one this tool knows about.
+// Any other button in an existing PDF stays unmodelled and survives export
+// untouched, which is the conservative reading until generic buttons are
+// actually asked for.
+function mapType(fieldType, flags, name, buttonIndex) {
+  if (fieldType === '/Tx') return 'text';
+  if (fieldType === '/Ch') return flags & FLAG_COMBO ? 'dropdown' : null;
+  if (fieldType === '/Btn') {
+    if (flags & FLAG_PUSHBUTTON) return buttonIndex.has(name.trim()) ? 'button' : null;
+    return flags & FLAG_RADIO ? 'radio' : 'checkbox';
+  }
+  return null;
+}
+
+// A button widget's on-state name is its export value, the string a filler
+// compares a database value against. It is whatever the appearance dictionary
+// calls it, anything other than /Off.
+function readExportValue(context, annot) {
+  const ap = context.lookup(annot.get(PDFName.of('AP')));
+  const normal = ap ? context.lookup(ap.get(PDFName.of('N'))) : null;
+  if (!normal?.keys) return '';
+  for (const key of normal.keys()) {
+    const name = key.asString();
+    if (name !== '/Off') return name.slice(1);
+  }
+  return '';
+}
+
+// Choice options live in /Opt, either as a bare string, where the stored value
+// is also what the reader sees, or as a [value, label] pair where they differ.
+// Both halves are kept, since a form can store ON and show Ontario.
+function readOptions(context, annot) {
+  const opt = context.lookup(inherited(context, annot, 'Opt'));
+  if (!opt?.size) return [];
+  const options = [];
+  for (let i = 0; i < opt.size(); i += 1) {
+    const entry = context.lookup(opt.get(i));
+    if (entry instanceof PDFString || entry instanceof PDFHexString) {
+      options.push({ value: entry.decodeText(), label: entry.decodeText() });
+    } else if (entry?.size?.() >= 1) {
+      const value = decodeText(context.lookup(entry.get(0)));
+      const label = entry.size() > 1 ? decodeText(context.lookup(entry.get(1))) : '';
+      if (value) options.push({ value, label: label || value });
+    }
+  }
+  return options;
+}
+
+// /FT, /Ff and /T can live on a parent field node, so look up the chain.
+// Exported because the round trip test reads the same forms the same way, and
+// two copies of this would let import and the check that guards it disagree.
+export function inherited(context, dict, key) {
+  let node = dict;
+  let guard = 0;
+  while (node && guard < 64) {
+    const value = node.get(PDFName.of(key));
+    if (value !== undefined) return context.lookup(value);
+    node = context.lookup(node.get(PDFName.of('Parent')));
+    guard += 1;
+  }
+  return undefined;
+}
+
+// The name the downstream filler sees is the fully qualified one, parents first.
+function fullyQualifiedName(context, annot) {
+  const parts = [];
+  let node = annot;
+  let guard = 0;
+  while (node && guard < 64) {
+    const t = context.lookup(node.get(PDFName.of('T')));
+    const text = decodeText(t);
+    if (text) parts.unshift(text);
+    node = context.lookup(node.get(PDFName.of('Parent')));
+    guard += 1;
+  }
+  return parts.join('.');
+}
+
+function decodeText(obj) {
+  if (obj instanceof PDFString || obj instanceof PDFHexString) return obj.decodeText();
+  return '';
+}
+
+// Best effort read of an existing field's /DA, e.g. "0 g /Helv 10 Tf". The
+// parsing lives in defaultAppearance.js, shared with export so the two cannot
+// disagree about what a given string means.
+function readFont(context, annot) {
+  return fontFromDa(decodeText(inherited(context, annot, 'DA')));
+}
+
+function numberOf(obj) {
+  const n = Number(obj?.asNumber?.() ?? obj);
+  return Number.isFinite(n) ? n : 0;
+}

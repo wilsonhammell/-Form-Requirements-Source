@@ -1,0 +1,60 @@
+// The DB field list. Identifiers are the PDF field names the downstream filler
+// matches against column names, so the identifier is what gets persisted and
+// the label is only ever shown to help someone pick the right one.
+
+const DB_FIELDS_URL = `${import.meta.env?.BASE_URL ?? '/'}dbFields.json`;
+
+export async function loadDbFields(url = DB_FIELDS_URL) {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Could not load ${url} (${res.status}).`);
+  return normalizeDbFields(await res.json());
+}
+
+export function normalizeDbFields(raw) {
+  if (!Array.isArray(raw)) throw new Error('DB field list must be a JSON array.');
+  const out = [];
+  const seen = new Set();
+  for (const entry of raw) {
+    const identifier = String(entry?.identifier ?? '').trim();
+    if (!identifier || seen.has(identifier)) continue;
+    seen.add(identifier);
+    out.push({ identifier, label: String(entry?.label ?? identifier).trim() });
+  }
+  return out;
+}
+
+export function buildDbIndex(dbFields) {
+  return new Map(dbFields.map((f) => [f.identifier, f]));
+}
+
+// Names are matched exactly, since an almost right name is a silent failure
+// downstream. A case insensitive index only drives the "did you mean" hint.
+export function buildCaseInsensitiveIndex(dbFields) {
+  const map = new Map();
+  for (const f of dbFields) {
+    const key = f.identifier.toLowerCase();
+    if (!map.has(key)) map.set(key, f);
+  }
+  return map;
+}
+
+// Rank matches so an exact identifier hit sorts first, then prefix hits on the
+// identifier, then anything containing the query in either part.
+export function searchDbFields(dbFields, query, limit = 50) {
+  const q = query.trim().toLowerCase();
+  if (!q) return dbFields.slice(0, limit);
+  const scored = [];
+  for (const f of dbFields) {
+    const id = f.identifier.toLowerCase();
+    const label = f.label.toLowerCase();
+    let score = -1;
+    if (id === q) score = 0;
+    else if (id.startsWith(q)) score = 1;
+    else if (label.startsWith(q)) score = 2;
+    else if (id.includes(q)) score = 3;
+    else if (label.includes(q)) score = 4;
+    if (score >= 0) scored.push({ f, score });
+  }
+  scored.sort((a, b) => a.score - b.score || a.f.identifier.localeCompare(b.f.identifier));
+  return scored.slice(0, limit).map((s) => s.f);
+}

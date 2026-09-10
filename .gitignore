@@ -1,0 +1,14 @@
+node_modules
+dist
+
+# Real production forms and a dump of one form's document scripts. Neither is
+# needed to run the app: they exist so tests/realForm.test.js can round trip
+# documents the business actually uses. Drop them into "example forms/" locally
+# to get that coverage back.
+example forms/
+example.txt
+
+# The requirements workbooks the business writes today, kept for reference while
+# the spreadsheet export is designed. Their Testing Accounts sheets carry live
+# account numbers, member numbers and balances.
+example old reqs/

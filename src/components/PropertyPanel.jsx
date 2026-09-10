@@ -1,0 +1,385 @@
+import NameCombobox from './NameCombobox.jsx';
+import OptionsEditor from './OptionsEditor.jsx';
+import { isSystemField } from '../core/systemFields.js';
+import { parseSpecialName } from '../core/specialFields.js';
+import { isSubmissionButton } from '../core/signingButtons.js';
+import {
+  isLoadAttempted,
+  FONT_FAMILIES,
+  TEXT_ALIGNMENTS,
+  TEXT_RENDERING_TYPES,
+  EXPORT_VALUE_TYPES,
+  EXPORT_VALUE_PATTERN,
+} from '../core/schema.js';
+
+// One line per family. The eSign pair used to fall through to the joint text,
+// which described neither what it is nor where it lives.
+const SPECIAL_NOTE = {
+  signer: (part) =>
+    `Signer row ${part.index}. Its name says which row and which part, so rows stay numbered 1 up with no gaps. Deleting the last part of a row renumbers the rows after it.`,
+  joint: () =>
+    'Joint member row, filled from DNA by the starter code. The numbered rows and the combined line are filled independently, so a form can carry either or both.',
+  combinedJoint: () =>
+    'Every joint name on one line, joined by commas. Independent of the numbered rows, so a form can carry both.',
+  esign: () =>
+    'Part of the Remote eSign cluster. It is placed, moved and removed with RemoteESignButton, and starts hidden until the starter code reveals it.',
+};
+
+export default function PropertyPanel({
+  field,
+  dbFields,
+  dbIndex,
+  caseIndex,
+  systemIndex,
+  buttonIndex,
+  specialNames = [],
+  locked,
+  pageCount,
+  onChange,
+  onDelete,
+  onDuplicate,
+}) {
+  if (!field) {
+    return (
+      <div className="p-4 text-sm text-slate-500">
+        Select a field, or drag on the page to draw one.
+      </div>
+    );
+  }
+
+  const system = isSystemField(field.name, systemIndex);
+  const specialPart = parseSpecialName(field.name);
+  const submission = isSubmissionButton(field.name, buttonIndex);
+  // A pushbutton has no value, so none of the value machinery applies to it.
+  const carriesValue = field.type !== 'button';
+  const attempted = isLoadAttempted(field.name, dbIndex);
+  const hasNote = field.note.trim().length > 0;
+  const hasCustomerName = field.customerFacingName.trim().length > 0;
+  const canLoadValidate = attempted && hasCustomerName;
+  // The filler compares the database value against this exactly, so an empty or
+  // unencodable one means the field silently never fills.
+  const exportValueProblem = !EXPORT_VALUE_TYPES.includes(field.type)
+    ? null
+    : !field.exportValue.trim()
+      ? 'Required. Without it this field can never be filled.'
+      : !EXPORT_VALUE_PATTERN.test(field.exportValue.trim())
+        ? 'Letters, digits, dot, dash and underscore only.'
+        : null;
+
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      {submission && (
+        <p className="rounded border border-violet-200 bg-violet-50 px-2 py-1.5 text-xs text-violet-900">
+          Submission button. Its name and caption come from the button list, and it is turned on
+          and off from the Config tab. Position is yours, the size is fixed.
+        </p>
+      )}
+
+      {system && (
+        <p className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-xs text-indigo-900">
+          System field, read by the starter code.{' '}
+          {locked
+            ? 'This is its only placement, so the name is fixed and it cannot be removed. Position, size and visibility are still yours.'
+            : 'An extra placement, so this one is free to rename or remove. It shares one value with the others.'}
+        </p>
+      )}
+
+      {specialPart && (
+        <p className="rounded border border-teal-200 bg-teal-50 px-2 py-1.5 text-xs text-teal-900">
+          {SPECIAL_NOTE[specialPart.family](specialPart)}
+          {specialPart.type === 'dropdown' &&
+            ' Its options are built at run time from DNA, so it has none here.'}
+        </p>
+      )}
+
+      {field.imported && (
+        <p className="rounded border border-slate-300 bg-slate-50 px-2 py-1.5 text-xs text-slate-600">
+          Rebuilt from the PDF's existing form fields. Name and position are inferred, confirm
+          them before exporting.
+        </p>
+      )}
+
+      {locked || submission ? (
+        <div>
+          <label className="block text-xs font-medium text-slate-600">Name</label>
+          <input
+            type="text"
+            readOnly
+            value={field.name}
+            className="mt-1 w-full cursor-not-allowed rounded border border-slate-200 bg-slate-50 px-2 py-1.5 font-mono text-sm text-slate-600"
+          />
+        </div>
+      ) : (
+        <NameCombobox
+          value={field.name}
+          dbFields={dbFields}
+          dbIndex={dbIndex}
+          caseIndex={caseIndex}
+          specialNames={specialNames}
+          onChange={(name) => onChange({ name })}
+        />
+      )}
+
+      {carriesValue && (
+      <div>
+        <label className="block text-xs font-medium text-slate-600">
+          Customer-facing name
+        </label>
+        <input
+          type="text"
+          value={field.customerFacingName}
+          placeholder="What this field is labelled on the form"
+          className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          onChange={(e) => onChange({ customerFacingName: e.target.value })}
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          The same DB field is labelled differently form to form, so this belongs
+          to the placement.
+        </p>
+      </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {/* Every field level toggle sits together and above the type specific
+            controls below, so none of them ends up under the fold on a type
+            that carries a lot. Editable applies to all four types. */}
+        <label className="flex items-center gap-2 text-sm text-slate-800">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            checked={field.editable}
+            onChange={(e) => onChange({ editable: e.target.checked })}
+          />
+          Editable
+          <span className="text-xs text-slate-400">
+            {field.editable ? 'fillable' : 'read-only'}
+          </span>
+        </label>
+
+        <label className="flex items-center gap-2 text-sm text-slate-800">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            checked={field.hidden}
+            onChange={(e) => onChange({ hidden: e.target.checked })}
+          />
+          Hidden
+          {field.hidden && (
+            <span className="text-xs text-slate-400">not shown or printed</span>
+          )}
+        </label>
+
+        {carriesValue && (
+        <>
+        {/* Load Validation is a claim about a specific label on a specific
+            form, so it needs a DB match and the customer-facing name. Save
+            Validation needs neither and is available on every field. */}
+        <label
+          className={`flex items-center gap-2 text-sm ${
+            canLoadValidate ? 'text-slate-800' : 'text-slate-400'
+          }`}
+        >
+          <input
+            type="checkbox"
+            disabled={!canLoadValidate}
+            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:opacity-50"
+            checked={field.loadValidated}
+            onChange={(e) => onChange({ loadValidated: e.target.checked })}
+          />
+          Load Validation
+          {attempted && !hasCustomerName && (
+            <span className="text-xs text-slate-400">needs a customer-facing name</span>
+          )}
+        </label>
+
+        {/* The two save flags are mutually exclusive, checking one clears the
+            other. Custom also needs a note describing the situation. */}
+        <label className="flex items-center gap-2 text-sm text-slate-800">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            checked={field.saveValidated}
+            onChange={(e) =>
+              onChange(
+                e.target.checked
+                  ? { saveValidated: true, customSaveValidated: false }
+                  : { saveValidated: false }
+              )
+            }
+          />
+          Save Validation
+        </label>
+
+        <label
+          className={`flex items-center gap-2 text-sm ${
+            hasNote ? 'text-slate-800' : 'text-slate-400'
+          }`}
+        >
+          <input
+            type="checkbox"
+            disabled={!hasNote}
+            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:opacity-50"
+            checked={field.customSaveValidated}
+            onChange={(e) =>
+              onChange(
+                e.target.checked
+                  ? { customSaveValidated: true, saveValidated: false }
+                  : { customSaveValidated: false }
+              )
+            }
+          />
+          Custom Save Validation
+          {!hasNote && <span className="text-xs text-slate-400">needs a note</span>}
+        </label>
+        </>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-slate-600">Note</label>
+        <textarea
+          rows={3}
+          value={field.note}
+          placeholder="Describe anything unusual about this field."
+          className="mt-1 w-full resize-y rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          onChange={(e) => onChange({ note: e.target.value })}
+        />
+      </div>
+
+      {EXPORT_VALUE_TYPES.includes(field.type) && (
+        <div>
+          <label className="block text-xs font-medium text-slate-600">Export value</label>
+          <input
+            type="text"
+            value={field.exportValue}
+            spellCheck={false}
+            autoComplete="off"
+            placeholder={field.type === 'radio' ? 'Value for this option' : 'Yes'}
+            className={`mt-1 w-full rounded border px-2 py-1.5 font-mono text-sm focus:outline-none focus:ring-1 ${
+              exportValueProblem
+                ? 'border-red-400 focus:border-red-500 focus:ring-red-500'
+                : 'border-slate-300 focus:border-sky-500 focus:ring-sky-500'
+            }`}
+            onChange={(e) => onChange({ exportValue: e.target.value })}
+          />
+          <p className={`mt-1 text-xs ${exportValueProblem ? 'text-red-700' : 'text-slate-500'}`}>
+            {exportValueProblem ??
+              (field.type === 'radio'
+                ? 'The value written when this option is the one chosen.'
+                : 'The value written when this box is ticked.')}
+          </p>
+        </div>
+      )}
+
+      {field.type === 'dropdown' && (
+        <OptionsEditor options={field.options} onChange={(options) => onChange({ options })} />
+      )}
+
+      {TEXT_RENDERING_TYPES.includes(field.type) && (
+        <div>
+          <label className="block text-xs font-medium text-slate-600">Font</label>
+          <div className="mt-1 flex gap-2">
+            <select
+              className="flex-1 rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              value={field.font.family}
+              onChange={(e) => onChange({ font: { ...field.font, family: e.target.value } })}
+            >
+              {FONT_FAMILIES.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min={4}
+              max={72}
+              step={0.5}
+              value={field.font.size}
+              className="w-16 rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              onChange={(e) => onChange({ font: { ...field.font, size: Number(e.target.value) } })}
+            />
+          </div>
+
+          {/* Alignment and wrapping are field level, like the font, so every
+              placement of a name shares them. Same as Acrobat. */}
+          <div className="mt-2 flex gap-1.5">
+            {TEXT_ALIGNMENTS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={field.alignment === value}
+                className={`flex-1 rounded border px-2 py-1 text-xs ${
+                  field.alignment === value
+                    ? 'border-sky-600 bg-sky-600 text-white'
+                    : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                }`}
+                onClick={() => onChange({ alignment: value })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {field.type === 'text' && (
+            <label className="mt-2 flex items-center gap-2 text-sm text-slate-800">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                checked={field.multiline}
+                onChange={(e) => onChange({ multiline: e.target.checked })}
+              />
+              Multiline
+              <span className="text-xs text-slate-400">
+                {field.multiline ? 'wraps' : 'one line'}
+              </span>
+            </label>
+          )}
+        </div>
+      )}
+
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded bg-slate-50 p-2 text-xs">
+        <dt className="text-slate-500">Type</dt>
+        <dd className="text-right font-mono text-slate-700">{field.type}</dd>
+        <dt className="text-slate-500">Page</dt>
+        <dd className="text-right font-mono text-slate-700">
+          {field.page + 1} of {pageCount || '?'}
+        </dd>
+        <dt className="text-slate-500">x, y</dt>
+        <dd className="text-right font-mono text-slate-700">
+          {round(field.rect.x)}, {round(field.rect.y)}
+        </dd>
+        <dt className="text-slate-500">w x h</dt>
+        <dd className="text-right font-mono text-slate-700">
+          {round(field.rect.width)} x {round(field.rect.height)}
+        </dd>
+        <dt className="col-span-2 pt-1 text-[10px] uppercase tracking-wide text-slate-400">
+          PDF user space, points
+        </dt>
+      </dl>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={submission}
+          title={submission ? 'A submission button appears at most once.' : undefined}
+          className="flex-1 rounded border border-slate-300 px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+          onClick={onDuplicate}
+        >
+          Duplicate
+        </button>
+        <button
+          type="button"
+          disabled={locked}
+          title={locked ? 'A system field must keep at least one placement.' : undefined}
+          className="flex-1 rounded border border-red-300 px-2 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
+          onClick={onDelete}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const round = (n) => Math.round(n * 100) / 100;

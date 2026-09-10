@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+/* The page canvas sits on a neutral ground so white paper reads as paper. */
+html, body, #root { height: 100%; }
+body { overscroll-behavior: none; }
