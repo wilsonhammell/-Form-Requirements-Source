@@ -25,6 +25,52 @@ const SPECIAL_NOTE = {
     'Part of the Remote eSign cluster. It is placed, moved and removed with RemoteESignButton, and starts hidden until the starter code reveals it.',
 };
 
+const LABEL = 'block text-xs font-medium text-slate-600';
+const INPUT =
+  'mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500';
+const CHECK =
+  'h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:opacity-50';
+const HINT = 'text-xs text-slate-400';
+
+const BANNER = {
+  submission: 'border-violet-200 bg-violet-50 text-violet-900',
+  system: 'border-indigo-200 bg-indigo-50 text-indigo-900',
+  special: 'border-teal-200 bg-teal-50 text-teal-900',
+  imported: 'border-slate-300 bg-slate-50 text-slate-600',
+};
+
+function Banner({ tone, children }) {
+  return <p className={`rounded border px-2 py-1.5 text-xs ${BANNER[tone]}`}>{children}</p>;
+}
+
+// Disabled says the flag cannot stand on this field, so it also greys the text.
+function Check({ label, checked, onChange, disabled = false, hint = null }) {
+  return (
+    <label
+      className={`flex items-center gap-2 text-sm ${disabled ? 'text-slate-400' : 'text-slate-800'}`}
+    >
+      <input
+        type="checkbox"
+        className={CHECK}
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      {label}
+      {hint && <span className={HINT}>{hint}</span>}
+    </label>
+  );
+}
+
+function Fact({ term, children }) {
+  return (
+    <>
+      <dt className="text-slate-500">{term}</dt>
+      <dd className="text-right font-mono text-slate-700">{children}</dd>
+    </>
+  );
+}
+
 export default function PropertyPanel({
   field,
   dbFields,
@@ -69,39 +115,39 @@ export default function PropertyPanel({
   return (
     <div className="flex flex-col gap-4 p-4">
       {submission && (
-        <p className="rounded border border-violet-200 bg-violet-50 px-2 py-1.5 text-xs text-violet-900">
+        <Banner tone="submission">
           Submission button. Its name and caption come from the button list, and it is turned on
           and off from the Config tab. Position is yours, the size is fixed.
-        </p>
+        </Banner>
       )}
 
       {system && (
-        <p className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1.5 text-xs text-indigo-900">
+        <Banner tone="system">
           System field, read by the starter code.{' '}
           {locked
             ? 'This is its only placement, so the name is fixed and it cannot be removed. Position, size and visibility are still yours.'
             : 'An extra placement, so this one is free to rename or remove. It shares one value with the others.'}
-        </p>
+        </Banner>
       )}
 
       {specialPart && (
-        <p className="rounded border border-teal-200 bg-teal-50 px-2 py-1.5 text-xs text-teal-900">
+        <Banner tone="special">
           {SPECIAL_NOTE[specialPart.family](specialPart)}
           {specialPart.type === 'dropdown' &&
             ' Its options are built at run time from DNA, so it has none here.'}
-        </p>
+        </Banner>
       )}
 
       {field.imported && (
-        <p className="rounded border border-slate-300 bg-slate-50 px-2 py-1.5 text-xs text-slate-600">
+        <Banner tone="imported">
           Rebuilt from the PDF's existing form fields. Name and position are inferred, confirm
           them before exporting.
-        </p>
+        </Banner>
       )}
 
       {locked || submission ? (
         <div>
-          <label className="block text-xs font-medium text-slate-600">Name</label>
+          <label className={LABEL}>Name</label>
           <input
             type="text"
             readOnly
@@ -121,134 +167,89 @@ export default function PropertyPanel({
       )}
 
       {carriesValue && (
-      <div>
-        <label className="block text-xs font-medium text-slate-600">
-          Customer-facing name
-        </label>
-        <input
-          type="text"
-          value={field.customerFacingName}
-          placeholder="What this field is labelled on the form"
-          className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-          onChange={(e) => onChange({ customerFacingName: e.target.value })}
-        />
-        <p className="mt-1 text-xs text-slate-500">
-          The same DB field is labelled differently form to form, so this belongs
-          to the placement.
-        </p>
-      </div>
+        <div>
+          <label className={LABEL}>Customer-facing name</label>
+          <input
+            type="text"
+            value={field.customerFacingName}
+            placeholder="What this field is labelled on the form"
+            className={INPUT}
+            onChange={(e) => onChange({ customerFacingName: e.target.value })}
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            The same DB field is labelled differently form to form, so this belongs to the
+            placement.
+          </p>
+        </div>
       )}
 
+      {/* Every field level toggle sits above the type specific controls, so
+          none of them ends up under the fold on a type that carries a lot. */}
       <div className="flex flex-col gap-2">
-        {/* Every field level toggle sits together and above the type specific
-            controls below, so none of them ends up under the fold on a type
-            that carries a lot. Editable applies to all four types. */}
-        <label className="flex items-center gap-2 text-sm text-slate-800">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-            checked={field.editable}
-            onChange={(e) => onChange({ editable: e.target.checked })}
-          />
-          Editable
-          <span className="text-xs text-slate-400">
-            {field.editable ? 'fillable' : 'read-only'}
-          </span>
-        </label>
+        <Check
+          label="Editable"
+          checked={field.editable}
+          onChange={(editable) => onChange({ editable })}
+          hint={field.editable ? 'fillable' : 'read-only'}
+        />
 
-        <label className="flex items-center gap-2 text-sm text-slate-800">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-            checked={field.hidden}
-            onChange={(e) => onChange({ hidden: e.target.checked })}
-          />
-          Hidden
-          {field.hidden && (
-            <span className="text-xs text-slate-400">not shown or printed</span>
-          )}
-        </label>
+        <Check
+          label="Hidden"
+          checked={field.hidden}
+          onChange={(hidden) => onChange({ hidden })}
+          hint={field.hidden ? 'not shown or printed' : null}
+        />
 
         {carriesValue && (
-        <>
-        {/* Load Validation is a claim about a specific label on a specific
-            form, so it needs a DB match and the customer-facing name. Save
-            Validation needs neither and is available on every field. */}
-        <label
-          className={`flex items-center gap-2 text-sm ${
-            canLoadValidate ? 'text-slate-800' : 'text-slate-400'
-          }`}
-        >
-          <input
-            type="checkbox"
-            disabled={!canLoadValidate}
-            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:opacity-50"
-            checked={field.loadValidated}
-            onChange={(e) => onChange({ loadValidated: e.target.checked })}
-          />
-          Load Validation
-          {attempted && !hasCustomerName && (
-            <span className="text-xs text-slate-400">needs a customer-facing name</span>
-          )}
-        </label>
+          <>
+            {/* Load Validation is a claim about a specific label on a specific
+                form, so it needs a DB match and the customer-facing name. Save
+                Validation needs neither and stands on every field. */}
+            <Check
+              label="Load Validation"
+              checked={field.loadValidated}
+              disabled={!canLoadValidate}
+              onChange={(loadValidated) => onChange({ loadValidated })}
+              hint={attempted && !hasCustomerName ? 'needs a customer-facing name' : null}
+            />
 
-        {/* The two save flags are mutually exclusive, checking one clears the
-            other. Custom also needs a note describing the situation. */}
-        <label className="flex items-center gap-2 text-sm text-slate-800">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-            checked={field.saveValidated}
-            onChange={(e) =>
-              onChange(
-                e.target.checked
-                  ? { saveValidated: true, customSaveValidated: false }
-                  : { saveValidated: false }
-              )
-            }
-          />
-          Save Validation
-        </label>
+            {/* The two save flags are mutually exclusive, checking one clears
+                the other. Custom also needs a note describing the situation. */}
+            <Check
+              label="Save Validation"
+              checked={field.saveValidated}
+              onChange={(on) =>
+                onChange(on ? { saveValidated: true, customSaveValidated: false } : { saveValidated: false })
+              }
+            />
 
-        <label
-          className={`flex items-center gap-2 text-sm ${
-            hasNote ? 'text-slate-800' : 'text-slate-400'
-          }`}
-        >
-          <input
-            type="checkbox"
-            disabled={!hasNote}
-            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:opacity-50"
-            checked={field.customSaveValidated}
-            onChange={(e) =>
-              onChange(
-                e.target.checked
-                  ? { customSaveValidated: true, saveValidated: false }
-                  : { customSaveValidated: false }
-              )
-            }
-          />
-          Custom Save Validation
-          {!hasNote && <span className="text-xs text-slate-400">needs a note</span>}
-        </label>
-        </>
+            <Check
+              label="Custom Save Validation"
+              checked={field.customSaveValidated}
+              disabled={!hasNote}
+              onChange={(on) =>
+                onChange(on ? { customSaveValidated: true, saveValidated: false } : { customSaveValidated: false })
+              }
+              hint={hasNote ? null : 'needs a note'}
+            />
+          </>
         )}
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-slate-600">Note</label>
+        <label className={LABEL}>Note</label>
         <textarea
           rows={3}
           value={field.note}
           placeholder="Describe anything unusual about this field."
-          className="mt-1 w-full resize-y rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          className={`${INPUT} resize-y`}
           onChange={(e) => onChange({ note: e.target.value })}
         />
       </div>
 
       {EXPORT_VALUE_TYPES.includes(field.type) && (
         <div>
-          <label className="block text-xs font-medium text-slate-600">Export value</label>
+          <label className={LABEL}>Export value</label>
           <input
             type="text"
             value={field.exportValue}
@@ -277,7 +278,7 @@ export default function PropertyPanel({
 
       {TEXT_RENDERING_TYPES.includes(field.type) && (
         <div>
-          <label className="block text-xs font-medium text-slate-600">Font</label>
+          <label className={LABEL}>Font</label>
           <div className="mt-1 flex gap-2">
             <select
               className="flex-1 rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
@@ -322,37 +323,29 @@ export default function PropertyPanel({
           </div>
 
           {field.type === 'text' && (
-            <label className="mt-2 flex items-center gap-2 text-sm text-slate-800">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            <div className="mt-2">
+              <Check
+                label="Multiline"
                 checked={field.multiline}
-                onChange={(e) => onChange({ multiline: e.target.checked })}
+                onChange={(multiline) => onChange({ multiline })}
+                hint={field.multiline ? 'wraps' : 'one line'}
               />
-              Multiline
-              <span className="text-xs text-slate-400">
-                {field.multiline ? 'wraps' : 'one line'}
-              </span>
-            </label>
+            </div>
           )}
         </div>
       )}
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded bg-slate-50 p-2 text-xs">
-        <dt className="text-slate-500">Type</dt>
-        <dd className="text-right font-mono text-slate-700">{field.type}</dd>
-        <dt className="text-slate-500">Page</dt>
-        <dd className="text-right font-mono text-slate-700">
+        <Fact term="Type">{field.type}</Fact>
+        <Fact term="Page">
           {field.page + 1} of {pageCount || '?'}
-        </dd>
-        <dt className="text-slate-500">x, y</dt>
-        <dd className="text-right font-mono text-slate-700">
+        </Fact>
+        <Fact term="x, y">
           {round(field.rect.x)}, {round(field.rect.y)}
-        </dd>
-        <dt className="text-slate-500">w x h</dt>
-        <dd className="text-right font-mono text-slate-700">
+        </Fact>
+        <Fact term="w x h">
           {round(field.rect.width)} x {round(field.rect.height)}
-        </dd>
+        </Fact>
         <dt className="col-span-2 pt-1 text-[10px] uppercase tracking-wide text-slate-400">
           PDF user space, points
         </dt>
