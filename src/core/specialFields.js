@@ -45,6 +45,10 @@ const JOINT_RE = new RegExp(`^${JOINT_PREFIX}(\\d+)(Name|Number)$`);
 
 const bySuffix = (parts, suffix) => parts.find((p) => p.suffix === suffix);
 
+// A name is placed when some field carries it, which is the question every
+// add, remove and offer here asks.
+const placed = (fields, name) => fields.some((f) => f.name.trim() === name);
+
 // Derived, never stored, exactly like isSystemField and isSubmissionButton.
 export function parseSpecialName(name) {
   const trimmed = String(name ?? '').trim();
@@ -141,7 +145,7 @@ export function deriveJointRows(fields) {
 }
 
 export function hasCombinedJoint(fields) {
-  return fields.some((f) => f.name.trim() === COMBINED_JOINT_NAME);
+  return placed(fields, COMBINED_JOINT_NAME);
 }
 
 const rowIsEmpty = (row) => Object.values(row).every((v) => !v);
@@ -180,7 +184,7 @@ export function availableSpecialNames(fields) {
   }
 
   for (const part of ESIGN_PARTS) {
-    if (!fields.some((f) => f.name.trim() === part.name)) {
+    if (!placed(fields, part.name)) {
       push(part.name, 'esign', `Remote eSign, ${part.label}`);
     }
   }
@@ -191,7 +195,7 @@ export function availableSpecialNames(fields) {
 // Both, or the starter code asks for a field that is not there. They are placed
 // and removed together with the button, so only an import can split them.
 export function hasEsignFields(fields) {
-  return ESIGN_PARTS.every((p) => fields.some((f) => f.name.trim() === p.name));
+  return ESIGN_PARTS.every((p) => placed(fields, p.name));
 }
 
 // Flush to the button's right edge, running on from it, each vertically centred
@@ -213,7 +217,7 @@ export function esignClusterRects(buttonRect) {
 // Placed with the button, so turning the channel on gives the whole cluster.
 export function addEsignFields(fields, buttonRect, page = 0) {
   const missing = esignClusterRects(buttonRect).filter(
-    ({ name }) => !fields.some((f) => f.name.trim() === name)
+    ({ name }) => !placed(fields, name)
   );
   if (missing.length === 0) return fields;
   return [

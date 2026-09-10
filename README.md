@@ -627,6 +627,14 @@ with the file via the embedded JSON but never alter the AcroForm.
 Ships with ~37 placeholder entries. Swap the file for the real list, no code
 change needed. Duplicate and blank identifiers are dropped on load.
 
+This list, the system field list and the signing buttons are all the same shape:
+entries carrying an `identifier`, deduplicated on the trimmed identifier with
+the first winning, indexed by it, and membership derived from the name rather
+than stored on the field. That rule lives once, in
+[`src/core/identifierList.js`](src/core/identifierList.js), because it decides
+which names the tool recognises and the lists drifting on it would be a silent
+failure downstream.
+
 ## Opening a PDF
 
 Three cases, in priority order:
@@ -1087,7 +1095,7 @@ the bulk bar says how many of the selection that applies to before you press it.
 ## Tests
 
 ```
-npm test              # 621 unit and integration tests, node
+npm test              # 624 unit and integration tests, node
 npm run check:browser # 130 checks driving the real UI in headless Chrome
 ```
 
