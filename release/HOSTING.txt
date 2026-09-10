@@ -1,0 +1,103 @@
+Request: host PDF Requirement Designer on an internal web server
+================================================================
+
+SUMMARY
+-------
+We need a folder of static files served at an internal URL. It is a plain
+web page - HTML, CSS and JavaScript that run in the user's browser. There
+is no server side code of any kind.
+
+Total size is about 3.4 MB across 14 files.
+
+WHAT WE ARE ASKING FOR
+----------------------
+1. A folder on an existing internal web server, with the contents of this
+   package copied into it.
+
+2. A URL for it, reachable by staff on the network. A subfolder is fine,
+   e.g. https://intranet.example.local/forms-designer/ - the asset paths
+   are relative, so it does not need its own site or its own hostname.
+
+3. Default document set to index.html.
+
+4. One MIME type added: .mjs must be served as text/javascript.
+   This is the only non-default setting required and it is not optional.
+   See the note below.
+
+5. Read-only access is all that is needed. If access should be limited to
+   a specific AD group, that is fine and changes nothing about the app.
+
+HTTPS is preferred but not required. The app uses no browser API that
+depends on a secure context, so it works over plain HTTP as well.
+
+THE .mjs MIME TYPE
+------------------
+One of the files is assets/pdf.worker.min-<hash>.mjs, the PDF rendering
+engine. Browsers refuse to execute a module script unless it is served
+with a JavaScript MIME type.
+
+  IIS      Returns HTTP 404 for extensions with no MIME mapping, and .mjs
+           is not mapped by default. The included web.config sets this;
+           it only needs to be left in the folder. If web.config is not
+           permitted, add the mapping at the site level instead.
+
+  nginx    Recent versions map .mjs, older ones do not. To be sure, add
+           to the server or http block:
+               types { text/javascript mjs; }
+
+  Apache   Add to the vhost or an .htaccess in the folder:
+               AddType text/javascript .mjs
+
+If this is missed, the page loads but no PDF ever renders, which is a
+confusing failure mode - worth confirming up front.
+
+WHAT IT DOES NOT NEED
+---------------------
+  - No application pool, no .NET, PHP, Python or Node runtime on the
+    server. Nothing is executed server side.
+  - No database.
+  - No service account.
+  - No write permissions anywhere. The app never writes to the server.
+  - No outbound internet access from the server.
+  - No scheduled tasks, no background services, no open ports beyond the
+    web server's existing ones.
+  - No URL rewrite or SPA fallback rules. There is no client side router;
+    every request maps to a real file.
+
+DATA HANDLING
+-------------
+The app makes no outbound network calls. PDFs opened by a user are read
+in that user's browser and are never uploaded to the server or stored on
+it. Exports are ordinary browser downloads. No cookies, no telemetry, no
+external fonts or CDN references.
+
+The only files it reads are dbFields.json and systemFields.json from its
+own folder.
+
+See CLEARANCE.txt in this package for the third party library list with
+versions and licenses, and a SHA-256 for every file.
+
+UPDATES
+-------
+To update: replace the files in the folder. No restart, no downtime, no
+migration. Filenames under assets/ are content hashed, so browsers pick
+up a new version immediately rather than serving a cached old one.
+
+The two JSON files are business data that we will want to change from
+time to time without a redeploy, so write access to those two specific
+files for a named person or group would be useful, though not essential.
+
+FILES IN THIS PACKAGE
+---------------------
+  index.html                   the page
+  assets/                      the compiled app and the PDF engine
+  dbFields.json                field list, editable
+  systemFields.json            field list, editable
+  web.config                   the IIS MIME setting described above
+  CLEARANCE.txt                security review pack
+  sbom.cyclonedx.json          machine readable bill of materials
+  HOSTING.txt                  this file
+  README.txt                   end user notes
+  serve.ps1, serve.py,         only used for running it on a single
+  serve.mjs, Start.cmd         machine; not needed once hosted, and can
+                               be deleted from the server copy

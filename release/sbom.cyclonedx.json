@@ -1,0 +1,4014 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:f0fdfeff-fa16-405b-ad70-447adf7dbc71",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-10T19:33:34.728Z",
+    "lifecycles": [
+      {
+        "phase": "build"
+      }
+    ],
+    "tools": [
+      {
+        "vendor": "npm",
+        "name": "cli",
+        "version": "11.19.0"
+      }
+    ],
+    "component": {
+      "bom-ref": "pdf-requirement-designer@1.0.0",
+      "type": "library",
+      "name": "form_requirements",
+      "version": "1.0.0",
+      "scope": "required",
+      "purl": "pkg:npm/pdf-requirement-designer@1.0.0",
+      "properties": [
+        {
+          "name": "cdx:npm:package:private",
+          "value": "true"
+        }
+      ],
+      "externalReferences": []
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "@fast-csv/format@4.3.5",
+      "type": "library",
+      "name": "@fast-csv/format",
+      "version": "4.3.5",
+      "scope": "required",
+      "author": "doug-martin <doug@dougamartin.com>",
+      "description": "fast-csv formatting module",
+      "purl": "pkg:npm/%40fast-csv/format@4.3.5",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@fast-csv/format/-/format-4.3.5.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/C2FO/fast-csv.git"
+        },
+        {
+          "type": "website",
+          "url": "http://c2fo.github.com/fast-csv/packages/format"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/C2FO/fast-csv/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f22467e9017723c024efc94d01af86765e4c24904ce6f4478af16d31151620d75ebcda34d0aece5f14b63ec85ac0b2937a357089e2253e62b96252eeeb0e2ef0"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@types/node@14.18.63",
+      "type": "library",
+      "name": "@types/node",
+      "version": "14.18.63",
+      "scope": "required",
+      "description": "TypeScript definitions for Node.js",
+      "purl": "pkg:npm/%40types/node@14.18.63",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@types/node/-/node-14.18.63.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "7c0b427efe23260f84c6d5e1bc2902a94299fb8a24fc9424d35a832a12f90430e84b7031297855e7f300554672427484776193f767e4819974a73d10d00cdc21"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@fast-csv/parse@4.3.6",
+      "type": "library",
+      "name": "@fast-csv/parse",
+      "version": "4.3.6",
+      "scope": "required",
+      "author": "doug-martin <doug@dougamartin.com>",
+      "description": "fast-csv parsing package",
+      "purl": "pkg:npm/%40fast-csv/parse@4.3.6",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@fast-csv/parse/-/parse-4.3.6.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/C2FO/fast-csv.git"
+        },
+        {
+          "type": "website",
+          "url": "http://c2fo.github.com/fast-csv/packages/parse"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/C2FO/fast-csv/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "b91b0b624b2aa5b0e659a4a6cef25cb80a5211edfcfba35064152cb80c8c64aa87c47d20d7070982c294bcddd60bcb5ec1aa858c130c1ab907982f93ee4f0bbc"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@napi-rs/canvas@0.1.100",
+      "type": "library",
+      "name": "@napi-rs/canvas",
+      "version": "0.1.100",
+      "scope": "optional",
+      "description": "Canvas for Node.js with skia backend",
+      "purl": "pkg:npm/%40napi-rs/canvas@0.1.100",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@napi-rs/canvas/-/canvas-0.1.100.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/Brooooooklyn/canvas.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "c6095803aab75cee4fdc1349631559d4857b0cb563a753f2ea7c1a83cf189edad2fb7bca1f261c32a5d54b8673b499b0cf6b86bf3d455a123fe0b81b479b900c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@napi-rs/canvas-win32-x64-msvc@0.1.100",
+      "type": "library",
+      "name": "@napi-rs/canvas-win32-x64-msvc",
+      "version": "0.1.100",
+      "scope": "optional",
+      "description": "Canvas for Node.js with skia backend",
+      "purl": "pkg:npm/%40napi-rs/canvas-win32-x64-msvc@0.1.100",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@napi-rs/canvas-win32-x64-msvc/-/canvas-win32-x64-msvc-0.1.100.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/Brooooooklyn/canvas.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "3324f58f79870b6f8bbb8a418bd98ac8c261b4fe94ee4ec495d63bb23fee4b980903ae604d7b7c31e7c94172c9a3977fbd96ee5a67f1ce411435cfeead5de91c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@pdf-lib/standard-fonts@1.0.0",
+      "type": "library",
+      "name": "@pdf-lib/standard-fonts",
+      "version": "1.0.0",
+      "scope": "required",
+      "author": "Andrew Dillon <andrew.dillon.j@gmail.com>",
+      "description": "Metrics for the Standard 14 PDF fonts and their encodings",
+      "purl": "pkg:npm/%40pdf-lib/standard-fonts@1.0.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@pdf-lib/standard-fonts/-/standard-fonts-1.0.0.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/Hopding/standard-fonts"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "854df404af4850dfecbb4327f5576554ab16052e86ca155faa3c25d458d93784f13fa702c348cfdb0ed5dc77f9b97eccd00649d7abdecbdc84d27cbb49ae7d64"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "@pdf-lib/upng@1.0.1",
+      "type": "library",
+      "name": "@pdf-lib/upng",
+      "version": "1.0.1",
+      "scope": "required",
+      "author": "photopea (https://github.com/photopea)",
+      "description": "Small, fast and advanced PNG / APNG encoder and decoder",
+      "purl": "pkg:npm/%40pdf-lib/upng@1.0.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@pdf-lib/upng/-/upng-1.0.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/Hopding/upng"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "7502b6154310b68c153f4d26b4892cae56617455d064f0beb5a8a1d6ae02bcf679bea77147f2ca05a160d2801fcddd469476575d23dd41fcd09edf95886bc421"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "archiver@5.3.2",
+      "type": "library",
+      "name": "archiver",
+      "version": "5.3.2",
+      "scope": "required",
+      "author": "Chris Talkington",
+      "description": "a streaming interface for archive generation",
+      "purl": "pkg:npm/archiver@5.3.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/archiver/-/archiver-5.3.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/archiverjs/node-archiver.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/node-archiver"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/archiverjs/node-archiver/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "fb6e67c72cb39c05c5ecd79fdf2d046c17aa98666078dfc1c475f6f51b37f5d8c07da15a96643cf5213a096c83087cc62f4cadff2701b4d3a61935b417219637"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "archiver-utils@2.1.0",
+      "type": "library",
+      "name": "archiver-utils",
+      "version": "2.1.0",
+      "scope": "required",
+      "author": "Chris Talkington",
+      "description": "utility functions for archiver",
+      "purl": "pkg:npm/archiver-utils@2.1.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/archiver-utils/-/archiver-utils-2.1.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/archiverjs/archiver-utils.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/archiver-utils#readme"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/archiverjs/archiver-utils/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "6c42ffc946ff7cd362353b94cfdefd674620e4bf8bccbc46273f31efd958991e787e64c86faa1bfe13508244272140d62058d9550c25f57b37e7a23a0403077f"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "readable-stream@2.3.8",
+      "type": "library",
+      "name": "readable-stream",
+      "version": "2.3.8",
+      "scope": "required",
+      "description": "Streams3, a user-land copy of the stream library from Node.js",
+      "purl": "pkg:npm/readable-stream@2.3.8",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/readable-stream/-/readable-stream-2.3.8.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/nodejs/readable-stream"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f29d00524e173838087b04a2d25f04a63b3e1159d688aecda03204194d07844efe67263c0f520c63ba1dbb9951ac55c683bd4bd79286f10acf9ae9b8e514ed74"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "safe-buffer@5.1.2",
+      "type": "library",
+      "name": "safe-buffer",
+      "version": "5.1.2",
+      "scope": "required",
+      "author": "Feross Aboukhadijeh",
+      "description": "Safer Node.js Buffer API",
+      "purl": "pkg:npm/safe-buffer@5.1.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.1.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/feross/safe-buffer.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/feross/safe-buffer"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/feross/safe-buffer/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "19dd94641243917958ec66c9c5fb04f3f9ef2a45045351b7f1cd6c88de903fa6bd3d3f4c98707c1a7a6c71298c252a05f0b388aedf2e77fc0fb688f2b381bafa"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "string_decoder@1.1.1",
+      "type": "library",
+      "name": "string_decoder",
+      "version": "1.1.1",
+      "scope": "required",
+      "description": "The string_decoder module from Node core",
+      "purl": "pkg:npm/string_decoder@1.1.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/string_decoder/-/string_decoder-1.1.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/nodejs/string_decoder.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/nodejs/string_decoder"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "9ff4a19ef0e2e851db6d57ef8aba3e5a88e2173bfeb3c30f30705ccd578f7d4a4324bc282d3d21b759786300426e2f29240bde104767907c8fc933ff9b345fc2"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "async@3.2.6",
+      "type": "library",
+      "name": "async",
+      "version": "3.2.6",
+      "scope": "required",
+      "author": "Caolan McMahon",
+      "description": "Higher-order functions and common patterns for asynchronous code",
+      "purl": "pkg:npm/async@3.2.6",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/async/-/async-3.2.6.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/caolan/async.git"
+        },
+        {
+          "type": "website",
+          "url": "https://caolan.github.io/async/"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/caolan/async/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "86d0940e5c72c822cc81a337c578340b42d6db1a9fb90ea9d39a42108b17bb243e6b592860a4ee04ccd13709b26df2e0bc90cc774af52d39f8f84d138ba0b600"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "balanced-match@1.0.2",
+      "type": "library",
+      "name": "balanced-match",
+      "version": "1.0.2",
+      "scope": "required",
+      "author": "Julian Gruber",
+      "description": "Match balanced character pairs, like \"{\" and \"}\"",
+      "purl": "pkg:npm/balanced-match@1.0.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/balanced-match/-/balanced-match-1.0.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/juliangruber/balanced-match.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/juliangruber/balanced-match"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "de849e50ed13315ebb84dd4099b5ec2b8c9aa94eed8e21e56f144364ea47d0a5bdf82797e1b440697d009f1b74b71d8cae94695b041a3f02252121098585393f"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "base64-js@1.5.1",
+      "type": "library",
+      "name": "base64-js",
+      "version": "1.5.1",
+      "scope": "required",
+      "author": "T. Jameson Little <t.jameson.little@gmail.com>",
+      "description": "Base64 encoding/decoding in pure JS",
+      "purl": "pkg:npm/base64-js@1.5.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/beatgammit/base64-js.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/beatgammit/base64-js"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/beatgammit/base64-js/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "00aa5a6251e7f2de1255b3870b2f9be7e28a82f478bebb03f2f6efadb890269b3b7ca0d3923903af2ea38b4ad42630b49336cd78f2f0cf1abc8b2a68e35a9e58"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "big-integer@1.6.52",
+      "type": "library",
+      "name": "big-integer",
+      "version": "1.6.52",
+      "scope": "required",
+      "author": "Peter Olson <peter.e.c.olson+npm@gmail.com>",
+      "description": "An arbitrary length integer library for Javascript",
+      "purl": "pkg:npm/big-integer@1.6.52",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/big-integer/-/big-integer-1.6.52.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git@github.com:peterolson/BigInteger.js.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "4310fc71fd9e56a24e3b3eb7cfa24837d073bd5b3f765c926b91c64811f9c6d47c74fb5e211427071c4aaa4353893ea36c34c5ea301fadde2831c343f5119b42"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Unlicense"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "binary@0.3.0",
+      "type": "library",
+      "name": "binary",
+      "version": "0.3.0",
+      "scope": "required",
+      "author": "James Halliday",
+      "description": "Unpack multibyte binary values from buffers",
+      "purl": "pkg:npm/binary@0.3.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/binary/-/binary-0.3.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "http://github.com/substack/node-binary.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "0f81f5cb9298c292602bcc24d42b9ee4b2cf826c072984828646eca5083926d56e479ba519c9317d1eb61f7004f540e474c0bccb25e5a988a1bb3dc0aa0d9766"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "bl@4.1.0",
+      "type": "library",
+      "name": "bl",
+      "version": "4.1.0",
+      "scope": "required",
+      "description": "Buffer List: collect buffers and access with a standard readable Buffer interface, streamable too!",
+      "purl": "pkg:npm/bl@4.1.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/bl/-/bl-4.1.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/rvagg/bl.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/rvagg/bl"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "d56d3b70cf604ba0dc2e97ab65f1528fe6d62ed68f1923875a13e21b35e6bd525b44b746f36b07fca9fc12d5b556a595039e0029fda1e64e416e721bc05de1eb"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "bluebird@3.4.7",
+      "type": "library",
+      "name": "bluebird",
+      "version": "3.4.7",
+      "scope": "required",
+      "author": "Petka Antonov",
+      "description": "Full featured Promises/A+ implementation with exceptionally good performance",
+      "purl": "pkg:npm/bluebird@3.4.7",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/bluebird/-/bluebird-3.4.7.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/petkaantonov/bluebird.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/petkaantonov/bluebird"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "http://github.com/petkaantonov/bluebird/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "883dfcf7c491eec5954476e242ffac1d4b479ccbc2d68de75b9ac072a9eadee3a7d3b0d2029a596149081ac943cfa8170bb1dfba73deed85418281090123dc1c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "brace-expansion@1.1.18",
+      "type": "library",
+      "name": "brace-expansion",
+      "version": "1.1.18",
+      "scope": "required",
+      "author": "Julian Gruber",
+      "description": "Brace expansion as known from sh/bash",
+      "purl": "pkg:npm/brace-expansion@1.1.18",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.18.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/juliangruber/brace-expansion.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/juliangruber/brace-expansion"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "11d7a9fd7f5f1aa54d9b328156c0d820eb43fb3d6db9ecd5ef42c18dd0acb7d4eabbbea5b27bd1899ea84e27359fefc12305fa4031803bde0f3783764800efb7"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "buffer@5.7.1",
+      "type": "library",
+      "name": "buffer",
+      "version": "5.7.1",
+      "scope": "required",
+      "author": "Feross Aboukhadijeh",
+      "description": "Node.js Buffer API, for the browser",
+      "purl": "pkg:npm/buffer@5.7.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/buffer/-/buffer-5.7.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/feross/buffer.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/feross/buffer"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/feross/buffer/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "10773220f050e0148696f8c1d7a9392a0009dbb088b0763fd8906609145ea38f32f6b43731a533597dca56505ae14eccc97d361dd563d0aec2dd6681de3bbb15"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "buffer-crc32@0.2.13",
+      "type": "library",
+      "name": "buffer-crc32",
+      "version": "0.2.13",
+      "scope": "required",
+      "author": "Brian J. Brennan <brianloveswords@gmail.com>",
+      "description": "A pure javascript CRC32 algorithm that plays nice with binary data",
+      "purl": "pkg:npm/buffer-crc32@0.2.13",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/buffer-crc32/-/buffer-crc32-0.2.13.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/brianloveswords/buffer-crc32.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/brianloveswords/buffer-crc32"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "54ef47b7ffa9dd237b48a5aa72b804ce319b4522584f1f90d694d00b4c2b5aa1f1d2fa49ada43a1ad1f1f2dbdc835ae52b56f2854e6071cc603a08fb0744c391"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "buffer-indexof-polyfill@1.0.2",
+      "type": "library",
+      "name": "buffer-indexof-polyfill",
+      "version": "1.0.2",
+      "scope": "required",
+      "author": "https://github.com/sarosia",
+      "description": "This is a polyfill for Buffer#indexOf introduced in NodeJS 4.0.",
+      "purl": "pkg:npm/buffer-indexof-polyfill@1.0.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/buffer-indexof-polyfill/-/buffer-indexof-polyfill-1.0.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/sarosia/buffer-indexof-polyfill.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/sarosia/buffer-indexof-polyfill#readme"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/sarosia/buffer-indexof-polyfill/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "23bc331f0037b75fe5c17421f80e4f6cdbc9c607e8e6bdf1ba5829603079cdc913bbf67da142bd6e2a2e04a4148c4ab36b3dc79c04fa4d8a28be613e1aa49fec"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "buffers@0.1.1",
+      "type": "library",
+      "name": "buffers",
+      "version": "0.1.1",
+      "scope": "required",
+      "author": "James Halliday <mail@substack.net> (http://substack.net)",
+      "description": "Treat a collection of Buffers as a single contiguous partially mutable Buffer.",
+      "purl": "pkg:npm/buffers@0.1.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/buffers/-/buffers-0.1.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f6afeb0c41926ff42cbefdaabf3233765b8be64ec0689393af0db7cfdade42d86b6c5ee2b380ad953d035f23b5a1e8b60c2a78ba88e3cd0ee281a487a7590011"
+        }
+      ]
+    },
+    {
+      "bom-ref": "chainsaw@0.1.0",
+      "type": "library",
+      "name": "chainsaw",
+      "version": "0.1.0",
+      "scope": "required",
+      "author": "James Halliday <mail@substack.net> (http://substack.net)",
+      "description": "Build chainable fluent interfaces the easy way... with a freakin' chainsaw!",
+      "purl": "pkg:npm/chainsaw@0.1.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/chainsaw/-/chainsaw-0.1.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "http://github.com/substack/node-chainsaw.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "ef99167d6b7a30428d0bcc585c8751a437a145863fb4d4a0c0a689abe75b6c3731391b95aeb43e4841e85ac9e2567f573d87cfe2099d58878393fe18369d6b35"
+        }
+      ]
+    },
+    {
+      "bom-ref": "compress-commons@4.1.2",
+      "type": "library",
+      "name": "compress-commons",
+      "version": "4.1.2",
+      "scope": "required",
+      "author": "Chris Talkington",
+      "description": "a library that defines a common interface for working with archive formats within node",
+      "purl": "pkg:npm/compress-commons@4.1.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/compress-commons/-/compress-commons-4.1.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/archiverjs/node-compress-commons.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/node-compress-commons"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/archiverjs/node-compress-commons/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "0f7b8c1ed19cfdf70ed46b75fcbee2d5edf754ebc3e00f617d02cffba7b077e06f1bf810f38621e287ed12101d8d2320060c062fe8eca694fb258369a3a3071e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "concat-map@0.0.1",
+      "type": "library",
+      "name": "concat-map",
+      "version": "0.0.1",
+      "scope": "required",
+      "author": "James Halliday",
+      "description": "concatenative mapdashery",
+      "purl": "pkg:npm/concat-map@0.0.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/concat-map/-/concat-map-0.0.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/substack/node-concat-map.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "fd2aefe1db30c903417e8846a73f68e986f71b3dd2ad40ea047e6b4ee84647b6a1b656d82a7571c366c214c4658da03b1171da5d9f30b07768745bdb9212a6aa"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "core-util-is@1.0.3",
+      "type": "library",
+      "name": "core-util-is",
+      "version": "1.0.3",
+      "scope": "required",
+      "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+      "description": "The `util.is*` functions introduced in Node v0.12.",
+      "purl": "pkg:npm/core-util-is@1.0.3",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/core-util-is/-/core-util-is-1.0.3.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/isaacs/core-util-is"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/isaacs/core-util-is/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "65006f8b50dca49e060ea6a78ee719d878f7c043b9a590d2f3d0566e472bbddc64b09a2bc140c365a997f65745929f5ac369660432e090e6c40380d6349f4561"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "crc-32@1.2.2",
+      "type": "library",
+      "name": "crc-32",
+      "version": "1.2.2",
+      "scope": "required",
+      "author": "sheetjs",
+      "description": "Pure-JS CRC-32",
+      "purl": "pkg:npm/crc-32@1.2.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/crc-32/-/crc-32-1.2.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/SheetJS/js-crc32.git"
+        },
+        {
+          "type": "website",
+          "url": "https://sheetjs.com/"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/SheetJS/js-crc32/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "44e9b308aad39cec326cf709029000e960568a3db71d57c654d2aaaab669bb264e1ea2b60b01d2be91aecadfd434dbda22311df17e48146a78321f887b520725"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "crc32-stream@4.0.3",
+      "type": "library",
+      "name": "crc32-stream",
+      "version": "4.0.3",
+      "scope": "required",
+      "author": "Chris Talkington",
+      "description": "a streaming CRC32 checksumer",
+      "purl": "pkg:npm/crc32-stream@4.0.3",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/crc32-stream/-/crc32-stream-4.0.3.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/archiverjs/node-crc32-stream.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/node-crc32-stream"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/archiverjs/node-crc32-stream/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "353ef0d89554ec316ba0575891eabc732c31ae08cf1d691d5f5c23a514173d7e40b1ec2cded03e1a1b7a95d7503b9324ba67dfa775fb184aa4bb77a98f6b6823"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "dayjs@1.11.23",
+      "type": "library",
+      "name": "dayjs",
+      "version": "1.11.23",
+      "scope": "required",
+      "author": "iamkun",
+      "description": "2KB immutable date time library alternative to Moment.js with the same modern API ",
+      "purl": "pkg:npm/dayjs@1.11.23",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/dayjs/-/dayjs-1.11.23.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/iamkun/dayjs.git"
+        },
+        {
+          "type": "website",
+          "url": "https://day.js.org"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "4034c25343343314778507e794325fc1e91089a6a79b5b9b383db7d6eef758172443f7ec6a6c112e2136181cfa0f76bfc45d4d81f8832c98d705ad6160e613b5"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "duplexer2@0.1.4",
+      "type": "library",
+      "name": "duplexer2",
+      "version": "0.1.4",
+      "scope": "required",
+      "author": "Conrad Pankoff <deoxxa@fknsrs.biz> (http://www.fknsrs.biz/)",
+      "description": "Like duplexer but using streams3",
+      "purl": "pkg:npm/duplexer2@0.1.4",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/duplexer2/-/duplexer2-0.1.4.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "6ac2c555f596b49f746723941ccaa4eff4b6c3682e40ac542368ad8f777dd800c78715126c23068b57f5701709ef13354e8fa913f2a16f0a35cae35b3043ca78"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "end-of-stream@1.4.5",
+      "type": "library",
+      "name": "end-of-stream",
+      "version": "1.4.5",
+      "scope": "required",
+      "author": "Mathias Buus <mathiasbuus@gmail.com>",
+      "description": "Call a callback when a readable/writable/duplex stream has completed or failed.",
+      "purl": "pkg:npm/end-of-stream@1.4.5",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/end-of-stream/-/end-of-stream-1.4.5.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/mafintosh/end-of-stream.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/mafintosh/end-of-stream"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/mafintosh/end-of-stream/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "a2810673a1cfdbac57abf37e18218e4f424a08b0c6aead9b41466b43b832ac989900d27ff180d3c53a5005718c9fe59b2105cd569c96ca69bb2985480909f23a"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "exceljs@4.4.0",
+      "type": "library",
+      "name": "exceljs",
+      "version": "4.4.0",
+      "scope": "required",
+      "author": "Guyon Roche",
+      "description": "Excel Workbook Manager - Read and Write xlsx and csv Files.",
+      "purl": "pkg:npm/exceljs@4.4.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/exceljs/-/exceljs-4.4.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/exceljs/exceljs.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "5dcb6f29a10c6a3d488bda033aa6d6ffa7b5817927498e20fda2c20e270e5ea044e0cd27456914bb43d3a7ef943cdce8158d7604d1cc7ecfd569d2884ba965be"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "fast-csv@4.3.6",
+      "type": "library",
+      "name": "fast-csv",
+      "version": "4.3.6",
+      "scope": "required",
+      "author": "Doug Martin",
+      "description": "CSV parser and writer",
+      "purl": "pkg:npm/fast-csv@4.3.6",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/fast-csv/-/fast-csv-4.3.6.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/C2FO/fast-csv.git"
+        },
+        {
+          "type": "website",
+          "url": "http://c2fo.github.com/fast-csv"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "d91352a6ec30b0918fd1fac6b0e9936fda1417e5641523384b22d30e0c1fd9c8875936ab3749504c2f85d9ffede49f508d6f9ceb954520002ef391acbcc22eb3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "fs-constants@1.0.0",
+      "type": "library",
+      "name": "fs-constants",
+      "version": "1.0.0",
+      "scope": "required",
+      "author": "Mathias Buus (@mafintosh)",
+      "description": "Require constants across node and the browser",
+      "purl": "pkg:npm/fs-constants@1.0.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/fs-constants/-/fs-constants-1.0.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/mafintosh/fs-constants.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/mafintosh/fs-constants"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/mafintosh/fs-constants/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "cba380c284887fb1728cc22ff78bbe6f9add85e6448f347adc64f26499b9aa1e018bed988302c2708fdf3c56642f93d28b13ade9934a9bec3e1dfa7f05c8b0a3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "fs.realpath@1.0.0",
+      "type": "library",
+      "name": "fs.realpath",
+      "version": "1.0.0",
+      "scope": "required",
+      "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+      "description": "Use node's fs.realpath, but fall back to the JS implementation if the native one fails",
+      "purl": "pkg:npm/fs.realpath@1.0.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/isaacs/fs.realpath.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "38ed291f694ae9ad2166701d6aee48b731cf23aa5496f23b8cc567c54411b70e28c05db093c94e49a6ed1830933f81a0ae0d8c6c69d63bd5fc2b5b78f9f18c0f"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "fstream@1.0.12",
+      "type": "library",
+      "name": "fstream",
+      "version": "1.0.12",
+      "scope": "required",
+      "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+      "description": "Advanced file system stream things",
+      "purl": "pkg:npm/fstream@1.0.12",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/fstream/-/fstream-1.0.12.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/npm/fstream.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "5af275f773876b41873c42fe032704260c6f044c327d190dd6f86371adb739a3d530268b0974dde6a02ef360234dc80fd54266cad90e29beb762975eeeb68322"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "glob@7.2.3",
+      "type": "library",
+      "name": "glob",
+      "version": "7.2.3",
+      "scope": "required",
+      "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+      "description": "a little globber",
+      "purl": "pkg:npm/glob@7.2.3",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/glob/-/glob-7.2.3.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/isaacs/node-glob.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "9c5474ccba54d9809a471c28089bcbe94bc21f6245c85548bf04cbb087f6d40b8794cb240358614dd93e2e5609b4e958b7dbfa76fb330f604646a04bfa240af5"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "ieee754@1.2.1",
+      "type": "library",
+      "name": "ieee754",
+      "version": "1.2.1",
+      "scope": "required",
+      "author": "Feross Aboukhadijeh",
+      "description": "Read/write IEEE754 floating point numbers from/to a Buffer or array-like object",
+      "purl": "pkg:npm/ieee754@1.2.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/feross/ieee754.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "75ccaa843bd7d42e3a95765c56a0a92be16d31141574830debf0dfe63b36ce8b94b2a1bb23ab05c62b480beeca60adbd29d5ce2c776ef732f8b059e85509ea68"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "immediate@3.0.6",
+      "type": "library",
+      "name": "immediate",
+      "version": "3.0.6",
+      "scope": "required",
+      "description": "A cross browser microtask library",
+      "purl": "pkg:npm/immediate@3.0.6",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/immediate/-/immediate-3.0.6.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/calvinmetcalf/immediate.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "5d7385b72a838cd0c043155f631b85ee0f4897f21b5a69a5420d8c60a387f04c484f5aa0eb1738cf24b71da10401382cd5bb5fcf1ab5e5c894898ee08d25d119"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "inflight@1.0.6",
+      "type": "library",
+      "name": "inflight",
+      "version": "1.0.6",
+      "scope": "required",
+      "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+      "description": "Add callbacks to requests in flight to avoid async duplication",
+      "purl": "pkg:npm/inflight@1.0.6",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/inflight/-/inflight-1.0.6.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/npm/inflight.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/isaacs/inflight"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/isaacs/inflight/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "93dd88fdbd3cab8c2f16c71708bbea7ec1c2ae3ac5ef2897b10b8856f544ecdf365b7f9aaa9cee51d05b7e159ccbf159477ff82207e532028b3acbcf0eb18224"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "inherits@2.0.4",
+      "type": "library",
+      "name": "inherits",
+      "version": "2.0.4",
+      "scope": "required",
+      "description": "Browser-friendly inheritance fully compatible with standard node.js inherits()",
+      "purl": "pkg:npm/inherits@2.0.4",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "93fbc6697e3f6256b75b3c8c0af4d039761e207bea38ab67a8176ecd31e9ce9419cc0b2428c859d8af849c189233dcc64a820578ca572b16b8758799210a9ec1"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "isarray@1.0.0",
+      "type": "library",
+      "name": "isarray",
+      "version": "1.0.0",
+      "scope": "required",
+      "author": "Julian Gruber",
+      "description": "Array#isArray for older browsers",
+      "purl": "pkg:npm/isarray@1.0.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/juliangruber/isarray.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/juliangruber/isarray"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "54b82121634ce842d0ce8ef3c26720d0d99357258a623bc878cf37ca3a74c110d39949eb33aefc7d06dc281a3a9f6089105d2cce81bfff2b60f932a56bcf402d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "jszip@3.10.2",
+      "type": "library",
+      "name": "jszip",
+      "version": "3.10.2",
+      "scope": "required",
+      "author": "Stuart Knightley <stuart@stuartk.com>",
+      "description": "Create, read and edit .zip files with JavaScript http://stuartk.com/jszip",
+      "purl": "pkg:npm/jszip@3.10.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/jszip/-/jszip-3.10.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/Stuk/jszip.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "de5fab6f5e48396b54854d07e4c16a112fd3e8a87b69b6308e8b017b2fef0fa843b7cce811f7e4482e56b39486b60570de0071d8d11b8537925b5fa45a4a724d"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "(MIT OR GPL-3.0-or-later)"
+        }
+      ]
+    },
+    {
+      "bom-ref": "lazystream@1.0.1",
+      "type": "library",
+      "name": "lazystream",
+      "version": "1.0.1",
+      "scope": "required",
+      "author": "Jonas Pommerening",
+      "description": "Open Node Streams on demand.",
+      "purl": "pkg:npm/lazystream@1.0.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lazystream/-/lazystream-1.0.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/jpommerening/node-lazystream.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/jpommerening/node-lazystream"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/jpommerening/node-lazystream/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "6fde0688d1d0372e89353aede70eb33727df32b3645d96f72939026496f6575c5a1060a4d3ddef919da3937b6969e3f7dff3a25c2f96bcaf40c5479b9dfe676f"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lie@3.3.0",
+      "type": "library",
+      "name": "lie",
+      "version": "3.3.0",
+      "scope": "required",
+      "description": "A basic but performant promise implementation",
+      "purl": "pkg:npm/lie@3.3.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lie/-/lie-3.3.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/calvinmetcalf/lie.git"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/calvinmetcalf/lie/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "51a88c27379646512e8f302ec392e8918d4be5e70d41864a7e6c99f4bef00c76ffa797ad29ac5786884172bc341186f2f86fcd039daf452378377f5dc47008c1"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "listenercount@1.0.1",
+      "type": "library",
+      "name": "listenercount",
+      "version": "1.0.1",
+      "scope": "required",
+      "author": "jden <jason@denizac.org>",
+      "description": "backwards compatible version of builtin events.listenercount",
+      "purl": "pkg:npm/listenercount@1.0.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/listenercount/-/listenercount-1.0.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "de693f65a834f88271783af14a06833f2e33677c34e4f459789367956873173e4e917e3d27892b73e03c5f677633af6f18c0445f4bb297c33e5bef201fe901a9"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.defaults@4.2.0",
+      "type": "library",
+      "name": "lodash.defaults",
+      "version": "4.2.0",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The lodash method `_.defaults` exported as a module.",
+      "purl": "pkg:npm/lodash.defaults@4.2.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.defaults/-/lodash.defaults-4.2.0.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "aa3c4f2c7777af90e7b1d19a72a38c53aa5bfdabc9cdd87db455f6ca6828644dbb0668d7acdcbfcb82e86a24de01bf8ede02fc01fa491ada9f5ff69eda579861"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.difference@4.5.0",
+      "type": "library",
+      "name": "lodash.difference",
+      "version": "4.5.0",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The lodash method `_.difference` exported as a module.",
+      "purl": "pkg:npm/lodash.difference@4.5.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.difference/-/lodash.difference-4.5.0.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "752da3f96dba4d0eed69004637c2db6ead38b2c5777a6470e0d639f1612b9533b6f6922a4b41e6a13e5a27df93510d4ddc6f893994a38b87ae82c5b01a9f723c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.escaperegexp@4.1.2",
+      "type": "library",
+      "name": "lodash.escaperegexp",
+      "version": "4.1.2",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The lodash method `_.escapeRegExp` exported as a module.",
+      "purl": "pkg:npm/lodash.escaperegexp@4.1.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.escaperegexp/-/lodash.escaperegexp-4.1.2.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "4ccf5806fc82f38671137ae07de7f151689028b8a5b2d0fa93b3d31adeb07dbb5717c8b12092ce2f7558c95ff3f9988f2ec57102c280155c1695679bd98f18cb"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.flatten@4.4.0",
+      "type": "library",
+      "name": "lodash.flatten",
+      "version": "4.4.0",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The lodash method `_.flatten` exported as a module.",
+      "purl": "pkg:npm/lodash.flatten@4.4.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.flatten/-/lodash.flatten-4.4.0.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "0b93766770e09e72abd0b3a9bff84a0a029d6fb659c1a7c8aec7acbdeea59b3bd921165119a67f97a43cfb65bb35a4fe6703b77c59520b30b3ac30857497d9e2"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.groupby@4.6.0",
+      "type": "library",
+      "name": "lodash.groupby",
+      "version": "4.6.0",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The lodash method `_.groupBy` exported as a module.",
+      "purl": "pkg:npm/lodash.groupby@4.6.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.groupby/-/lodash.groupby-4.6.0.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e5d716c66db7f95028cfe6b02a605a881bf3a31f3e46a3201618bb52f5fd0c766bd877711d733f5ab7fc71f2a9b16dfb44daefb4f9fa852c0daaead220b6e627"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.isboolean@3.0.3",
+      "type": "library",
+      "name": "lodash.isboolean",
+      "version": "3.0.3",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The lodash method `_.isBoolean` exported as a module.",
+      "purl": "pkg:npm/lodash.isboolean@3.0.3",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.isboolean/-/lodash.isboolean-3.0.3.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "073e66ba9cb64956cf1d4441f7c540730f9a1e1e2f455e483cd8482d40ac3b3466b13992435ee322eaa8a407a7b56a1e864b7119df5efe16c85eaf7cd3fd5026"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.isequal@4.5.0",
+      "type": "library",
+      "name": "lodash.isequal",
+      "version": "4.5.0",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The Lodash method `_.isEqual` exported as a module.",
+      "purl": "pkg:npm/lodash.isequal@4.5.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.isequal/-/lodash.isequal-4.5.0.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "a43a3796ef0985f8ea96ce8690c8296a1b05f640b26b2860ca48f22cc3454ca5aba5574042d6320789ae00c5a8cc10788a0fddb56026b0cc4b108f30bb3f8361"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.isfunction@3.0.9",
+      "type": "library",
+      "name": "lodash.isfunction",
+      "version": "3.0.9",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The Lodash method `_.isFunction` exported as a module.",
+      "purl": "pkg:npm/lodash.isfunction@3.0.9",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.isfunction/-/lodash.isfunction-3.0.9.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "022ad7363d79b9120c30f8a19e42270788b734779be2206d360f56456b8ada8df54be78fc303660cf6932f7a3b75327e5573598a6eeb16ce2bc4de18535a1427"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.isnil@4.0.0",
+      "type": "library",
+      "name": "lodash.isnil",
+      "version": "4.0.0",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The lodash method `_.isNil` exported as a module.",
+      "purl": "pkg:npm/lodash.isnil@4.0.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.isnil/-/lodash.isnil-4.0.0.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "ba9d8cceadf9e399b05673214c331d7e81b53aeae903fb39b7cf099905fcd3d787dc2f38f758aedac7ca8537e142d298efca0f36189a1c95294ff7540c002d9e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.isplainobject@4.0.6",
+      "type": "library",
+      "name": "lodash.isplainobject",
+      "version": "4.0.6",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The lodash method `_.isPlainObject` exported as a module.",
+      "purl": "pkg:npm/lodash.isplainobject@4.0.6",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.isplainobject/-/lodash.isplainobject-4.0.6.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "a125f3696ca908c1e43c2dcdbc111a3c77f42ac0399af3eb38f810583b1b83c9fba2b676f743340660bf8e0459e2f709e834c0863aec49881db16fc5f8c14e04"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.isundefined@3.0.1",
+      "type": "library",
+      "name": "lodash.isundefined",
+      "version": "3.0.1",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The modern build of lodash’s `_.isUndefined` as a module.",
+      "purl": "pkg:npm/lodash.isundefined@3.0.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.isundefined/-/lodash.isundefined-3.0.1.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "3170758acdecf3df7f703f2385e61813657da931f02afb7e9e90b0a43fb54b19b74377040970a26078de1d65cdc2be90d123813eb6140f17a776b3ba82855310"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.union@4.6.0",
+      "type": "library",
+      "name": "lodash.union",
+      "version": "4.6.0",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The lodash method `_.union` exported as a module.",
+      "purl": "pkg:npm/lodash.union@4.6.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.union/-/lodash.union-4.6.0.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "738a41d82746ac676330a60b03e5e24433bb6343d141b9bf1b383ca8c8fe407fa91550284e9e6c0693b4a1d2f7163a0f0868caf7aa7aaac3fec90a222e838173"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "lodash.uniq@4.5.0",
+      "type": "library",
+      "name": "lodash.uniq",
+      "version": "4.5.0",
+      "scope": "required",
+      "author": "John-David Dalton <john.david.dalton@gmail.com> (http://allyoucanleet.com/)",
+      "description": "The lodash method `_.uniq` exported as a module.",
+      "purl": "pkg:npm/lodash.uniq@4.5.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/lodash.uniq/-/lodash.uniq-4.5.0.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "c5f05a5d077daf277d765483be7bc8d25bf17cb2656006735e89946332cab5478e42f38fe698aa016b86b6b8567aa6972bd861a0cfe2c89739015f977ec5f71d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "minimatch@3.1.5",
+      "type": "library",
+      "name": "minimatch",
+      "version": "3.1.5",
+      "scope": "required",
+      "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me)",
+      "description": "a glob matcher in javascript",
+      "purl": "pkg:npm/minimatch@3.1.5",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/minimatch/-/minimatch-3.1.5.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/isaacs/minimatch.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "5608d652c9e74fa9fe35493a799abbef37857695b62d60f33facc51ab09b1d789836e9790f3aa4d871d0e6e147d83356e576e9f3e8d5cda78db7de2cb04125e3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "minimist@1.2.8",
+      "type": "library",
+      "name": "minimist",
+      "version": "1.2.8",
+      "scope": "required",
+      "author": "James Halliday",
+      "description": "parse argument options",
+      "purl": "pkg:npm/minimist@1.2.8",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/minimist/-/minimist-1.2.8.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/minimistjs/minimist.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/minimistjs/minimist"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "db2c8047ca8190ddd8ba17896a7529582e54ddb6f9a2c0f2c0d07c4730d5943c031dba1c009bdeaaa8f5bbcf92543ee39164f8cafb070a95aaa96a80c5bd3308"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "mkdirp@0.5.6",
+      "type": "library",
+      "name": "mkdirp",
+      "version": "0.5.6",
+      "scope": "required",
+      "author": "James Halliday <mail@substack.net> (http://substack.net)",
+      "description": "Recursively mkdir, like `mkdir -p`",
+      "purl": "pkg:npm/mkdirp@0.5.6",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/mkdirp/-/mkdirp-0.5.6.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/substack/node-mkdirp.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "14ffa9f1107c396a45dd86410ab3f982d0039ad5c0a41e4030b9febddc80f8fcb10a3ac2b34d268f2528cecb0edf77300de4f7c0d19d2f127933ffd8aad1c027"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "normalize-path@3.0.0",
+      "type": "library",
+      "name": "normalize-path",
+      "version": "3.0.0",
+      "scope": "required",
+      "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
+      "description": "Normalize slashes in a file path to be posix/unix-like forward slashes. Also condenses repeat slashes to a single slash and removes and trailing slashes, unless disabled.",
+      "purl": "pkg:npm/normalize-path@3.0.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/normalize-path/-/normalize-path-3.0.0.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/jonschlinkert/normalize-path"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/jonschlinkert/normalize-path/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e9e66ce4bb375ad0a2b075a9f52d86532f1daa4a468b80554b3dc66aa884e9ecee6f4e75d844b3b57530501e82e8829b4246363e76ff983e166288c24707302c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "once@1.4.0",
+      "type": "library",
+      "name": "once",
+      "version": "1.4.0",
+      "scope": "required",
+      "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+      "description": "Run a function exactly one time",
+      "purl": "pkg:npm/once@1.4.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/once/-/once-1.4.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/isaacs/once"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "94d689808fb643951140191c7042874d038f697754c67659125413658d0c15402e684a9ed44f8dcaf81dcff688c8d8ba67d3333b976fd47f27e7cfc610ba77fb"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "pako@1.0.11",
+      "type": "library",
+      "name": "pako",
+      "version": "1.0.11",
+      "scope": "required",
+      "description": "zlib port to javascript - fast, modularized, with browser support",
+      "purl": "pkg:npm/pako@1.0.11",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/nodeca/pako"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e212c1f0fcb8cd971ee6ce3277d5f3a29ab056fff218d855d4197c353982ab5efadc778adbe130553bfe95e19e2f5dc39e1db07dbaa8c153d70883b4cf8b5a63"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "(MIT AND Zlib)"
+        }
+      ]
+    },
+    {
+      "bom-ref": "path-is-absolute@1.0.1",
+      "type": "library",
+      "name": "path-is-absolute",
+      "version": "1.0.1",
+      "scope": "required",
+      "author": "Sindre Sorhus",
+      "description": "Node.js 0.12 path.isAbsolute() ponyfill",
+      "purl": "pkg:npm/path-is-absolute@1.0.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/path-is-absolute/-/path-is-absolute-1.0.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "0156f0dd42767bd6eaeb8bd2692f409b47e37b53daf296c6a934ec9977da2223299ebe4394385f24eb8b8fd49ff7964f5430147ab0df124f3c30f98f7bb50242"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "pdf-lib@1.17.1",
+      "type": "library",
+      "name": "pdf-lib",
+      "version": "1.17.1",
+      "scope": "required",
+      "author": "Andrew Dillon <andrew.dillon.j@gmail.com>",
+      "description": "Create and modify PDF files with JavaScript",
+      "purl": "pkg:npm/pdf-lib@1.17.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/pdf-lib/-/pdf-lib-1.17.1.tgz"
+        },
+        {
+          "type": "website",
+          "url": "https://pdf-lib.js.org"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/Hopding/pdf-lib/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "57f9a9c890284ec3787273f7d6f734c1f340d7ea76d1ebeaaa76a9d0a2e8454374624fe9df0379d83384b0be2804570b75befa865a4a3edcc9220a3aee3fd72f"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "pdfjs-dist@5.7.284",
+      "type": "library",
+      "name": "pdfjs-dist",
+      "version": "5.7.284",
+      "scope": "required",
+      "description": "Generic build of Mozilla's PDF.js library.",
+      "purl": "pkg:npm/pdfjs-dist@5.7.284",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-5.7.284.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/mozilla/pdf.js.git"
+        },
+        {
+          "type": "website",
+          "url": "https://mozilla.github.io/pdf.js/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "87811d61073398685b3a5a9cdcf3d9c317af9fb0297563dba2f02e597381fc38c8ca28129f07f2da8cdeedcea645c4abf5780ba7778ddc478be03cb24933cc17"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "process-nextick-args@2.0.1",
+      "type": "library",
+      "name": "process-nextick-args",
+      "version": "2.0.1",
+      "scope": "required",
+      "description": "process.nextTick but always with args",
+      "purl": "pkg:npm/process-nextick-args@2.0.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/process-nextick-args/-/process-nextick-args-2.0.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/calvinmetcalf/process-nextick-args.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/calvinmetcalf/process-nextick-args"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/calvinmetcalf/process-nextick-args/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "de8b943a9421b60adb39ad7b27bfaec4e4e92136166863fbfc0868477f80fbfd5ef6c92bcde9468bf757cc4632bdbc6e6c417a5a7db2a6c7132a22891459f56a"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "react@19.2.8",
+      "type": "library",
+      "name": "react",
+      "version": "19.2.8",
+      "scope": "required",
+      "description": "React is a JavaScript library for building user interfaces.",
+      "purl": "pkg:npm/react@19.2.8",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/react/-/react-19.2.8.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/react/react.git"
+        },
+        {
+          "type": "website",
+          "url": "https://react.dev/"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "3d66980352ffabdbb6bbbc58422f98dcbdd87e789eed7c8b79a248095d4c183e8ba6bb01c5c02a1a3632af4798de9f9076c03ec7f22b92de1089ff03eb7f926f"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "react-dom@19.2.8",
+      "type": "library",
+      "name": "react-dom",
+      "version": "19.2.8",
+      "scope": "required",
+      "description": "React package for working with the DOM.",
+      "purl": "pkg:npm/react-dom@19.2.8",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/react-dom/-/react-dom-19.2.8.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/react/react.git"
+        },
+        {
+          "type": "website",
+          "url": "https://react.dev/"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/react/react/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "ad5a6b8a67c6046dc347e4ead08406d834f93f12ad8755881839a3e723e6973af86017bbbb213e0eee2856a4c35d948718619746d4c910649278fc9008c06095"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "readable-stream@3.6.2",
+      "type": "library",
+      "name": "readable-stream",
+      "version": "3.6.2",
+      "scope": "required",
+      "description": "Streams3, a user-land copy of the stream library from Node.js",
+      "purl": "pkg:npm/readable-stream@3.6.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/readable-stream/-/readable-stream-3.6.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/nodejs/readable-stream"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f6efec9e20ab6370f959db04447cc71381b66025eaa06e454c7522082e1221bafa5dc2d9058d39c9af442a361e93d3b9c4e0308c6abed497460404bb43d49ca0"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "readdir-glob@1.1.3",
+      "type": "library",
+      "name": "readdir-glob",
+      "version": "1.1.3",
+      "scope": "required",
+      "author": "Yann Armelin",
+      "description": "Recursive fs.readdir with streaming API and glob filtering.",
+      "purl": "pkg:npm/readdir-glob@1.1.3",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/readdir-glob/-/readdir-glob-1.1.3.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/Yqnn/node-readdir-glob.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/Yqnn/node-readdir-glob"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "bf4e48da4ef137ccd7bcf0fd37ecffba15cf6a3d2c50509edab716648a41b2ac5f3fbc57150d2d8a901dff08e3d58c56c96b544b9203269386f3624ab7610054"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "brace-expansion@2.1.4",
+      "type": "library",
+      "name": "brace-expansion",
+      "version": "2.1.4",
+      "scope": "required",
+      "author": "Julian Gruber",
+      "description": "Brace expansion as known from sh/bash",
+      "purl": "pkg:npm/brace-expansion@2.1.4",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-2.1.4.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/juliangruber/brace-expansion.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/juliangruber/brace-expansion"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "8467d5ccfc6d85b7f7fb6ca383f441b3ad1c074161a814bfcef755ff8c27e3f0663746cd30c1cf73857f05b1627aa7f54ca0061801e76387928da8c29747f65e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "minimatch@5.1.9",
+      "type": "library",
+      "name": "minimatch",
+      "version": "5.1.9",
+      "scope": "required",
+      "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me)",
+      "description": "a glob matcher in javascript",
+      "purl": "pkg:npm/minimatch@5.1.9",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/minimatch/-/minimatch-5.1.9.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/isaacs/minimatch.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "ee8d70100d91c8c3fb22eec635b6bdbdcd11596180089382641257d862568a9d22915fb070eb2056e63db84f023e2c908641854a586e4a464f6af37bbb573617"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "rimraf@2.7.1",
+      "type": "library",
+      "name": "rimraf",
+      "version": "2.7.1",
+      "scope": "required",
+      "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+      "description": "A deep deletion module for node (like `rm -rf`)",
+      "purl": "pkg:npm/rimraf@2.7.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/rimraf/-/rimraf-2.7.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "b968db68a20add3d4e495a6dcd7ecd97a3ef437a801ad284b5546346e6b38df2f7071e5e238d3d5594aa80d0fee143679b32d574f8fd16a14934fa81645bdee3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "safe-buffer@5.2.1",
+      "type": "library",
+      "name": "safe-buffer",
+      "version": "5.2.1",
+      "scope": "required",
+      "author": "Feross Aboukhadijeh",
+      "description": "Safer Node.js Buffer API",
+      "purl": "pkg:npm/safe-buffer@5.2.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.2.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/feross/safe-buffer.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/feross/safe-buffer"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/feross/safe-buffer/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "ae9dd2a34eca71d9a629b1af81a37141226bedb1954959394bd12ad45fa9a5b468ef4f9879a0f1930e4377c34f37e183e9b8e7626d95b8fb825e6a6e62f9825d"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "saxes@5.0.1",
+      "type": "library",
+      "name": "saxes",
+      "version": "5.0.1",
+      "scope": "required",
+      "author": "Louis-Dominique Dubeau <ldd@lddubeau.com>",
+      "description": "An evented streaming XML parser in JavaScript",
+      "purl": "pkg:npm/saxes@5.0.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/saxes/-/saxes-5.0.1.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "e4b061d5396cf1cf718068f0dd0accc044e64cc564d28160beb152bd6c7ada5951da1704227aca359d866420aebb2da5bd6add9798e16e97aa73985160a14e73"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "scheduler@0.27.0",
+      "type": "library",
+      "name": "scheduler",
+      "version": "0.27.0",
+      "scope": "required",
+      "description": "Cooperative scheduler for the browser environment.",
+      "purl": "pkg:npm/scheduler@0.27.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/scheduler/-/scheduler-0.27.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/facebook/react.git"
+        },
+        {
+          "type": "website",
+          "url": "https://react.dev/"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/facebook/react/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "78dbfe5ab55b2aed5fdef6d8253ff1b62179b320391cf20cb5ff48818fe72a0d2c5aacc0504bea63fc66ece71973fa9a7cbc7f88ef4580e99e480a78bf9b62fd"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "setimmediate@1.0.5",
+      "type": "library",
+      "name": "setimmediate",
+      "version": "1.0.5",
+      "scope": "required",
+      "author": "YuzuJS",
+      "description": "A shim for the setImmediate efficient script yielding API",
+      "purl": "pkg:npm/setimmediate@1.0.5",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/setimmediate/-/setimmediate-1.0.5.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "3004c9759a7cb0ba8397febc2df4266cff3328f2d0355e81219a0882bb1c14343e46cbcafc1c5e0d03a0cb128aa21d32ffc87706a5459c2a90fe077eade8885c"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "string_decoder@1.3.0",
+      "type": "library",
+      "name": "string_decoder",
+      "version": "1.3.0",
+      "scope": "required",
+      "description": "The string_decoder module from Node core",
+      "purl": "pkg:npm/string_decoder@1.3.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/string_decoder/-/string_decoder-1.3.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/nodejs/string_decoder.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/nodejs/string_decoder"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "864457f14d568c915df0bb03276c90ff0596c5aa2912c0015355df90cf00fa3d3ef392401a9a6dd7a72bd56860e8a21b6f8a2453a32a97a04e8febaea7fc0a78"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "tar-stream@2.2.0",
+      "type": "library",
+      "name": "tar-stream",
+      "version": "2.2.0",
+      "scope": "required",
+      "author": "Mathias Buus <mathiasbuus@gmail.com>",
+      "description": "tar-stream is a streaming tar parser and generator and nothing else. It is streams2 and operates purely using streams which means you can easily extract/parse tarballs without ever hitting the file system.",
+      "purl": "pkg:npm/tar-stream@2.2.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/tar-stream/-/tar-stream-2.2.0.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/mafintosh/tar-stream.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/mafintosh/tar-stream"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/mafintosh/tar-stream/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "ba37aa6dc780060c0c6711099e4d870d8d83967519fbda0471bd4acd355f6078a8d1413a746ef59fad1df03d88e2a36f95e5abad7a668e9b7bbd9785d4b9cc65"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "tmp@0.2.7",
+      "type": "library",
+      "name": "tmp",
+      "version": "0.2.7",
+      "scope": "required",
+      "author": "KARASZI István <github@spam.raszi.hu>",
+      "description": "Temporary file and directory creator",
+      "purl": "pkg:npm/tmp@0.2.7",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/tmp/-/tmp-0.2.7.tgz"
+        },
+        {
+          "type": "website",
+          "url": "http://github.com/raszi/node-tmp"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "http://github.com/raszi/node-tmp/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "7b4be8b48a69e14a36009612cd51d5eb109c6b0ba27b3dc3cea0c06eb4dcdd8c4192994de9ef9d335dd97887199c383f4294ae536cdf677af3c18f2e9049da5f"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "traverse@0.3.9",
+      "type": "library",
+      "name": "traverse",
+      "version": "0.3.9",
+      "scope": "required",
+      "author": "James Halliday",
+      "description": "Traverse and transform objects by visiting every node on a recursive walk",
+      "purl": "pkg:npm/traverse@0.3.9",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/traverse/-/traverse-0.3.9.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "http://github.com/substack/js-traverse.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "89ac2093484b3f74b118a0df9c325ff304f3e29daa2269f28a13391e1fec1af4372b7edd3e2ff0f2c46174d231600d53c05c1ce660e1209abe3b446cbd704a75"
+        }
+      ]
+    },
+    {
+      "bom-ref": "tslib@1.14.1",
+      "type": "library",
+      "name": "tslib",
+      "version": "1.14.1",
+      "scope": "required",
+      "author": "Microsoft Corp.",
+      "description": "Runtime library for TypeScript helper functions",
+      "purl": "pkg:npm/tslib@1.14.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/tslib/-/tslib-1.14.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/Microsoft/tslib.git"
+        },
+        {
+          "type": "website",
+          "url": "https://www.typescriptlang.org/"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/Microsoft/TypeScript/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "5e78b7e4d2b38e032bc1ebf2b074c202bb4b0e93efc9ef3357fd04e04c989f8dcfeffeeabd0c0f87d0469077b06ccba5567b5b8a099c4fbadd5f704da3dc1126"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "0BSD"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "unzipper@0.10.14",
+      "type": "library",
+      "name": "unzipper",
+      "version": "0.10.14",
+      "scope": "required",
+      "author": "Evan Oxfeld <eoxfeld@gmail.com>",
+      "description": "Unzip cross-platform streaming API ",
+      "purl": "pkg:npm/unzipper@0.10.14",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/unzipper/-/unzipper-0.10.14.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/ZJONSSON/node-unzipper.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "b62e30663fb46d04e25f62a6296bb08fb96157eda7fffb97128b54986b90aab6d565210614c6c8ebcf9ce89090f1a02651662fb47133d80f0aeb05efb9e47fea"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "util-deprecate@1.0.2",
+      "type": "library",
+      "name": "util-deprecate",
+      "version": "1.0.2",
+      "scope": "required",
+      "author": "Nathan Rajlich <nathan@tootallnate.net> (http://n8.io/)",
+      "description": "The Node.js `util.deprecate()` function with browser support",
+      "purl": "pkg:npm/util-deprecate@1.0.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "git://github.com/TooTallNate/util-deprecate.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/TooTallNate/util-deprecate"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/TooTallNate/util-deprecate/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "10f0f9ab5b97c85c49a42acb9c27359c79eade039ae83641a1c008888d93692080ed5089d5424331a802cc891736c5187c3d5d68afff2d3110f318886eb1ed73"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "uuid@8.3.2",
+      "type": "library",
+      "name": "uuid",
+      "version": "8.3.2",
+      "scope": "required",
+      "description": "RFC4122 (v1, v4, and v5) UUIDs",
+      "purl": "pkg:npm/uuid@8.3.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/uuid/-/uuid-8.3.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/uuidjs/uuid.git"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f8d62cd9078c5b2f865853849bdc679fa1c20e9d25ed0043ee697cccb52627ef77439345d0da1c12b9f09139175453625f7fdfa42e9a7d2f0385bfe0cfb47b7a"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "wrappy@1.0.2",
+      "type": "library",
+      "name": "wrappy",
+      "version": "1.0.2",
+      "scope": "required",
+      "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+      "description": "Callback wrapping utility",
+      "purl": "pkg:npm/wrappy@1.0.2",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/wrappy/-/wrappy-1.0.2.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/npm/wrappy"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/npm/wrappy"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/npm/wrappy/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "9784a9fc346c7a8afdc0be84bd5dbe4ee427eb774c90f8d9feca7d5e48214c46d5f4a94f4b5c54b19deeeff2103b8c31b5c141e1b82940f45c477402bdeccf71"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "xmlchars@2.2.0",
+      "type": "library",
+      "name": "xmlchars",
+      "version": "2.2.0",
+      "scope": "required",
+      "author": "Louis-Dominique Dubeau <ldd@lddubeau.com>",
+      "description": "Utilities for determining if characters belong to character classes defined by the XML specs.",
+      "purl": "pkg:npm/xmlchars@2.2.0",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/xmlchars/-/xmlchars-2.2.0.tgz"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "2599c328af01d11083c3ce0535d0c022964af89b89c3eb3b2f3f2792c23b488b94dd45c926c954b61b22fae5815183b03c5c16ed6ecf44b45f50aa718ed8c50b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "zip-stream@4.1.1",
+      "type": "library",
+      "name": "zip-stream",
+      "version": "4.1.1",
+      "scope": "required",
+      "author": "Chris Talkington",
+      "description": "a streaming zip archive generator.",
+      "purl": "pkg:npm/zip-stream@4.1.1",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/zip-stream/-/zip-stream-4.1.1.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/archiverjs/node-zip-stream.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/node-zip-stream"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/archiverjs/node-zip-stream/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "f6abf8ae50e2a295e0e04ebd93ebcc1e334deb760531ef6c64cadd96f2a70a394245678206cc0f3cc3d47f1fa2a6c016ab52d71deef445c6da1dd249a52ea1c9"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    },
+    {
+      "bom-ref": "archiver-utils@3.0.4",
+      "type": "library",
+      "name": "archiver-utils",
+      "version": "3.0.4",
+      "scope": "required",
+      "author": "Chris Talkington",
+      "description": "utility functions for archiver",
+      "purl": "pkg:npm/archiver-utils@3.0.4",
+      "properties": [],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/archiver-utils/-/archiver-utils-3.0.4.tgz"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/archiverjs/archiver-utils.git"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/archiver-utils#readme"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/archiverjs/archiver-utils/issues"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "29581fe17415ad38e1c969b1e9cb5ee11c689cf2d1f689c4c6e7c8d6386fc3f310e0107a22c643e604fc2eafaeffea519169daffa2681e98908a86aa14fe51cf"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pdf-requirement-designer@1.0.0",
+      "dependsOn": [
+        "exceljs@4.4.0",
+        "pdf-lib@1.17.1",
+        "pdfjs-dist@5.7.284",
+        "react@19.2.8",
+        "react-dom@19.2.8"
+      ]
+    },
+    {
+      "ref": "@fast-csv/format@4.3.5",
+      "dependsOn": [
+        "@types/node@14.18.63",
+        "lodash.escaperegexp@4.1.2",
+        "lodash.isboolean@3.0.3",
+        "lodash.isequal@4.5.0",
+        "lodash.isfunction@3.0.9",
+        "lodash.isnil@4.0.0"
+      ]
+    },
+    {
+      "ref": "@types/node@14.18.63",
+      "dependsOn": []
+    },
+    {
+      "ref": "@fast-csv/parse@4.3.6",
+      "dependsOn": [
+        "@types/node@14.18.63",
+        "lodash.escaperegexp@4.1.2",
+        "lodash.groupby@4.6.0",
+        "lodash.isfunction@3.0.9",
+        "lodash.isnil@4.0.0",
+        "lodash.isundefined@3.0.1",
+        "lodash.uniq@4.5.0"
+      ]
+    },
+    {
+      "ref": "@napi-rs/canvas@0.1.100",
+      "dependsOn": [
+        "@napi-rs/canvas-win32-x64-msvc@0.1.100"
+      ]
+    },
+    {
+      "ref": "@napi-rs/canvas-win32-x64-msvc@0.1.100",
+      "dependsOn": []
+    },
+    {
+      "ref": "@pdf-lib/standard-fonts@1.0.0",
+      "dependsOn": [
+        "pako@1.0.11"
+      ]
+    },
+    {
+      "ref": "@pdf-lib/upng@1.0.1",
+      "dependsOn": [
+        "pako@1.0.11"
+      ]
+    },
+    {
+      "ref": "archiver@5.3.2",
+      "dependsOn": [
+        "archiver-utils@2.1.0",
+        "async@3.2.6",
+        "buffer-crc32@0.2.13",
+        "readable-stream@3.6.2",
+        "readdir-glob@1.1.3",
+        "tar-stream@2.2.0",
+        "zip-stream@4.1.1"
+      ]
+    },
+    {
+      "ref": "archiver-utils@2.1.0",
+      "dependsOn": [
+        "glob@7.2.3",
+        "lazystream@1.0.1",
+        "lodash.defaults@4.2.0",
+        "lodash.difference@4.5.0",
+        "lodash.flatten@4.4.0",
+        "lodash.isplainobject@4.0.6",
+        "lodash.union@4.6.0",
+        "normalize-path@3.0.0",
+        "readable-stream@2.3.8"
+      ]
+    },
+    {
+      "ref": "readable-stream@2.3.8",
+      "dependsOn": [
+        "core-util-is@1.0.3",
+        "inherits@2.0.4",
+        "isarray@1.0.0",
+        "process-nextick-args@2.0.1",
+        "safe-buffer@5.1.2",
+        "string_decoder@1.1.1",
+        "util-deprecate@1.0.2"
+      ]
+    },
+    {
+      "ref": "safe-buffer@5.1.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "string_decoder@1.1.1",
+      "dependsOn": [
+        "safe-buffer@5.1.2"
+      ]
+    },
+    {
+      "ref": "async@3.2.6",
+      "dependsOn": []
+    },
+    {
+      "ref": "balanced-match@1.0.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "base64-js@1.5.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "big-integer@1.6.52",
+      "dependsOn": []
+    },
+    {
+      "ref": "binary@0.3.0",
+      "dependsOn": [
+        "chainsaw@0.1.0",
+        "buffers@0.1.1"
+      ]
+    },
+    {
+      "ref": "bl@4.1.0",
+      "dependsOn": [
+        "buffer@5.7.1",
+        "inherits@2.0.4",
+        "readable-stream@3.6.2"
+      ]
+    },
+    {
+      "ref": "bluebird@3.4.7",
+      "dependsOn": []
+    },
+    {
+      "ref": "brace-expansion@1.1.18",
+      "dependsOn": [
+        "balanced-match@1.0.2",
+        "concat-map@0.0.1"
+      ]
+    },
+    {
+      "ref": "buffer@5.7.1",
+      "dependsOn": [
+        "base64-js@1.5.1",
+        "ieee754@1.2.1"
+      ]
+    },
+    {
+      "ref": "buffer-crc32@0.2.13",
+      "dependsOn": []
+    },
+    {
+      "ref": "buffer-indexof-polyfill@1.0.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "buffers@0.1.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "chainsaw@0.1.0",
+      "dependsOn": [
+        "traverse@0.3.9"
+      ]
+    },
+    {
+      "ref": "compress-commons@4.1.2",
+      "dependsOn": [
+        "buffer-crc32@0.2.13",
+        "crc32-stream@4.0.3",
+        "normalize-path@3.0.0",
+        "readable-stream@3.6.2"
+      ]
+    },
+    {
+      "ref": "concat-map@0.0.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "core-util-is@1.0.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "crc-32@1.2.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "crc32-stream@4.0.3",
+      "dependsOn": [
+        "crc-32@1.2.2",
+        "readable-stream@3.6.2"
+      ]
+    },
+    {
+      "ref": "dayjs@1.11.23",
+      "dependsOn": []
+    },
+    {
+      "ref": "duplexer2@0.1.4",
+      "dependsOn": [
+        "readable-stream@2.3.8"
+      ]
+    },
+    {
+      "ref": "end-of-stream@1.4.5",
+      "dependsOn": [
+        "once@1.4.0"
+      ]
+    },
+    {
+      "ref": "exceljs@4.4.0",
+      "dependsOn": [
+        "archiver@5.3.2",
+        "dayjs@1.11.23",
+        "fast-csv@4.3.6",
+        "jszip@3.10.2",
+        "readable-stream@3.6.2",
+        "saxes@5.0.1",
+        "tmp@0.2.7",
+        "unzipper@0.10.14",
+        "uuid@8.3.2"
+      ]
+    },
+    {
+      "ref": "fast-csv@4.3.6",
+      "dependsOn": [
+        "@fast-csv/format@4.3.5",
+        "@fast-csv/parse@4.3.6"
+      ]
+    },
+    {
+      "ref": "fs-constants@1.0.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "fs.realpath@1.0.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "fstream@1.0.12",
+      "dependsOn": [
+        "inherits@2.0.4",
+        "mkdirp@0.5.6",
+        "rimraf@2.7.1"
+      ]
+    },
+    {
+      "ref": "glob@7.2.3",
+      "dependsOn": [
+        "fs.realpath@1.0.0",
+        "inflight@1.0.6",
+        "inherits@2.0.4",
+        "minimatch@3.1.5",
+        "once@1.4.0",
+        "path-is-absolute@1.0.1"
+      ]
+    },
+    {
+      "ref": "ieee754@1.2.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "immediate@3.0.6",
+      "dependsOn": []
+    },
+    {
+      "ref": "inflight@1.0.6",
+      "dependsOn": [
+        "once@1.4.0",
+        "wrappy@1.0.2"
+      ]
+    },
+    {
+      "ref": "inherits@2.0.4",
+      "dependsOn": []
+    },
+    {
+      "ref": "isarray@1.0.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "jszip@3.10.2",
+      "dependsOn": [
+        "lie@3.3.0",
+        "pako@1.0.11",
+        "readable-stream@2.3.8",
+        "setimmediate@1.0.5"
+      ]
+    },
+    {
+      "ref": "lazystream@1.0.1",
+      "dependsOn": [
+        "readable-stream@2.3.8"
+      ]
+    },
+    {
+      "ref": "lie@3.3.0",
+      "dependsOn": [
+        "immediate@3.0.6"
+      ]
+    },
+    {
+      "ref": "listenercount@1.0.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.defaults@4.2.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.difference@4.5.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.escaperegexp@4.1.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.flatten@4.4.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.groupby@4.6.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.isboolean@3.0.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.isequal@4.5.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.isfunction@3.0.9",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.isnil@4.0.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.isplainobject@4.0.6",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.isundefined@3.0.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.union@4.6.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "lodash.uniq@4.5.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "minimatch@3.1.5",
+      "dependsOn": [
+        "brace-expansion@1.1.18"
+      ]
+    },
+    {
+      "ref": "minimist@1.2.8",
+      "dependsOn": []
+    },
+    {
+      "ref": "mkdirp@0.5.6",
+      "dependsOn": [
+        "minimist@1.2.8"
+      ]
+    },
+    {
+      "ref": "normalize-path@3.0.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "once@1.4.0",
+      "dependsOn": [
+        "wrappy@1.0.2"
+      ]
+    },
+    {
+      "ref": "pako@1.0.11",
+      "dependsOn": []
+    },
+    {
+      "ref": "path-is-absolute@1.0.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pdf-lib@1.17.1",
+      "dependsOn": [
+        "@pdf-lib/standard-fonts@1.0.0",
+        "@pdf-lib/upng@1.0.1",
+        "pako@1.0.11",
+        "tslib@1.14.1"
+      ]
+    },
+    {
+      "ref": "pdfjs-dist@5.7.284",
+      "dependsOn": [
+        "@napi-rs/canvas@0.1.100"
+      ]
+    },
+    {
+      "ref": "process-nextick-args@2.0.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "react@19.2.8",
+      "dependsOn": []
+    },
+    {
+      "ref": "react-dom@19.2.8",
+      "dependsOn": [
+        "react@19.2.8",
+        "scheduler@0.27.0"
+      ]
+    },
+    {
+      "ref": "readable-stream@3.6.2",
+      "dependsOn": [
+        "inherits@2.0.4",
+        "string_decoder@1.3.0",
+        "util-deprecate@1.0.2"
+      ]
+    },
+    {
+      "ref": "readdir-glob@1.1.3",
+      "dependsOn": [
+        "minimatch@5.1.9"
+      ]
+    },
+    {
+      "ref": "brace-expansion@2.1.4",
+      "dependsOn": [
+        "balanced-match@1.0.2"
+      ]
+    },
+    {
+      "ref": "minimatch@5.1.9",
+      "dependsOn": [
+        "brace-expansion@2.1.4"
+      ]
+    },
+    {
+      "ref": "rimraf@2.7.1",
+      "dependsOn": [
+        "glob@7.2.3"
+      ]
+    },
+    {
+      "ref": "safe-buffer@5.2.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "saxes@5.0.1",
+      "dependsOn": [
+        "xmlchars@2.2.0"
+      ]
+    },
+    {
+      "ref": "scheduler@0.27.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "setimmediate@1.0.5",
+      "dependsOn": []
+    },
+    {
+      "ref": "string_decoder@1.3.0",
+      "dependsOn": [
+        "safe-buffer@5.2.1"
+      ]
+    },
+    {
+      "ref": "tar-stream@2.2.0",
+      "dependsOn": [
+        "bl@4.1.0",
+        "end-of-stream@1.4.5",
+        "fs-constants@1.0.0",
+        "inherits@2.0.4",
+        "readable-stream@3.6.2"
+      ]
+    },
+    {
+      "ref": "tmp@0.2.7",
+      "dependsOn": []
+    },
+    {
+      "ref": "traverse@0.3.9",
+      "dependsOn": []
+    },
+    {
+      "ref": "tslib@1.14.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "unzipper@0.10.14",
+      "dependsOn": [
+        "big-integer@1.6.52",
+        "binary@0.3.0",
+        "bluebird@3.4.7",
+        "buffer-indexof-polyfill@1.0.2",
+        "duplexer2@0.1.4",
+        "fstream@1.0.12",
+        "listenercount@1.0.1",
+        "readable-stream@2.3.8",
+        "setimmediate@1.0.5"
+      ]
+    },
+    {
+      "ref": "util-deprecate@1.0.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "uuid@8.3.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "wrappy@1.0.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "xmlchars@2.2.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "zip-stream@4.1.1",
+      "dependsOn": [
+        "archiver-utils@3.0.4",
+        "compress-commons@4.1.2",
+        "readable-stream@3.6.2"
+      ]
+    },
+    {
+      "ref": "archiver-utils@3.0.4",
+      "dependsOn": [
+        "glob@7.2.3",
+        "lazystream@1.0.1",
+        "lodash.defaults@4.2.0",
+        "lodash.difference@4.5.0",
+        "lodash.flatten@4.4.0",
+        "lodash.isplainobject@4.0.6",
+        "lodash.union@4.6.0",
+        "normalize-path@3.0.0",
+        "readable-stream@3.6.2"
+      ]
+    }
+  ]
+}

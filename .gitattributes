@@ -1,0 +1,5 @@
+# The release folder is a verified build. CLEARANCE.txt records a SHA-256
+# for every file in it, so the bytes must survive a clone unchanged. Git's
+# automatic line ending conversion would rewrite them and invalidate every
+# hash, so all conversion is disabled for that folder.
+release/** -text

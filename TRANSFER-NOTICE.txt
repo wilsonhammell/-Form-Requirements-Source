@@ -1,0 +1,47 @@
+What is being transferred
+=========================
+
+Covers the contents of the release/ folder in this repository.
+
+Nothing is downloaded. This is a finished build, not a project that
+installs dependencies. No package manager runs at install time or at run
+time, and no code is fetched from anywhere - deployment is copying files
+into place. There is no package.json, package-lock.json or node_modules in
+the package, so there is nothing for npm or any other tool to resolve.
+
+The transfer is 15 files, 3.4 MB. CLEARANCE.txt carries a SHA-256 for the
+other 14; a file cannot contain its own hash.
+
+Third-party code compiled into those files - determined from the build's
+own source map, so this is what actually shipped rather than what was
+merely available:
+
+  react 19.2.8, react-dom 19.2.8, scheduler 0.27.0, pdf-lib 1.17.1,
+  @pdf-lib/standard-fonts 1.0.0, @pdf-lib/upng 1.0.1, pako 1.0.11,
+  tslib 1.14.1, pdfjs-dist 5.7.284, exceljs 4.4.0
+
+  plus, inside the exceljs browser bundle: jszip 3.10.2, dayjs 1.11.23,
+  fast-csv 4.3.6, saxes 5.0.1, uuid 8.3.2, readable-stream 3.6.2.
+
+All permissive licences. sbom.cyclonedx.json is the machine-readable
+version.
+
+Two of the fifteen files are configuration rather than code.
+dbFields.json and systemFields.json hold field identifiers and labels, no
+customer or account data, and are read fresh by the browser on every page
+load. They are meant to be edited in place after deployment, with no
+rebuild and no redeploy. Their recorded hashes therefore describe them as
+shipped and will differ once they are configured. Every other file should
+always match.
+
+Known advisories affecting this build are disclosed in CLEARANCE.txt
+rather than left to be found, including one rated high against the PDF
+rendering library. Please read that section.
+
+Where to look
+-------------
+  CLEARANCE.txt          full inventory, licences, advisories, data
+                         handling, network exposure, file manifest
+  sbom.cyclonedx.json    CycloneDX 1.5 bill of materials
+  HOSTING.txt            what the server team needs in order to host it
+  README.txt             how to run it on a single machine

@@ -1,0 +1,223 @@
+PDF Requirement Designer - security review pack
+===============================================
+Generated 2026-09-10 from package-lock.json and the shipped build.
+
+WHAT THIS IS
+------------
+A browser tool for marking up PDF forms and exporting a requirements JSON
+and an Excel workbook alongside the PDF. It is a static web page. There is
+no backend, no database and no account system.
+
+NOTHING IS DOWNLOADED OR INSTALLED
+----------------------------------
+This package is the finished build. No package manager runs, at install
+time or at run time. No code is fetched from anywhere. Copying the files
+into place is the entire deployment.
+
+There is no package.json, no package-lock.json and no node_modules in this
+package, so there is nothing here for npm or any other tool to resolve.
+The full file list, with a SHA-256 for each, is at the end of this
+document.
+
+WHAT ACTUALLY RUNS, AND WHERE
+-----------------------------
+The application is JavaScript that runs inside the user's browser. The
+browser is the only thing executing application code.
+
+The included serve.ps1 / serve.py / serve.mjs are file servers, not the
+application. They read files from their own folder and return them over
+HTTP. They do not parse or execute any of the JavaScript they serve. They
+exist only because a browser will not load an ES module or read a local
+JSON file over file://, so the files need an HTTP origin.
+
+If this folder is hosted on an existing internal web server, all three are
+unused and can be deleted.
+
+THIRD PARTY CODE IN THE SHIPPED BUILD
+-------------------------------------
+Determined from the build's own source map, which records every file that
+contributed code to the output. This is the authoritative list.
+
+  Loaded directly:
+
+    react                    19.2.8   MIT
+    react-dom                19.2.8   MIT
+    scheduler                0.27.0   MIT
+    pdf-lib                  1.17.1   MIT
+    @pdf-lib/standard-fonts  1.0.0    MIT
+    @pdf-lib/upng            1.0.1    MIT
+    pako                     1.0.11   (MIT AND Zlib)
+    tslib                    1.14.1   0BSD
+    pdfjs-dist               5.7.284  Apache-2.0
+    exceljs                  4.4.0    MIT
+
+  Contained inside the exceljs browser bundle:
+
+    jszip                    3.10.2   (MIT OR GPL-3.0-or-later)
+    dayjs                    1.11.23  MIT
+    fast-csv                 4.3.6    MIT
+    @fast-csv/format         4.3.5    MIT
+    @fast-csv/parse          4.3.6    MIT
+    saxes                    5.0.1    ISC
+    uuid                     8.3.2    MIT
+    readable-stream          3.6.2    MIT
+
+  exceljs is consumed as its own pre-built browser bundle
+  (dist/exceljs.min.js), which already contains the libraries listed under
+  it. They are inside that one file rather than resolved separately, which
+  is why a file count alone understates them. They are listed here so the
+  inventory is complete.
+
+  All licenses are permissive.
+
+  One to note for a licence scanner: jszip is dual licensed as
+  "MIT OR GPL-3.0-or-later". It is taken here under MIT. An automated
+  scanner reporting a GPL obligation against this build is matching the
+  unused half of that expression.
+
+WHAT IS NOT IN THE BUILD
+------------------------
+The source repository's lockfile lists 296 packages: 118 reachable at run
+time and 178 build toolchain. The build discards everything the
+application does not actually reach, which is why the list above is far
+shorter.
+
+Six packages in the dependency tree are marked deprecated by their
+publishers: fstream, glob 7, inflight, lodash.isequal, rimraf 2 and
+uuid 8. All but uuid arrive through the Node.js code paths of exceljs,
+which a browser never takes. Verified against the shipped bundle:
+fstream, glob, inflight, rimraf, archiver and unzipper contribute nothing
+to it. uuid is present, inside the exceljs browser bundle.
+
+KNOWN ADVISORIES, AS AT 2026-09-10
+----------------------------------
+Disclosed here rather than left to be discovered.
+
+1. pdfjs-dist 5.7.284 - HIGH - GHSA-hq66-cqwq-w95j
+   "Arbitrary JavaScript execution upon opening a malicious PDF."
+   Affects >=5.6.83 <6.2.108. Fixed in 6.2.108, which is a major version
+   change from the 5.x line this build uses.
+
+   Relevance: the core action of this application is opening a PDF chosen
+   by the user, so this advisory is directly on the main path and should
+   not be treated as theoretical. The exposure is bounded by the fact that
+   the code runs in the browser sandbox with no server, no stored
+   credentials and no outbound network access, and that users open forms
+   they already hold rather than files from untrusted sources. That
+   reduces the impact; it does not remove the finding.
+
+   Status: not yet remediated. Upgrading to the 6.x line is the fix and
+   needs testing against the existing forms before it can ship.
+
+2. uuid 8.3.2 - MODERATE - GHSA-w5hq-g745-h8pq
+   "Missing buffer bounds check in v3/v5/v6 when buf is provided."
+   Reached only through exceljs. The published remediation path downgrades
+   exceljs to 3.4.0, which is a breaking change. The affected code path
+   takes a caller supplied buffer, which this application never does.
+
+DATA HANDLING
+-------------
+  - The application makes no outbound network calls.
+  - PDFs opened by a user are read in that user's browser and are never
+    uploaded or stored on a server.
+  - Exports (PDF, JSON and Excel) are ordinary browser downloads.
+  - The only files it reads are dbFields.json and systemFields.json from
+    its own folder.
+  - No cookies, no analytics, no telemetry, no external fonts or CDNs.
+
+CONFIGURATION DATA
+------------------
+dbFields.json and systemFields.json are configuration, not code. They hold
+field identifiers and labels, no customer or account data. The application
+fetches them at run time with cache: no-store, so they are read fresh on
+every page load.
+
+They are intended to be edited in place after deployment. Changing them
+needs no rebuild, no redeploy and no restart: edit the file, reload the
+browser. Whoever hosts this should expect these two files to change and
+should allow a named person or group to write to them.
+
+Consequence for the manifest below: a SHA-256 recorded here for either of
+those two files describes them as shipped. Once they are configured, their
+hashes will differ, and that is expected rather than a sign of tampering.
+Every other file in the manifest should always match.
+
+MACHINE READABLE SBOM
+---------------------
+sbom.cyclonedx.json is a CycloneDX 1.5 bill of materials generated with
+"npm sbom --sbom-format cyclonedx --omit dev". It describes the full
+94 component run time dependency tree as installed during the build, which
+is deliberately broader than the shipped list above: it records what was
+present in the build environment, not what survived into the output. Use
+the shipped list for what is actually deployed, and the SBOM for
+provenance of the build.
+
+WHAT A SCANNER WILL AND WILL NOT SEE
+------------------------------------
+Composition analysis tools work from package manifests. This folder has
+none, by design. A scan of the deployed files will find little or nothing,
+and that is expected rather than reassuring.
+
+The bundler discards package names, rewrites internals and keeps only
+reached code. This document and the SBOM are the record of what went into
+the build; they cannot be reconstructed by inspecting the output, and
+should be treated as the authoritative inventory.
+
+NETWORK EXPOSURE
+----------------
+Default: serve.ps1 registers http://localhost:<port>/ and is reachable
+from the local machine only. It needs no administrator rights and no
+firewall change.
+
+Note for anyone reviewing a port scan: HttpListener is served by the
+Windows kernel HTTP driver (http.sys, PID 4), so netstat shows the port on
+0.0.0.0 rather than 127.0.0.1. http.sys routes a request only if its Host
+header matches the registered prefix. Measured:
+
+    Host: localhost      -> 200, serves the app
+    Host: 127.0.0.1      -> 400, refused
+    Host: <machine ip>   -> 400, refused
+    Host: <machine name> -> 400, refused
+
+A client on another machine necessarily sends the ip or the machine name,
+so it receives 400 and never reaches any content.
+
+serve.py and serve.mjs bind the 127.0.0.1 socket directly. Both accept an
+optional --lan flag which binds all interfaces with no authentication;
+that is off unless explicitly requested on the command line.
+
+RUNTIME REQUIREMENT
+-------------------
+None. Nothing has to be installed.
+
+The default launcher uses Windows PowerShell 5.1 and .NET's
+System.Net.HttpListener, both part of a standard Windows 10/11 install.
+
+Start.cmd passes -ExecutionPolicy Bypass. That applies to that single
+process only. It alters no machine or user setting, requires no elevation,
+and does not persist. It is needed because a file that arrived by download
+or email carries a mark-of-the-web flag, and the default RemoteSigned
+policy refuses to run such a script.
+
+Two equivalent servers are included for sites that would rather use an
+existing approved runtime. Both are standard library only:
+
+  serve.py     Python 3.x   http.server, socketserver, mimetypes, socket
+  serve.mjs    Node 18+     node:http, node:fs, node:path, node:url
+
+FILE MANIFEST (SHA-256)
+-----------------------
+  671a82d6834749ac7dcc00ec2ec2f01e29272e7ef602a3faac21bbca89354ff3  assets/index-prPS2fta.js
+  90f7aaec469ccad2a07019ac007d61f1b3670d6616532e6fb70242baba991469  assets/index-WtL79moD.css
+  52fadd5b81b6abd1eb665bab0c3749a8ad6a293fcb6ee9d9e0309f29d4f82619  assets/pdf.worker.min-iDqQPrd3.mjs
+  ad88cf9d6d8c3576873229b7314742121d6c128bc5a75a2d060755bde3fc15a0  dbFields.json
+  137eabc1a1557f3ec640b8f06af17e1fa172ea0b369a4ee241f84a5e6ab43047  HOSTING.txt
+  08b187b864108dd92c424dba78476bbcf05e7076e5bb516a9f6aa325630856ee  index.html
+  ea7e3e1850cd32c138c14d14b674cbf661cf85b5365775e5f37c941a520a4b80  README.txt
+  97420cd231e6f86018db9d361af368a3234b1cd148efbedae263dd0451b858a0  sbom.cyclonedx.json
+  6c210091c57a6a78b736ad9d54845e09a86e7f6d06053970c829988c8024b68b  serve.mjs
+  22a83a781e676a1c1d30522cd9866828f878a7b89ad9f5fcc151c78d75dca68d  serve.ps1
+  f71f0a7a384026f68af50a4b1ece4ae8cad91737dfaa52b69ace4e6b3e518664  serve.py
+  b526c9594e8a53f80b07efa91b6a6fe23cd2c1a62ab987c1c7117b5d4549fc3e  Start.cmd
+  137478e3410a3ecca8ca909876edccb96e11765c7544087becbd9cc64a521603  systemFields.json
+  3810a78c113b2fae41745775edc2a41898397f649857ce4fc4a2dbcac2b473af  web.config
