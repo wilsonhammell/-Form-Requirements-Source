@@ -14,6 +14,80 @@ import {
 const rowName = (prefix, index, part) => `${prefix}${index}${part.suffix}`;
 const jointNamePart = JOINT_PARTS.find((p) => p.key === 'name');
 
+const LABEL = 'block text-xs font-medium text-slate-600';
+const HELP = 'mt-1 text-xs text-slate-500';
+const ACTION =
+  'rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40';
+const CHIP = 'rounded bg-teal-50 px-1.5 py-0.5 text-[10px] font-medium text-teal-800 ring-1 ring-teal-200';
+
+// One row of segmented buttons. Production takes amber rather than sky, since
+// it is the choice worth noticing.
+function Choice({ options, value, onPick, alert = null }) {
+  return (
+    <div className="mt-1 flex gap-1.5">
+      {options.map(({ value: option, label }) => (
+        <button
+          key={option}
+          type="button"
+          aria-pressed={value === option}
+          className={`flex-1 rounded border px-2 py-1.5 text-sm ${
+            value !== option
+              ? 'border-slate-300 text-slate-700 hover:bg-slate-50'
+              : option === alert
+                ? 'border-amber-600 bg-amber-600 text-white'
+                : 'border-sky-600 bg-sky-600 text-white'
+          }`}
+          onClick={() => onPick(option)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// A part a row is missing reads as a dashed button that places it. Without it,
+// putting back a deleted part means drawing a box and knowing to look in the
+// name picker.
+function PartChip({ present, label, name, onPlace }) {
+  if (present) return <span className={CHIP}>{label}</span>;
+  return (
+    <button
+      type="button"
+      className="rounded border border-dashed border-slate-300 px-1.5 py-0.5 text-[10px] text-slate-500 hover:border-teal-400 hover:text-teal-700"
+      onClick={() => onPlace(name)}
+    >
+      + {label}
+    </button>
+  );
+}
+
+// Signer rows and joint rows read the same, so they are drawn the same. Both
+// are entirely derived from what is on the page, so there is nothing to set.
+function RowList({ rows, prefix, parts, width, onPlace }) {
+  return (
+    <ul className="mt-1 flex flex-col gap-1">
+      {rows.map((row, i) => (
+        <li key={i} className="flex flex-wrap items-center gap-1.5">
+          <span className={`${width} shrink-0 font-mono text-xs text-slate-700`}>
+            {prefix}
+            {i + 1}
+          </span>
+          {parts.map((part) => (
+            <PartChip
+              key={part.key}
+              present={row[part.key]}
+              label={part.label}
+              name={rowName(prefix, i + 1, part)}
+              onPlace={onPlace}
+            />
+          ))}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // Form level settings, one set for the whole document. Nothing here changes the
 // exported AcroForm, it is carried in the requirements JSON for whatever
 // generates code from it later.
@@ -31,33 +105,15 @@ export default function FormConfigPanel({
   onAddSignerRow,
   onPlaceSpecial,
 }) {
-  // A part a row is missing reads as a dashed button that places it. Without
-  // it, putting back a deleted part means drawing a box and knowing to look in
-  // the name picker.
-  const partChip = (present, label, name) =>
-    present ? (
-      <span className="rounded bg-teal-50 px-1.5 py-0.5 text-[10px] font-medium text-teal-800 ring-1 ring-teal-200">
-        {label}
-      </span>
-    ) : (
-      <button
-        type="button"
-        className="rounded border border-dashed border-slate-300 px-1.5 py-0.5 text-[10px] text-slate-500 hover:border-teal-400 hover:text-teal-700"
-        onClick={() => onPlaceSpecial(name)}
-      >
-        + {label}
-      </button>
-    );
   // The codes box is free text while it is being typed, so a trailing comma or
   // a half typed code does not vanish under the cursor. It is parsed into the
   // stored list on every change, and only reformatted when the field is left.
   const [draft, setDraft] = useState(() => config.productCodes.join(', '));
 
-  // Typing rebuilds the stored list, which arrives back here as a brand new
-  // array every keystroke. Resyncing on that would rewrite the box from the
-  // parsed list mid-word and swallow the separator just typed, so a change this
-  // box caused is skipped. Only a config from elsewhere, opening a PDF or
-  // importing JSON, refills it.
+  // Typing rebuilds the stored list, which arrives back as a new array every
+  // keystroke. Resyncing on that would rewrite the box mid-word and swallow the
+  // separator just typed, so a change this box caused is skipped. Only a config
+  // from elsewhere, opening a PDF or importing JSON, refills it.
   const typing = useRef(false);
   useEffect(() => {
     if (typing.current) {
@@ -70,56 +126,31 @@ export default function FormConfigPanel({
   return (
     <div className="flex flex-col gap-4 p-4">
       <div>
-        <label className="block text-xs font-medium text-slate-600">Form type</label>
-        <div className="mt-1 flex gap-1.5">
-          {FORM_TYPES.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={config.formType === value}
-              className={`flex-1 rounded border px-2 py-1.5 text-sm ${
-                config.formType === value
-                  ? 'border-sky-600 bg-sky-600 text-white'
-                  : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-              }`}
-              onClick={() => onChange({ formType: value })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <p className="mt-1 text-xs text-slate-500">Who this form is about.</p>
+        <label className={LABEL}>Form type</label>
+        <Choice
+          options={FORM_TYPES}
+          value={config.formType}
+          onPick={(formType) => onChange({ formType })}
+        />
+        <p className={HELP}>Who this form is about.</p>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-slate-600">FileOptics environment</label>
-        <div className="mt-1 flex gap-1.5">
-          {ENVIRONMENTS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={config.environment === value}
-              className={`flex-1 rounded border px-2 py-1.5 text-sm ${
-                config.environment === value
-                  ? value === 'PROD'
-                    ? 'border-amber-600 bg-amber-600 text-white'
-                    : 'border-sky-600 bg-sky-600 text-white'
-                  : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-              }`}
-              onClick={() => onChange({ environment: value })}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <p className="mt-1 text-xs text-slate-500">
+        <label className={LABEL}>FileOptics environment</label>
+        <Choice
+          options={ENVIRONMENTS}
+          value={config.environment}
+          alert="PROD"
+          onPick={(environment) => onChange({ environment })}
+        />
+        <p className={HELP}>
           Which endpoint the submit paths send to, and the flow id they use. Defaults to Test, so a
           form that never gets touched fails safe rather than talking to the live system.
         </p>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-slate-600">Product codes</label>
+        <label className={LABEL}>Product codes</label>
         <textarea
           rows={5}
           spellCheck={false}
@@ -133,9 +164,9 @@ export default function FormConfigPanel({
           }}
           onBlur={() => setDraft(config.productCodes.join(', '))}
         />
-        <p className="mt-1 text-xs text-slate-500">
-          Paste them separated by commas or new lines. Whitespace is trimmed and
-          repeats are dropped. Case is kept as typed.
+        <p className={HELP}>
+          Paste them separated by commas or new lines. Whitespace is trimmed and repeats are
+          dropped. Case is kept as typed.
         </p>
       </div>
 
@@ -155,7 +186,7 @@ export default function FormConfigPanel({
           )}
         </div>
         {config.productCodes.length === 0 ? (
-          <p className="mt-1 text-xs text-slate-500">None yet.</p>
+          <p className={HELP}>None yet.</p>
         ) : (
           <ul className="mt-1.5 flex flex-wrap gap-1">
             {config.productCodes.map((code) => (
@@ -169,15 +200,13 @@ export default function FormConfigPanel({
           </ul>
         )}
       </div>
+
       {buttons.length > 0 && (
         <div>
-          <label className="block text-xs font-medium text-slate-600">Submission buttons</label>
+          <label className={LABEL}>Submission buttons</label>
           <div className="mt-1 flex flex-col gap-1.5">
             {buttons.map((entry) => (
-              <label
-                key={entry.identifier}
-                className="flex items-center gap-2 text-sm text-slate-800"
-              >
+              <label key={entry.identifier} className="flex items-center gap-2 text-sm text-slate-800">
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
@@ -189,85 +218,67 @@ export default function FormConfigPanel({
               </label>
             ))}
           </div>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className={HELP}>
             Placing a button is what says this form offers that channel. They start hidden and are
             shown by the starter code.
           </p>
         </div>
       )}
 
-      {/* Read only. Every one of these follows from what is on the page, so
-          there is nothing here to set and nothing to fall out of step. */}
+      {/* Read only from here down. Every one of these follows from what is on
+          the page, so there is nothing to set and nothing to fall out of step. */}
       <div>
-        <label className="block text-xs font-medium text-slate-600">Signer rows</label>
+        <label className={LABEL}>Signer rows</label>
         {signerRows.length === 0 ? (
-          <p className="mt-1 text-xs text-slate-500">None placed.</p>
+          <p className={HELP}>None placed.</p>
         ) : (
-          <ul className="mt-1 flex flex-col gap-1">
-            {signerRows.map((row, i) => (
-              <li key={i} className="flex flex-wrap items-center gap-1.5">
-                <span className="w-16 shrink-0 font-mono text-xs text-slate-700">
-                  {SIGNER_PREFIX}
-                  {i + 1}
-                </span>
-                {SIGNER_PARTS.map((part) => (
-                  <span key={part.key}>
-                    {partChip(row[part.key], part.label, rowName(SIGNER_PREFIX, i + 1, part))}
-                  </span>
-                ))}
-              </li>
-            ))}
-          </ul>
+          <RowList
+            rows={signerRows}
+            prefix={SIGNER_PREFIX}
+            parts={SIGNER_PARTS}
+            width="w-16"
+            onPlace={onPlaceSpecial}
+          />
         )}
         <button
           type="button"
           disabled={signerRows.length >= maxSignerRows}
-          className="mt-1.5 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          className={`mt-1.5 ${ACTION}`}
           onClick={onAddSignerRow}
         >
           Add signer row
         </button>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className={HELP}>
           Drops all three parts on the page to drag into place. Draw a box and name it instead to
           place one on its own. Caps at {maxSignerRows}, the eSign slot count.
         </p>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-slate-600">Joint members</label>
+        <label className={LABEL}>Joint members</label>
 
-        <p className="mt-1 text-xs text-slate-500">
+        <p className={HELP}>
           Two shapes, filled independently. Numbered rows hold one member each and stop at{' '}
           {maxJointRows}, the combined line takes every name joined by commas. A form can carry
           either, both, or neither.
         </p>
 
         {jointRows.length > 0 && (
-          <ul className="mt-1.5 flex flex-col gap-1">
-            {jointRows.map((row, i) => (
-              <li key={i} className="flex flex-wrap items-center gap-1.5">
-                <span className="w-24 shrink-0 font-mono text-xs text-slate-700">
-                  {JOINT_PREFIX}
-                  {i + 1}
-                </span>
-                {JOINT_PARTS.map((part) => (
-                  <span key={part.key}>
-                    {partChip(row[part.key], part.label, rowName(JOINT_PREFIX, i + 1, part))}
-                  </span>
-                ))}
-              </li>
-            ))}
-          </ul>
+          <RowList
+            rows={jointRows}
+            prefix={JOINT_PREFIX}
+            parts={JOINT_PARTS}
+            width="w-24"
+            onPlace={onPlaceSpecial}
+          />
         )}
 
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           <button
             type="button"
             disabled={jointRows.length >= maxJointRows}
-            className="rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-            onClick={() =>
-              onPlaceSpecial(rowName(JOINT_PREFIX, jointRows.length + 1, jointNamePart))
-            }
+            className={ACTION}
+            onClick={() => onPlaceSpecial(rowName(JOINT_PREFIX, jointRows.length + 1, jointNamePart))}
           >
             Add joint row
           </button>
@@ -276,11 +287,7 @@ export default function FormConfigPanel({
               {COMBINED_JOINT_NAME} placed
             </span>
           ) : (
-            <button
-              type="button"
-              className="rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              onClick={() => onPlaceSpecial(COMBINED_JOINT_NAME)}
-            >
+            <button type="button" className={ACTION} onClick={() => onPlaceSpecial(COMBINED_JOINT_NAME)}>
               Add combined line
             </button>
           )}
