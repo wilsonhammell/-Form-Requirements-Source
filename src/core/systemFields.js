@@ -9,8 +9,13 @@
 // shows in several places.
 
 import { createField } from './schema.js';
-
-const SYSTEM_FIELDS_URL = `${import.meta.env?.BASE_URL ?? '/'}systemFields.json`;
+import {
+  fetchIdentifierList,
+  normalizeIdentifierList,
+  indexByIdentifier,
+  hasIdentifier,
+  publicUrl,
+} from './identifierList.js';
 
 // Worked out against the real page rather than stored, since a rect that fits
 // Letter is wrong on A4 and 80 percent of the width is a ratio anyway.
@@ -19,44 +24,26 @@ const WIDE = { widthRatio: 0.8, height: 18, gap: 6 };
 // A column per signer along the bottom, roughly where they land on a real form.
 const SIGNER = { columns: 5, height: 10, rowGap: 2, colGap: 4, margin: 6 };
 
-export async function loadSystemFields(url = SYSTEM_FIELDS_URL) {
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Could not load ${url} (${res.status}).`);
-  return normalizeSystemFields(await res.json());
-}
+const SYSTEM_LIST = {
+  what: 'System field list',
+  entry: (raw) => ({
+    // Every one is text today. Explicit so a future list can say otherwise
+    // without a code change.
+    type: raw?.type === 'checkbox' ? 'checkbox' : 'text',
+    placement: ['wide', 'signer'].includes(raw?.placement) ? raw.placement : 'compact',
+    column: Number.isInteger(raw?.column) ? raw.column : 1,
+    multiline: !!raw?.multiline,
+  }),
+};
 
-export function normalizeSystemFields(raw) {
-  if (!Array.isArray(raw)) throw new Error('System field list must be a JSON array.');
-  const out = [];
-  const seen = new Set();
-  for (const entry of raw) {
-    const identifier = String(entry?.identifier ?? '').trim();
-    if (!identifier || seen.has(identifier)) continue;
-    seen.add(identifier);
-    out.push({
-      identifier,
-      // Every one is text today. Explicit so a future list can say otherwise
-      // without a code change.
-      type: entry?.type === 'checkbox' ? 'checkbox' : 'text',
-      placement: ['wide', 'signer'].includes(entry?.placement)
-        ? entry.placement
-        : 'compact',
-      column: Number.isInteger(entry?.column) ? entry.column : 1,
-      multiline: !!entry?.multiline,
-    });
-  }
-  return out;
-}
+export const loadSystemFields = (url = publicUrl('systemFields.json')) =>
+  fetchIdentifierList(url, SYSTEM_LIST);
 
-export function buildSystemIndex(systemFields) {
-  return new Map(systemFields.map((f) => [f.identifier, f]));
-}
+export const normalizeSystemFields = (raw) => normalizeIdentifierList(raw, SYSTEM_LIST);
 
-// Derived, never stored.
-export function isSystemField(name, systemIndex) {
-  if (!name || !systemIndex) return false;
-  return systemIndex.has(name.trim());
-}
+export const buildSystemIndex = indexByIdentifier;
+
+export const isSystemField = hasIdentifier;
 
 // True when removing or renaming this field would leave a system name with no
 // placement at all. That is the one thing the tool refuses to allow.

@@ -1,30 +1,24 @@
 // The DB field list. The identifier is the PDF field name the downstream filler
 // matches on, so it is the only half ever persisted. Labels help someone pick.
 
-const DB_FIELDS_URL = `${import.meta.env?.BASE_URL ?? '/'}dbFields.json`;
+import {
+  fetchIdentifierList,
+  normalizeIdentifierList,
+  indexByIdentifier,
+  publicUrl,
+} from './identifierList.js';
 
-export async function loadDbFields(url = DB_FIELDS_URL) {
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Could not load ${url} (${res.status}).`);
-  return normalizeDbFields(await res.json());
-}
+const DB_LIST = {
+  what: 'DB field list',
+  entry: (raw, identifier) => ({ label: String(raw?.label ?? identifier).trim() }),
+};
 
-export function normalizeDbFields(raw) {
-  if (!Array.isArray(raw)) throw new Error('DB field list must be a JSON array.');
-  const out = [];
-  const seen = new Set();
-  for (const entry of raw) {
-    const identifier = String(entry?.identifier ?? '').trim();
-    if (!identifier || seen.has(identifier)) continue;
-    seen.add(identifier);
-    out.push({ identifier, label: String(entry?.label ?? identifier).trim() });
-  }
-  return out;
-}
+export const loadDbFields = (url = publicUrl('dbFields.json')) =>
+  fetchIdentifierList(url, DB_LIST);
 
-export function buildDbIndex(dbFields) {
-  return new Map(dbFields.map((f) => [f.identifier, f]));
-}
+export const normalizeDbFields = (raw) => normalizeIdentifierList(raw, DB_LIST);
+
+export const buildDbIndex = indexByIdentifier;
 
 // Names are matched exactly, since an almost right name is a silent failure
 // downstream. A case insensitive index only drives the "did you mean" hint.

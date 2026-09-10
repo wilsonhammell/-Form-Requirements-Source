@@ -10,6 +10,11 @@
 // supports that channel.
 
 import { createField } from './schema.js';
+import {
+  normalizeIdentifierList,
+  indexByIdentifier,
+  hasIdentifier,
+} from './identifierList.js';
 
 // Points, 72 to the inch. A real button measured 1.1007 x 0.2514 inches, so
 // 80 x 18 is a quarter inch tall exactly and under a point wider.
@@ -61,40 +66,27 @@ export function signingButtons() {
   return normalizeSigningButtons(SIGNING_BUTTONS);
 }
 
-export function normalizeSigningButtons(raw) {
-  if (!Array.isArray(raw)) throw new Error('Signing button list must be a JSON array.');
-  const out = [];
-  const seen = new Set();
-  for (const entry of raw) {
-    const identifier = String(entry?.identifier ?? '').trim();
-    if (!identifier || seen.has(identifier)) continue;
-    seen.add(identifier);
-    out.push({
-      identifier,
-      caption: String(entry?.caption ?? identifier).trim(),
-      width: positive(entry?.width, BUTTON_STYLE.width),
-      height: positive(entry?.height, BUTTON_STYLE.height),
-      fileOptics: entry?.fileOptics !== false,
-      script: String(entry?.script ?? ''),
-    });
-  }
-  return out;
-}
+const BUTTON_LIST = {
+  what: 'Signing button list',
+  entry: (raw, identifier) => ({
+    caption: String(raw?.caption ?? identifier).trim(),
+    width: positive(raw?.width, BUTTON_STYLE.width),
+    height: positive(raw?.height, BUTTON_STYLE.height),
+    fileOptics: raw?.fileOptics !== false,
+    script: String(raw?.script ?? ''),
+  }),
+};
+
+export const normalizeSigningButtons = (raw) => normalizeIdentifierList(raw, BUTTON_LIST);
 
 function positive(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-export function buildButtonIndex(buttons) {
-  return new Map(buttons.map((b) => [b.identifier, b]));
-}
+export const buildButtonIndex = indexByIdentifier;
 
-// Derived, never stored, exactly like isSystemField.
-export function isSubmissionButton(name, buttonIndex) {
-  if (!name || !buttonIndex) return false;
-  return buttonIndex.has(name.trim());
-}
+export const isSubmissionButton = hasIdentifier;
 
 export function hasButton(fields, identifier) {
   return fields.some((f) => f.name.trim() === identifier);
