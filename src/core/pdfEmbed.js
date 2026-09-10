@@ -1,10 +1,9 @@
-// Carrying the requirements JSON inside the PDF, so the definition travels with
-// the file and reopening an exported PDF is a full fidelity round trip.
+// The requirements JSON inside the PDF, so reopening an exported form is a full
+// fidelity round trip.
 //
-// Written twice on purpose. The catalog stream is what this tool reads back,
-// it is cheap to find and cannot be renamed by a user. The attachment is the
-// same bytes in Acrobat's attachment pane, so someone without this tool can
-// still get at the spec.
+// Written twice. The catalog stream is what this tool reads back, being cheap
+// to find and impossible for a user to rename. The attachment is the same bytes
+// in Acrobat's attachment pane, reachable without this tool.
 
 import { PDFName, PDFDict, PDFArray, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
 

@@ -1,6 +1,5 @@
-// The DB field list. Identifiers are the PDF field names the downstream filler
-// matches against column names, so the identifier is what gets persisted and
-// the label is only ever shown to help someone pick the right one.
+// The DB field list. The identifier is the PDF field name the downstream filler
+// matches on, so it is the only half ever persisted. Labels help someone pick.
 
 const DB_FIELDS_URL = `${import.meta.env?.BASE_URL ?? '/'}dbFields.json`;
 
@@ -38,8 +37,6 @@ export function buildCaseInsensitiveIndex(dbFields) {
   return map;
 }
 
-// Rank matches so an exact identifier hit sorts first, then prefix hits on the
-// identifier, then anything containing the query in either part.
 export function searchDbFields(dbFields, query, limit = 50) {
   const q = query.trim().toLowerCase();
   if (!q) return dbFields.slice(0, limit);

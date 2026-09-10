@@ -1,16 +1,13 @@
 import { isLoadAttempted } from '../core/schema.js';
 
-// What replaces the property panel when more than one field is selected.
-//
-// Only the flags worth setting in bulk are here. A customer facing name and a
-// note are per field by nature, and Custom Save Validation needs a note each, so
-// it can only be turned off from here, never on.
+// Only the flags worth setting in bulk. A customer facing name and a note are
+// per field by nature, and Custom Save Validation needs a note each, so it can
+// be cleared from here but never set.
 export default function BulkPanel({ fields, dbIndex, onPatch, onDelete, onClear }) {
   const count = (predicate) => fields.filter(predicate).length;
 
-  // Load Validation cannot stand on a name the database does not have, so
-  // reconcileField would drop it straight back off. Saying so beats a button
-  // that silently does nothing on half the selection.
+  // reconcileField would drop Load Validation straight back off these, so
+  // saying how many beats a button that silently does nothing on half of them.
   const skipped = count((f) => !isLoadAttempted(f.name, dbIndex));
 
   const lv = count((f) => f.loadValidated);

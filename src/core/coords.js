@@ -1,11 +1,9 @@
-// Coordinate transforms between PDF user space and browser display space.
+// Between PDF user space, y-up from the bottom-left of the CropBox, and display
+// space, y-down from the top-left of the canvas in CSS px. The CropBox is not
+// always the MediaBox and does not always start at 0,0.
 //
-// PDF user space is y-up from the bottom-left of the page. The visible area is
-// the CropBox, which is not always the MediaBox and does not always start at 0,0.
-// Display space is y-down from the top-left of the rendered canvas, in CSS px.
-//
-// Stored rects are always PDF user space. Scale is a display concern and is
-// applied last on the way out, first on the way in. Nothing here mutates state.
+// Stored rects are always PDF user space. Scale is a display concern, applied
+// last on the way out and first on the way in.
 
 // Page /Rotate is clockwise degrees, and may be negative or over 360.
 export function normalizeRotation(rotation) {
@@ -13,8 +11,7 @@ export function normalizeRotation(rotation) {
   return ((r % 360) + 360) % 360;
 }
 
-// Build the geometry a page needs for transforms. cropBox is [x0, y0, x1, y1]
-// in PDF user space, matching pdf.js page.view and pdf-lib getCropBox.
+// cropBox is [x0, y0, x1, y1], matching pdf.js page.view and pdf-lib getCropBox.
 export function makePageGeometry(cropBox, rotation = 0) {
   const [ax, ay, bx, by] = cropBox;
   const x0 = Math.min(ax, bx);
@@ -30,7 +27,7 @@ export function makePageGeometry(cropBox, rotation = 0) {
   };
 }
 
-// Size of the rendered page in CSS px. Rotation by 90 or 270 swaps the axes.
+// Rotation by 90 or 270 swaps the axes.
 export function viewportSize(geom, scale = 1) {
   const swapped = geom.rotation === 90 || geom.rotation === 270;
   return {
@@ -39,7 +36,6 @@ export function viewportSize(geom, scale = 1) {
   };
 }
 
-// PDF user space point to display point.
 export function pdfPointToView(geom, scale, point) {
   const { x0, y0, cropWidth: cw, cropHeight: ch, rotation } = geom;
   const u = point.x - x0;
@@ -66,7 +62,7 @@ export function pdfPointToView(geom, scale, point) {
   return { x: X * scale, y: Y * scale };
 }
 
-// Display point to PDF user space point, the exact inverse of pdfPointToView.
+// The exact inverse of pdfPointToView.
 export function viewPointToPdf(geom, scale, point) {
   const { x0, y0, cropWidth: cw, cropHeight: ch, rotation } = geom;
   const X = point.x / scale;
@@ -93,9 +89,8 @@ export function viewPointToPdf(geom, scale, point) {
   return { x: u + x0, y: v + y0 };
 }
 
-// A stored rect is {x, y, width, height} with x,y at the lower-left corner in
-// PDF user space. Rotation can send any corner to any side, so transform two
-// opposite corners and rebuild from the extremes.
+// Rotation can send any corner to any side, so two opposite corners are
+// transformed and the rect rebuilt from the extremes.
 export function pdfRectToView(geom, scale, rect) {
   const a = pdfPointToView(geom, scale, { x: rect.x, y: rect.y });
   const b = pdfPointToView(geom, scale, {
@@ -110,7 +105,6 @@ export function pdfRectToView(geom, scale, rect) {
   };
 }
 
-// Display rect {left, top, width, height} in CSS px to a stored PDF rect.
 export function viewRectToPdf(geom, scale, view) {
   const a = viewPointToPdf(geom, scale, { x: view.left, y: view.top });
   const b = viewPointToPdf(geom, scale, {
@@ -125,7 +119,7 @@ export function viewRectToPdf(geom, scale, view) {
   };
 }
 
-// Keep a rect inside the CropBox, preserving its size where possible.
+// Size is preserved where it can be.
 export function clampRectToPage(geom, rect) {
   const width = Math.min(rect.width, geom.cropWidth);
   const height = Math.min(rect.height, geom.cropHeight);

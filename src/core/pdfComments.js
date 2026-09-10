@@ -1,12 +1,8 @@
-// Removing reviewer comments from the exported PDF.
-//
-// Draft forms are marked up in Acrobat, and those sticky notes should not ship
-// on the finished form. They live in the same page /Annots array as the fields,
-// so this is a filter on that array rather than anything structural.
+// Reviewer comments live in the same page /Annots array as the fields, so
+// dropping them is a filter on that array rather than anything structural.
 //
 // The list says what to remove rather than what to keep, so an annotation type
-// nobody thought about survives. Widgets are the fields and links are
-// navigation, neither is a comment.
+// nobody thought about survives.
 
 import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
 
@@ -35,10 +31,7 @@ export const COMMENT_SUBTYPES = [
 
 const REMOVED = new Set(COMMENT_SUBTYPES.map((name) => `/${name}`));
 
-/**
- * Drops every comment annotation from every page. Returns how many went, so the
- * caller can say so rather than doing it silently.
- */
+/** Returns how many went, so the caller can say so rather than do it silently. */
 export function stripComments(pdfDoc) {
   const context = pdfDoc.context;
   let removed = 0;

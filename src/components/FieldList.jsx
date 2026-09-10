@@ -11,29 +11,12 @@ const DOT = {
   standard: 'bg-blue-500',
 };
 
-// Mirror of what is on the canvas. Selecting here selects there and the other
-// way round.
-//
-// More than one row can be selected, because setting the same validation flag on
-// forty fields one at a time is the bulk of the work on an imported form. Shift
-// extends from the last row clicked, Ctrl or Cmd adds and removes one. The
-// property panel still edits the last one clicked, the bulk bar handles the set.
-//
-// Two shapes here, matching what Acrobat's Fields panel does:
-//
-//   A radio group is nested, because its options are genuinely parts of one
-//   field. Each option is labelled by its export value, not a number, since the
-//   value is what tells the options apart. Two options may carry the same value
-//   and both show it, that being radios in unison rather than a mistake.
-//
-//   Any other repeated name stays a flat row with a #0, #1 suffix. A checkbox
-//   placed twice is still just a field placed twice, so it reads as one.
-//
-// Either way the suffix is display only, exactly as in Acrobat, and never
-// reaches the stored name.
-// The order rows appear in, grouped by page then by name. Arrow key navigation
-// needs the same order the eye sees, so it is worked out here and exported
-// rather than guessed at from the unsorted field array.
+// Two shapes, the same two Acrobat's Fields panel uses. A radio group nests,
+// since its options are parts of one field. Any other repeated name stays flat
+// and numbered. Either suffix is display only and never reaches the stored name.
+
+// Exported because arrow key navigation has to walk the order the eye sees, not
+// the order the field array happens to hold.
 export function fieldListOrder(fields) {
   const ids = [];
   for (const [, pageFields] of groupByPage(fields)) {
@@ -44,8 +27,6 @@ export function fieldListOrder(fields) {
   return ids;
 }
 
-// Page number to its fields, lowest page first, which is the order rows render
-// in and the order arrow keys walk.
 function groupByPage(fields) {
   const byPage = new Map();
   for (const field of fields) {
@@ -71,9 +52,8 @@ export default function FieldList({
     selectedRef.current?.scrollIntoView({ block: 'nearest' });
   }, [selectedId]);
 
-  // Numbering runs across the whole document, not per page, since one field's
-  // placements can sit on different pages. The running count doubles as the
-  // final total once every field has been walked.
+  // Numbering runs across the document rather than per page, since one name's
+  // placements can sit on different pages.
   const placement = useMemo(() => {
     const indexById = new Map();
     const countByName = new Map();
@@ -114,9 +94,6 @@ export default function FieldList({
           </div>
           <ul>
             {groupByName(pageFields).map((group) => {
-              // Only a radio group is a real parent. Anything else repeated is
-              // just one field placed more than once, so it stays flat and is
-              // numbered instead.
               const isRadioGroup = group.name && group.fields[0].type === 'radio';
               if (!isRadioGroup) {
                 const repeated = group.name && placement.countByName.get(group.name) > 1;
@@ -158,7 +135,7 @@ export default function FieldList({
   );
 }
 
-// Placements of one name are shown together even when something else was drawn
+// Placements of one name show together even when something else was drawn
 // between them.
 function groupByName(pageFields) {
   const groups = new Map();
@@ -187,8 +164,8 @@ function FieldRow({
   onGoToPage,
 }) {
   const tone = fieldTone(field, { system, attempted });
-  // Inside a radio group the option's own value is its identity, so it stands in
-  // for the name rather than repeating the group name on every row.
+  // Inside a radio group the option's value is its identity, so it stands in for
+  // the name rather than repeating the group name on every row.
   const label = asOption ? field.exportValue || '(no value)' : field.name || '(unnamed)';
   return (
     <button

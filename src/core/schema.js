@@ -1,19 +1,16 @@
-// The field model and the JSON document format. JSON is the source of truth,
+// The field model and the JSON document format. JSON is the source of truth and
 // the PDF is generated from it.
 //
-// Load Attempted is derived, never stored. A field is Load Attempted when its
-// name matches an identifier in the DB field list. loadValidated is only
-// meaningful for a Load Attempted field and is cleared as soon as the name
-// stops matching. saveValidated is independent, any field can carry it.
+// Load Attempted is derived, never stored. loadValidated clears itself as soon
+// as the name stops matching the DB list. saveValidated stands on any field.
 
 export const SCHEMA_VERSION = 1;
 
 // A button carries no value, so it takes none of the machinery the other four
-// do: no export value, no options, no alignment, no validation.
+// do.
 export const FIELD_TYPES = ['text', 'checkbox', 'radio', 'dropdown', 'button'];
 
-// Form level configuration, one set per document rather than per field. It
-// describes the form itself and is carried in the JSON for whatever generates
+// Form level, one set per document. Carried in the JSON for whatever generates
 // code from it later, so nothing here affects the exported AcroForm.
 export const FORM_TYPES = [
   { value: 'person', label: 'Person' },
@@ -23,8 +20,8 @@ export const FORM_TYPES = [
 
 const FORM_TYPE_VALUES = new Set(FORM_TYPES.map((t) => t.value));
 
-// Which FileOptics the form talks to. Decides the flow id the submit paths send,
-// FO or TFO and so on, so shipping a form on TEST sends it nowhere real.
+// Decides the flow id the submit paths send, so a form left on TEST sends
+// nowhere real.
 export const ENVIRONMENTS = [
   { value: 'TEST', label: 'Test' },
   { value: 'PROD', label: 'Production' },
@@ -34,10 +31,9 @@ const ENVIRONMENT_VALUES = new Set(ENVIRONMENTS.map((e) => e.value));
 
 export const DEFAULT_CONFIG = { formType: 'person', productCodes: [], environment: 'TEST' };
 
-// Product codes are pasted, so accept whatever a paste brings: commas, but also
-// the newlines and tabs a spreadsheet column arrives with. Codes are kept as
-// typed rather than upper cased, since something downstream matches on them and
-// this tool does not get to decide their case.
+// These are pasted, so a spreadsheet column's newlines and tabs count as
+// separators too. Case is left as typed, since something downstream matches on
+// these and this tool does not get to decide.
 export function parseProductCodes(text) {
   const seen = new Set();
   const codes = [];
@@ -58,8 +54,8 @@ export function createConfig(partial = {}) {
     productCodes: Array.isArray(partial?.productCodes)
       ? parseProductCodes(partial.productCodes.join(','))
       : parseProductCodes(partial?.productCodes),
-    // Defaults to TEST on purpose. A form that reaches production untouched
-    // fails safe by talking to the test endpoint rather than the live one.
+    // A form that reaches production untouched fails safe by talking to the
+    // test endpoint rather than the live one.
     environment: ENVIRONMENT_VALUES.has(partial?.environment)
       ? partial.environment
       : DEFAULT_CONFIG.environment,
@@ -69,8 +65,8 @@ export function createConfig(partial = {}) {
 // The viewer draws a value as text for these, so a font and an alignment apply.
 export const TEXT_RENDERING_TYPES = ['text', 'dropdown'];
 
-// Quadding, the /Q entry every variable text field carries. Stored by name
-// rather than as 0, 1, 2 so the requirements JSON reads as English.
+// Stored by name rather than as 0, 1, 2 so the requirements JSON reads as
+// English.
 export const TEXT_ALIGNMENTS = [
   { value: 'left', label: 'Left' },
   { value: 'center', label: 'Center' },
@@ -85,11 +81,10 @@ export function alignmentFromQuadding(q) {
 }
 
 // These carry an on-state export value. The filler compares the database value
-// against it exactly, so it is part of the requirement, not a cosmetic detail.
+// against it exactly, so it is part of the requirement rather than a detail.
 //
-// Two options of one radio group may share a value. That is Acrobat's
-// radios-in-unison behaviour, the same choice offered in more than one place and
-// selected together, so it is allowed rather than reported.
+// Two options of one radio group may share a value, that being Acrobat's radios
+// in unison, so it is allowed rather than reported.
 export const EXPORT_VALUE_TYPES = ['checkbox', 'radio'];
 
 export const DEFAULT_SIZE = {
@@ -100,17 +95,15 @@ export const DEFAULT_SIZE = {
   button: { width: 120, height: 24 },
 };
 
-// Acrobat pre-fills these, a checkbox with Yes and each radio option with
-// Choice1, Choice2 and so on, so a group works the moment it is drawn. The
-// radio number depends on what is already placed, so it is filled in by
-// nextRadioExportValue rather than being a constant.
+// Acrobat pre-fills these and so does this tool, so a group works the moment it
+// is drawn. The radio number depends on what is already placed, which is why it
+// comes from nextRadioExportValue rather than from here.
 export const DEFAULT_EXPORT_VALUE = { checkbox: 'Yes', radio: '' };
 
 export const RADIO_VALUE_PREFIX = 'Choice';
 
-// The lowest placeholder not already taken, so a new option never lands on the
-// same value as an existing one. One of the first used.size + 1 candidates is
-// always free, so the loop always returns.
+// The lowest placeholder not taken, so a new option never collides. One of the
+// first used.size + 1 candidates is always free, so the loop always returns.
 export function nextRadioExportValue(fields) {
   const used = new Set(
     fields.filter((f) => f.type === 'radio').map((f) => (f.exportValue ?? '').trim())
@@ -121,21 +114,18 @@ export function nextRadioExportValue(fields) {
   }
 }
 
-// Characters that survive PDF name encoding untouched. Anything outside this
-// gets escaped as #xx in the file, so the filler would compare against the
-// escaped form and never match.
+// Characters that survive PDF name encoding untouched. Anything outside this is
+// escaped as #xx in the file, so the filler would compare against the escaped
+// form and never match.
 //
-// The PDF way around that restriction is the /Opt array, which holds the real
-// strings while the appearance states stay simple indices. Readers that take
-// the export value straight off the appearance state, this project's filler
-// among them, never see /Opt, so staying inside these characters is what keeps
-// the two ends agreeing.
+// /Opt is the PDF way around the restriction, but a reader taking the export
+// value straight off the appearance state never sees it, and this project's
+// filler is one of those.
 export const EXPORT_VALUE_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
-// Values are pdf-lib StandardFonts names, embeddable in every reader with no
-// font file of our own to license. Arial isn't one of the 14 standard PDF
-// fonts, but it's metrically identical to Helvetica and is what Acrobat and
-// Windows readers substitute for it, so "Helvetica" reads as Arial on screen.
+// pdf-lib StandardFonts names, embeddable everywhere with no font file to
+// license. Arial is not one of the 14, but it is metrically identical to
+// Helvetica and is what readers substitute, so Helvetica reads as Arial.
 export const FONT_FAMILIES = [
   { value: 'Helvetica', label: 'Arial' },
   { value: 'Times-Roman', label: 'Times New Roman' },
@@ -151,8 +141,8 @@ const MAX_FONT_SIZE = 72;
 
 function newId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-  // crypto.randomUUID needs a secure context, which plain http on an intranet
-  // host is not. Only needs to be unique within a session.
+  // randomUUID needs a secure context, which plain http on an intranet host is
+  // not. Only has to be unique within a session.
   return 'f-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
@@ -171,11 +161,10 @@ export function createField(partial = {}) {
       height: Math.max(1, num(partial.rect?.height, DEFAULT_SIZE[type].height)),
     },
     font: normalizeFont(partial.font),
-    // Visibility is an annotation flag, so unlike editable it belongs to the
-    // placement. One placement of a name can be hidden while another shows.
+    // An annotation flag, so unlike editable it belongs to the placement. One
+    // placement of a name can be hidden while another shows.
     hidden: !!partial.hidden,
-    // Both are field level, like the font, so every placement of a name shares
-    // them. That is how Acrobat models them too.
+    // Field level, like the font, so every placement of a name shares them.
     alignment: ALIGNMENT_QUADDING[partial.alignment] !== undefined ? partial.alignment : 'left',
     multiline: !!partial.multiline,
     exportValue:
@@ -184,10 +173,8 @@ export function createField(partial = {}) {
         : (DEFAULT_EXPORT_VALUE[type] ?? ''),
     options: normalizeOptions(partial.options),
     note: typeof partial.note === 'string' ? partial.note : '',
-    // What this field is called on the form the customer reads. One DB field
-    // wears different labels on different forms, CUSTNAME might be "Name" on
-    // one and "Account Holder" on another, so it belongs to the placement
-    // rather than to the DB list.
+    // One DB field wears different labels on different forms, so the label
+    // belongs to the placement rather than to the DB list.
     customerFacingName:
       typeof partial.customerFacingName === 'string' ? partial.customerFacingName : '',
     loadValidated: !!partial.loadValidated,
@@ -199,12 +186,10 @@ export function createField(partial = {}) {
   };
 }
 
-// A choice option carries what gets stored and what the reader sees. They are
-// usually the same, but a form can show "Ontario" while the value written is
-// "ON", which is what the /Opt array's two string form is for.
+// An option carries what gets stored and what the reader sees. A form can show
+// Ontario while writing ON, which is what /Opt's two string form is for.
 //
-// Bare strings are accepted so an older document, or a hand written one, still
-// loads: the string becomes both halves.
+// A bare string becomes both halves, so a hand written document still loads.
 export function normalizeOptions(raw) {
   if (!Array.isArray(raw)) return [];
   const out = [];
@@ -221,8 +206,7 @@ export function normalizeOptions(raw) {
   return out;
 }
 
-// One per line, "value = label" where they differ. A tab counts as the
-// separator too, so a two column paste out of a spreadsheet lands correctly.
+// A tab separates too, so a two column paste out of a spreadsheet lands right.
 const OPTION_SEPARATOR = /^([^=\t]*)[=\t](.*)$/;
 
 export function parseOptionLines(text) {
@@ -264,9 +248,8 @@ export function isLoadAttempted(name, dbIndex) {
   return dbIndex.has(name.trim());
 }
 
-// Enforce the flags that cannot stand on their own. Call this after anything
-// that can change a name, a note, or the DB list. Returns the same object when
-// nothing needed fixing, so callers can skip a re-render.
+// Call after anything that can change a name, a note or the DB list. Returns
+// the same object when nothing needed fixing, so callers can skip a re-render.
 export function reconcileField(field, dbIndex) {
   const patch = {};
 
@@ -275,22 +258,20 @@ export function reconcileField(field, dbIndex) {
     patch.loadValidated = false;
   }
 
-  // Nor can it stand without the customer facing name. Validating that a field
-  // loads is a claim about a specific label on a specific form, so the label is
-  // part of the claim.
+  // Nor without the customer facing name. Validating that a field loads is a
+  // claim about a specific label on a specific form.
   if (field.loadValidated && !field.customerFacingName?.trim()) {
     patch.loadValidated = false;
   }
 
-  // Custom Save Validation exists to flag a situation the plain flag cannot
-  // describe, so it is meaningless without the note that describes it.
+  // The note is what describes the custom situation, so the flag is meaningless
+  // without one.
   if (field.customSaveValidated && !field.note?.trim()) {
     patch.customSaveValidated = false;
   }
 
-  // The two save flags are mutually exclusive. The UI cannot produce both, so
-  // this only fires on a hand edited file. The plain flag wins, being the one
-  // with no preconditions of its own.
+  // Only a hand edited file reaches here, the UI cannot produce both. The plain
+  // flag wins, being the one with no preconditions of its own.
   if (field.saveValidated && field.customSaveValidated) {
     patch.customSaveValidated = false;
   }
@@ -308,8 +289,8 @@ export function reconcileFields(fields, dbIndex) {
   return changed ? next : fields;
 }
 
-// The JSON document. Only the modelled attributes are written, so a reader
-// never has to guess which keys are meaningful.
+// Only the modelled attributes are written, so a reader never has to guess
+// which keys are meaningful.
 export function serializeDocument(fields, meta = {}) {
   const config = createConfig(meta.config);
   return {
@@ -379,16 +360,14 @@ export function parseDocument(raw, dbIndex) {
   };
 }
 
-// Only things worth acting on. A name placed more than once is deliberate and
-// fully supported, so it is not listed here.
+// Only things worth acting on. A repeated name is deliberate and supported, so
+// it is not one of them.
 //
-// Every issue carries the ids it counted, so the panel can filter the list down
-// to exactly the fields it is complaining about. A count on its own means going
-// hunting through eighty rows to find the three it meant.
+// Every issue carries the ids it counted, so the panel can filter the list to
+// exactly the fields it named. A count alone means hunting through eighty rows.
 //
-// isRuntimeFilled says which dropdowns the starter code fills on load. It is
-// passed in rather than imported: this module is the base model and depends on
-// nothing, while the naming rule it needs lives in specialFields.js, which
+// isRuntimeFilled is passed in rather than imported. This module is the base
+// model and depends on nothing, while the rule lives in specialFields.js, which
 // depends on this one.
 export function fieldIssues(
   fields,
@@ -399,7 +378,7 @@ export function fieldIssues(
   const issues = [];
   const plural = (n, one, many) => (n === 1 ? one : many);
 
-  // Reports one issue naming the fields it matched, or nothing when none did.
+  // One issue naming the fields it matched, or nothing when none did.
   const count = (level, matches, describe) => {
     const hit = fields.filter(matches);
     if (hit.length === 0) return;
@@ -423,8 +402,7 @@ export function fieldIssues(
     (n) => `${n} field${plural(n, '', 's')} ha${plural(n, 's', 've')} no name.`
   );
 
-  // The filler matches the database value against the export value exactly, so
-  // a missing or unencodable one is a silent no-fill, not a cosmetic problem.
+  // A missing or unencodable export value is a silent no-fill downstream.
   count(
     'error',
     (f) => EXPORT_VALUE_TYPES.includes(f.type) && !f.exportValue.trim(),
@@ -444,18 +422,17 @@ export function fieldIssues(
     }
   }
 
-  // A signer name menu is filled from the DNA data on load, so it is meant to be
-  // empty here. Counting it would put a permanent warning on every form that has
-  // signers.
+  // A signer name menu is filled from DNA on load, so counting it would put a
+  // permanent warning on every form that has signers.
   count(
     'warn',
     (f) => f.type === 'dropdown' && f.options.length === 0 && !isRuntimeFilled(f.name),
     (n) => `${n} dropdown${plural(n, ' has', 's have')} no options.`
   );
 
-  // A name outside the DB list is not a fault. Plenty of fields are typed into
-  // by hand and never filled, so counting them put a number on the panel that
-  // was healthy on every form. It is a filter worth having, not a warning.
+  // A name outside the DB list is deliberately not an issue. Plenty of fields
+  // are typed by hand and never filled, so counting them put a number on the
+  // panel that was healthy on every form.
 
   return issues;
 }

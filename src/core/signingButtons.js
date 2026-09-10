@@ -1,25 +1,18 @@
-// Submission buttons: the signing channels a form offers.
+// The signing channels a form offers, one pushbutton each.
 //
-// A pushbutton has no value. Nothing fills it, nothing validates it, and the
-// filler skips it entirely, which is why it carries none of the machinery the
-// other four types do.
+// A pushbutton has no value, which is why it carries none of the machinery the
+// other four types do. The type is plain button and membership in this list is
+// what makes one a submission button, so a generic button would be the same
+// type under a name the list does not hold.
 //
-// The field type is plain "button" and membership in this list is what makes
-// one a submission button, derived from the name the way system fields are. A
-// generic button, if one is ever wanted, is the same type with a name that is
-// not in the list, so nothing here has to be renamed to make room for it.
-//
-// The rule is the mirror of a system field's: at most one placement of each
-// name, where a system name needs at least one. Placing a button is what says
-// the form supports that channel, so there is no separate flag to fall out of
-// step with the buttons themselves.
+// The rule mirrors a system field's. At most one placement of each name, where
+// a system name needs at least one, and placing one is what says the form
+// supports that channel.
 
 import { createField } from './schema.js';
 
-// Every button looks the same, so the styling is one constant rather than four
-// copies. Sizes are PDF points, 72 to the inch: 80 x 18 is 1.111 x 0.25 inches,
-// within a hundredth of an inch of the measured button and round in the unit
-// everything else here is stored in.
+// Points, 72 to the inch. A real button measured 1.1007 x 0.2514 inches, so
+// 80 x 18 is a quarter inch tall exactly and under a point wider.
 export const BUTTON_STYLE = {
   width: 80,
   height: 18,
@@ -32,21 +25,17 @@ export const BUTTON_STYLE = {
   borderStyle: 'B',
 };
 
-// Defined here rather than in a data file on purpose. dbFields.json and
-// systemFields.json are swapped by the business, but nothing about a button is:
-// the captions are the product's, the sizes are fixed, and the action is
-// JavaScript this repo maintains. Nobody using this tool edits code.
+// In source rather than in a data file. The business swaps dbFields.json and
+// systemFields.json, but nothing about a button is theirs to change, and the
+// script is JavaScript this repo maintains.
+//
 // fileOptics says whether the button belongs in FILEOPTICS_BUTTON_FIELDS, the
-// list the starter code shows and hides together. Print is not one of them, it
-// never goes to FileOptics, which is why both example forms list only three.
+// set the starter code shows and hides together. Print never goes to FileOptics.
 export const SIGNING_BUTTONS = [
   {
     identifier: 'PhoneAuthButton',
     caption: 'Phone Auth',
     fileOptics: true,
-    // The action, run when the mouse is released over the button. Each is a
-    // call into the helper script, the same on every form, since the scripts
-    // are exported afresh each time.
     script: 'submitPhoneAuth();',
   },
   {
@@ -64,13 +53,10 @@ export const SIGNING_BUTTONS = [
   { identifier: 'PrintButton', caption: 'Print Form', fileOptics: false, script: 'submitPrintOnly();' },
 ];
 
-// Buttons are a fixed size, so only a position is chosen. Each one keeps the
-// same slot whatever else is placed, so adding a third does not shuffle the two
-// already on the page.
 const SLOT = { gap: 8, margin: 6, bottom: 50 };
 
-// The list still goes through the normaliser, so a malformed edit here is
-// caught the same way a malformed data file would be.
+// Through the normaliser even though it is a literal, so a malformed edit here
+// is caught the way a malformed data file would be.
 export function signingButtons() {
   return normalizeSigningButtons(SIGNING_BUTTONS);
 }
@@ -114,9 +100,8 @@ export function hasButton(fields, identifier) {
   return fields.some((f) => f.name.trim() === identifier);
 }
 
-// One slot per entry, laid left to right above the signer row. Position is by
-// list order rather than by how many are placed, so a button lands in the same
-// spot whether it is the first one added or the last.
+// Slot by list order rather than by how many are placed, so a button lands in
+// the same spot whether it was added first or last.
 export function buttonSlotRect(entry, buttons, cropBox) {
   const [x0, y0, x1] = cropBox;
   const slot = Math.max(0, buttons.findIndex((b) => b.identifier === entry.identifier));
@@ -129,9 +114,8 @@ export function buttonSlotRect(entry, buttons, cropBox) {
   };
 }
 
-// Placing one is what says the form supports that channel, so this is the whole
-// of "turn this channel on". Adding one already present is a no-op, a button
-// appears at most once.
+// The whole of turning a channel on. Adding one already placed is a no-op,
+// since a button appears at most once.
 export function addButton(fields, entry, buttons, cropBox, page = 0) {
   if (hasButton(fields, entry.identifier)) return fields;
   return [
@@ -141,8 +125,7 @@ export function addButton(fields, entry, buttons, cropBox, page = 0) {
       type: 'button',
       page,
       rect: buttonSlotRect(entry, buttons, cropBox),
-      // Shown and hidden by the starter code at run time, so it starts hidden
-      // and the designer rarely touches it.
+      // The starter code shows it at run time.
       hidden: true,
       editable: false,
     }),

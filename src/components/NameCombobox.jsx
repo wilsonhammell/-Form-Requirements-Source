@@ -2,9 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { searchDbFields } from '../core/dbFields.js';
 import { isSpecialField } from '../core/specialFields.js';
 
-// The name is the whole point of the tool, so this shows the DB list to pick
-// from but never blocks a custom name. What it will not do is quietly persist a
-// label, only the identifier is ever written.
+// Offers the DB list but never blocks a custom name. What it will not do is
+// quietly persist a label, only the identifier is ever written.
 export default function NameCombobox({
   value,
   dbFields,
@@ -23,9 +22,8 @@ export default function NameCombobox({
     [dbFields, value]
   );
 
-  // Signer and joint names are offered above the DB list, and only while
-  // placing one would be legal. That is what keeps rows contiguous and the
-  // combined line unique, with no rule to break.
+  // Above the DB list, and only while placing one would be legal, which is what
+  // keeps rows contiguous with no rule to break.
   const specialMatches = useMemo(() => {
     const q = (value ?? '').trim().toLowerCase();
     const hit = (o) => o.name.toLowerCase().includes(q) || o.label.toLowerCase().includes(q);
@@ -43,8 +41,7 @@ export default function NameCombobox({
   const trimmed = (value ?? '').trim();
   const special = isSpecialField(trimmed);
   const attempted = dbIndex.has(trimmed);
-  // An exact match on everything but case is the most common near miss, and it
-  // fails silently downstream, so call it out.
+  // The most common near miss, and one that fails silently downstream.
   const nearMiss = !attempted && trimmed ? caseIndex.get(trimmed.toLowerCase()) : undefined;
 
   useEffect(() => {
@@ -97,10 +94,9 @@ export default function NameCombobox({
           onChange(e.target.value);
           setOpen(true);
         }}
-        // Selected on focus so the existing name can be typed straight over.
-        // Renaming is the common action here and a field arrives with a name
-        // already in the box, so a bare caret means selecting the lot by hand
-        // before every edit. A second click still places the caret to amend.
+        // Renaming is the common action and the box arrives with a name in it,
+        // so a bare caret would mean selecting the lot by hand before every
+        // edit. A second click still places the caret to amend.
         onFocus={(e) => {
           e.target.select();
           setOpen(true);

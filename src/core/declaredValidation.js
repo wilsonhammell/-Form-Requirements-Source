@@ -1,20 +1,12 @@
-// Reading what a built form says about its own validation.
+// What a built form declares about its own validation, from the
+// LOAD_VALIDATION_FIELDS and SAVE_VALIDATION_FIELDS arrays an older Main holds.
 //
-// A form that has been through the old process declares this in Main:
+// Reported and never applied. Filling the requirements in from the form they
+// are meant to specify would leave a tester ticking Pass against inherited
+// values, checking the form against itself.
 //
-//   var LOAD_VALIDATION_FIELDS = [["ACCOUNT_NUMBER", "Account Number"], ...];
-//   var SAVE_VALIDATION_FIELDS = ["txtAcct1", "Member1Name"];
-//
-// That is the Load Validation flag, the Save Validation flag, and the customer
-// facing label, all sitting in the file already.
-//
-// It is reported and never applied. Setting the flags from here would mean the
-// requirements document was filled in from the form it is meant to specify, and
-// a tester ticking Pass against inherited values checks nothing. So this tells a
-// person what the old form declared and they decide what is still true.
-//
-// Nothing is executed. Both are arrays of string literals and are read as such,
-// so a form carrying anything else yields nothing rather than running it.
+// Nothing is executed. Both are read as arrays of string literals, so a form
+// building its list by other means yields nothing rather than running it.
 
 const OWNED_SCRIPTS = ['Helper_Functions', 'Main'];
 

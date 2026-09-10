@@ -1,11 +1,8 @@
-// Which family a field reads as on screen, and the one place that decides it.
+// Which family a field reads as, and which group it filters into. Two related
+// questions with different answers, in one place so the canvas, the field list
+// and the workbook cannot drift on either.
 //
-// The canvas and the field list both colour a field by the same rule, and both
-// used to spell it out as a chain of ternaries, once per thing being coloured.
-// Five copies of one priority order is five chances for them to drift, so the
-// order lives here and each view only maps a tone to its own classes.
-//
-// system and attempted are passed in rather than derived: both need an index the
+// system and attempted are passed in rather than derived. Both need an index the
 // caller already holds, and system means the canonical placement rather than
 // merely a system name.
 
@@ -15,20 +12,16 @@ export const FIELD_TONES = ['button', 'special', 'system', 'attempted', 'standar
 
 export function fieldTone(field, { system = false, attempted = false } = {}) {
   if (field.type === 'button') return 'button';
-  // Teal marks the signer and joint families: visible and member facing, unlike
-  // the grey system fields.
   if (isSpecialField(field.name)) return 'special';
   if (system) return 'system';
   return attempted ? 'attempted' : 'standard';
 }
 
-// Which group a field belongs to for the view filter. Every field lands in
-// exactly one, so the four together are the whole form and any subset is a
-// legible view.
+// Every field lands in exactly one, so the four together are the whole form and
+// any subset is a legible view.
 //
-// Order matters. The eSign label and code box are special fields, but they
-// belong to the Remote eSign button rather than to the signers, so they are
-// claimed first.
+// Order matters. The eSign label and code box are special fields but belong to
+// the Remote eSign button, so submission claims them first.
 export const FIELD_SCOPES = ['standard', 'system', 'signers', 'submission'];
 
 export function fieldScope(field, { system = false, submissionButton = false } = {}) {

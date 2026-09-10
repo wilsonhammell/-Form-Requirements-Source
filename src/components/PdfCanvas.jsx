@@ -9,8 +9,8 @@ import { isLoadAttempted } from '../core/schema.js';
 import { BUTTON_STYLE } from '../core/signingButtons.js';
 import { fieldTone } from '../core/fieldTone.js';
 
-// Border, fill and name tag per tone. Load Attempted takes an emerald border but
-// keeps the ordinary blue fill, so the page does not read as a wall of green.
+// Load Attempted takes an emerald border but keeps the ordinary blue fill, so
+// the page does not read as a wall of green.
 const TONE_STYLE = {
   button: { border: 'border-violet-500', fill: 'bg-violet-400/15', tag: 'bg-violet-500' },
   special: { border: 'border-teal-600', fill: 'bg-teal-400/15', tag: 'bg-teal-600' },
@@ -19,29 +19,25 @@ const TONE_STYLE = {
   standard: { border: 'border-blue-500', fill: 'bg-blue-400/10', tag: 'bg-blue-500' },
 };
 
-// A glance-level hint of what each box is, since a text field and a dropdown
-// are the same shape otherwise.
+// A text field and a dropdown are otherwise the same shape.
 const TYPE_MARK = {
   checkbox: '✕',
   radio: '●',
   dropdown: '▾',
 };
 
-// A submission button is a fixed size by definition, so it moves but does not
-// resize.
+// The button list fixes the size, so a button moves but does not resize.
 const FIXED_SIZE_TYPES = ['button'];
 
-// A button is the one type that is genuinely drawn in the PDF, so it is drawn
-// here too rather than shown as an outline. Acrobat does the same, and shows it
-// even while it is hidden, so a designer can see where it sits.
 const rgbCss = ([r, g, b]) =>
   `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
 
-// /BS /S B is a bevel, which is a light top left edge and a dark bottom right
-// one over the face colour. Two inset shadows are the closest CSS gets.
+// A button is the one type genuinely drawn in the PDF, so it is drawn here too
+// rather than outlined. /BS /S B is a bevel, and two inset shadows are the
+// closest CSS gets.
 //
-// These are inline, so they beat the border and ring classes every other box
-// uses. Selection shows as an outline instead, which nothing here overrides.
+// Inline, so these beat the border and ring classes every other box uses, which
+// is why selection shows as an outline instead.
 function buttonStyle(zoom, selected) {
   const bevel = Math.max(1, Math.round(zoom));
   return {
@@ -54,8 +50,7 @@ function buttonStyle(zoom, selected) {
   };
 }
 
-// Smallest rectangle worth keeping, in screen pixels, so a stray click does not
-// leave a sliver of a field behind.
+// Screen pixels, so a stray click does not leave a sliver of a field behind.
 const MIN_DRAW_PX = 6;
 const MIN_FIELD_PX = 4;
 
@@ -93,7 +88,7 @@ export default function PdfCanvas({
   const [draft, setDraft] = useState(null);
   const [renderError, setRenderError] = useState(null);
 
-  // Render the page. Zoom only ever changes what is painted, never what is stored.
+  // Zoom only ever changes what is painted, never what is stored.
   useEffect(() => {
     if (!doc) {
       setGeom(null);
@@ -152,8 +147,8 @@ export default function PdfCanvas({
     return { x: event.clientX - box.left, y: event.clientY - box.top };
   }, []);
 
-  // Everything is measured on screen and converted once, here, on the way into
-  // state. Nothing downstream ever sees a screen pixel.
+  // Measured on screen and converted once here, so nothing downstream ever sees
+  // a screen pixel.
   const commitRect = useCallback(
     (id, viewRect) => {
       const pdfRect = viewRectToPdf(geom, zoom, viewRect);
@@ -302,10 +297,8 @@ function FieldBox({ field, view, selected, attempted, system, caption, zoom }) {
   const imported = field.imported;
   const button = field.type === 'button';
   const tone = TONE_STYLE[fieldTone(field, { system, attempted })];
-  // A hidden field is not drawn in the exported PDF, so it reads as faint here
-  // rather than looking like every other placement. Buttons are the exception:
-  // they start hidden and are shown by the starter code, so dimming every one
-  // of them would just make the normal case hard to see.
+  // Buttons are the exception. Every one starts hidden and is shown by the
+  // starter code, so dimming them would make the normal case the hard one to see.
   const dim = field.hidden && !button ? 'opacity-40' : '';
   const border = selected ? 'border-sky-600' : tone.border;
   const fill = selected ? 'bg-sky-400/25' : tone.fill;
@@ -358,8 +351,8 @@ function FieldBox({ field, view, selected, attempted, system, caption, zoom }) {
   );
 }
 
-// Pointer capture keeps a drag alive outside the page bounds. It throws on a
-// pointer id the browser is not tracking, which is not worth failing a drag over.
+// Keeps a drag alive outside the page bounds. Throws on a pointer id the
+// browser is not tracking, which is not worth failing a drag over.
 function capture(element, pointerId, on) {
   if (!element) return;
   try {
@@ -370,8 +363,8 @@ function capture(element, pointerId, on) {
   }
 }
 
-// Resizing happens in screen space so the handle under the cursor always moves
-// the edge the user sees, whatever the page rotation is.
+// In screen space, so the handle under the cursor moves the edge the user sees
+// whatever the page rotation is.
 export function resizeViewRect(orig, handle, dx, dy) {
   let { left, top, width, height } = orig;
   if (handle.includes('w')) {
@@ -388,7 +381,7 @@ export function resizeViewRect(orig, handle, dx, dy) {
   if (handle.includes('s')) {
     height += dy;
   }
-  // Dragging an edge past its opposite flips the rect rather than inverting it.
+  // Dragging an edge past its opposite pins the rect rather than inverting it.
   if (width < MIN_FIELD_PX) {
     left = handle.includes('w') ? left + width - MIN_FIELD_PX : left;
     width = MIN_FIELD_PX;

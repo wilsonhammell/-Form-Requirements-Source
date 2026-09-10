@@ -1,12 +1,7 @@
 // Rasterising pages for the requirements workbook.
 //
-// Separate from excelExport.js because this needs pdf.js and a canvas, so it
-// only runs in the browser. The workbook builder takes the result and stays
-// testable in node.
-//
-// Annotations are turned off, so the picture is the printed form with nothing
-// laid over it. Their existing screenshots include the field boxes, which cover
-// the labels underneath.
+// Apart from excelExport.js because this needs pdf.js and a canvas and so only
+// runs in the browser, which keeps the workbook builder testable in node.
 
 import { AnnotationMode } from 'pdfjs-dist/build/pdf.mjs';
 
@@ -32,7 +27,8 @@ export async function renderPageImages(doc, { targetWidth = TARGET_WIDTH } = {})
       canvas,
       canvasContext: canvas.getContext('2d'),
       viewport,
-      // The whole point: the artwork, with no field boxes over it.
+      // Their existing screenshots include the field boxes, which cover the
+      // printed labels underneath.
       annotationMode: AnnotationMode.DISABLE,
     }).promise;
 

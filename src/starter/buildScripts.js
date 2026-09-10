@@ -1,11 +1,11 @@
-// Turning the designer's state into the two document-level scripts.
+// The designer's state as the two document-level scripts.
 //
-// Helper_Functions goes out verbatim, it is the same on every form. Main is the
-// same file with its //<CONFIG> region replaced by values worked out from what
-// was placed, so the config and the PDF cannot disagree.
+// Helper_Functions goes out verbatim. Main is the same file with its //<CONFIG>
+// region replaced by values worked out from what was placed, so the config and
+// the PDF cannot disagree.
 //
-// The output is Acrobat's JavaScript, ES3 era. This file is ordinary app code,
-// only what it emits has to stay in that dialect.
+// What this emits is Acrobat's JavaScript, ES3 era. The file itself is ordinary
+// app code, only the output has to stay in that dialect.
 
 import { helperScript, mainScript } from './index.js';
 import {
@@ -16,19 +16,18 @@ import {
   SIGNER_PARTS,
 } from '../core/specialFields.js';
 
-// ProductValidation is told which field holds the code. One product code field
-// now, so this is a constant rather than something the designer picks.
+// One product code field today, so this is a constant rather than a choice.
 export const PRODUCT_CODE_FIELD = 'PROD_CODE';
 
 // DNA supplies the primary plus SIGNER1 to SIGNER5. The loops read i < this.
 export const MAX_DNA_SIGNERS = 6;
 
-// The one thing an export must not throw away. Everything else in the two
-// scripts is regenerated, but this block is bespoke per form and written by
-// hand, so it is read back out of the PDF being exported and re-emitted.
+// The one thing an export must not throw away, being bespoke per form and
+// written by hand.
 //
-// Brace counting, skipping strings and comments so a brace inside either does
-// not end the body early.
+// Braces are counted rather than matched, skipping strings and comments so one
+// inside either does not end the body early. Unbalanced returns empty, since
+// truncated at the wrong place is worse than nothing.
 export function extractCustomSaveValidation(source) {
   const text = String(source ?? '');
   const match = /function\s+CustomSaveValidation\s*\(\s*\)\s*\{/.exec(text);
@@ -60,8 +59,8 @@ export function extractCustomSaveValidation(source) {
       depth -= 1;
       if (depth === 0) {
         const body = text.slice(start, i);
-        // Leading blank lines and trailing whitespace go, the body itself and
-        // its indentation are kept exactly as written.
+        // Leading blank lines and trailing whitespace go. The body and its
+        // indentation are kept exactly as written.
         return body.trim() === '' ? '' : `${body.replace(/^\n+|\s+$/g, '')}\n`;
       }
     }
@@ -69,23 +68,18 @@ export function extractCustomSaveValidation(source) {
     i += 1;
   }
 
-  // Unbalanced, so there is no body to trust. Better empty than truncated.
   return '';
 }
 
-// Callers hand these over as either a Map from readDocumentScripts or a plain
-// object from a test fixture.
+// A Map from readDocumentScripts, or a plain object from a test fixture.
 const asScriptMap = (scripts) =>
   scripts instanceof Map ? scripts : new Map(Object.entries(scripts ?? {}));
 
-// Where the block actually is depends on the form's age. This tool writes it
-// into Main, alongside the config it belongs with, but the existing forms keep
-// it in Helper_Functions. Looking only where we put it would silently drop a
-// real one, so every script is searched.
+// Where the block sits depends on the form's age. This tool writes it into
+// Main, the existing forms keep it in Helper_Functions, and looking only where
+// we put it silently dropped a real one.
 export function findCustomSaveValidation(scripts) {
   const sources = asScriptMap(scripts);
-  // Main first, then Helper_Functions where the older forms keep it, then
-  // whatever else the tree holds.
   const order = [sources.get('Main'), sources.get('Helper_Functions'), ...sources.values()];
 
   for (const source of order) {
@@ -96,31 +90,26 @@ export function findCustomSaveValidation(scripts) {
   return '';
 }
 
-// The two scripts this tool writes. Anything else in the name tree is left
-// alone, so a function defined there is not at risk.
+// The two this tool writes. Anything else in the name tree is left alone.
 export const OWNED_SCRIPTS = ['Helper_Functions', 'Main'];
 
-// Deliberately dropped rather than missing. injectErrorFlagClearing walked every
-// field at load time and set its OnBlur; those scripts are generated at export
-// now, so the pass is gone on purpose and warning about it every time would be
-// noise.
+// Retired rather than missing. injectErrorFlagClearing set every field's OnBlur
+// at load time, and those scripts are generated at export now, so reporting it
+// on every form would be noise.
 const RETIRED = ['injectErrorFlagClearing'];
 
-// Acrobat runs document scripts in name order, and Main() is called at the
-// bottom of the Main script, so anything defining the hooks has to have run by
-// then. A script sorting after "Main" runs too late: its functions do not exist
-// when Main() executes, the typeof guard is false, and the hook silently does
-// not fire.
+// Main() is called at the bottom of the Main script, so a script sorting after
+// it loads too late. The typeof guard is false and the hook silently does not
+// fire.
 export function runsBeforeMain(scriptName) {
   return String(scriptName ?? '') < 'Main';
 }
 
-/** Scripts export leaves alone, which is where a form keeps its own code. */
+// Where a form keeps its own code, since export leaves these alone.
 export function ownScripts(scripts) {
   return [...asScriptMap(scripts).keys()].filter((name) => !OWNED_SCRIPTS.includes(name)).sort();
 }
 
-/** Scripts that survive export but are loaded too late to define a hook. */
 export function lateScripts(scripts) {
   return ownScripts(scripts).filter((name) => !runsBeforeMain(name));
 }
@@ -130,17 +119,14 @@ function functionNames(source) {
   return new Set([...matches].map((m) => m[1]));
 }
 
-/**
- * Functions the form defines that the starter code has no equivalent for, and
- * which export would therefore drop.
- *
- * Preserving the bodies would not save them: on every example form the calls
- * come from Main or from a submit handler, both of which are regenerated, so a
- * kept definition would be orphaned. The point of knowing is to decide what
- * general rule the function is an instance of, and build that.
- *
- * CustomSaveValidation is excluded because it is carried across by name.
- */
+// Functions the starter code has no equivalent for, which export will drop.
+//
+// Preserving the bodies would not save them. On every example form the calls
+// come from Main or a submit handler, both regenerated, so a kept definition
+// would sit there uncalled. Knowing is for deciding what general rule the
+// function is an instance of, and building that.
+//
+// CustomSaveValidation is excluded, being carried across by name.
 export function replacedFunctions(scripts) {
   const sources = asScriptMap(scripts);
   const ours = new Set([
@@ -164,15 +150,14 @@ const CONFIG_CLOSE = '//</CONFIG>';
 
 const str = (value) => JSON.stringify(String(value));
 
-// One item per line when there is anything, [] when there is not, so an empty
-// list does not become three lines of nothing.
+// [] rather than three lines of nothing when the list is empty.
 function list(items, indent = '    ') {
   if (items.length === 0) return '[]';
   return `[\n${items.map((i) => `${indent}${i}`).join(',\n')}\n]`;
 }
 
-// Names collapse to one entry. A field placed twice is still one field, and the
-// starter code would otherwise check it twice.
+// A field placed twice is still one field, so the starter code would otherwise
+// check it twice.
 function distinct(fields, predicate, pick) {
   const seen = new Set();
   const out = [];

@@ -1,17 +1,10 @@
-// Writing document-level JavaScript into the exported PDF.
-//
-// These live in the catalog's /Names /JavaScript name tree. Acrobat runs them
-// in the order the tree holds them, and a name tree is sorted by name, so
-// Helper_Functions runs before Main because H sorts before M.
+// Document-level JavaScript, in the catalog's /Names /JavaScript name tree.
+// Acrobat runs the entries in tree order and a name tree sorts by name, which
+// is what puts Helper_Functions before Main.
 //
 // pdf-lib's addJavaScript is not used. It appends to the flat Names array
-// without looking at what is there, so exporting a form that already carries
-// these scripts, which every form this tool has exported does, would leave two
-// entries under one name. It also ignores a tree that uses Kids.
-//
-// So this collects every entry the tree holds however it is shaped, drops the
-// ones this tool owns, adds the current versions, and writes the result back as
-// one sorted flat array. Anything the tool does not own survives untouched.
+// without reading what is there, so re-exporting a form this tool wrote would
+// leave two entries under one name, and it ignores a tree using Kids.
 
 import {
   PDFName,

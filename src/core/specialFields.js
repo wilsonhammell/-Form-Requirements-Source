@@ -1,21 +1,12 @@
-// Special fields: signer rows, joint rows, and the combined joint line.
+// Signer rows, joint rows and the combined joint line, whose names come from a
+// pattern and an index rather than from a list.
 //
-// A third family, beside system fields and submission buttons. What sets these
-// apart is that their names are generated from a pattern and an index rather
-// than picked from a list, their count is driven by the form, and they are
-// visible and member facing rather than infrastructure.
+// Legal states are the only reachable ones. The picker offers a name only while
+// placing it would be valid, so nothing here reports a gap as an error because
+// nothing here can produce one.
 //
-// Everything about them is derived from what is placed, the same rule the rest
-// of this tool follows. Place a Member2Signature and row 2 has a signature.
-// There is no separate switch to fall out of step.
-//
-// Legal states are the only reachable ones. The name picker offers a name only
-// when placing it would be valid, so row 3 cannot exist without row 2. Nothing
-// here reports a gap as an error, because nothing here can produce one.
-//
-// The two joint shapes are not exclusive. Numbered rows and the combined line
-// are filled independently, so a form can carry either, both or neither. Both
-// showing the same members is a summary beside a detail block, not a conflict.
+// The two joint shapes are independent, not alternatives. Filling one used to
+// branch away from the other, so a form could not carry both.
 
 import { createField } from './schema.js';
 import { MAX_SIGNER_ROWS, MAX_JOINT_ROWS } from '../starter/index.js';
@@ -81,9 +72,8 @@ export function parseSpecialName(name) {
   return null;
 }
 
-// A dropdown the starter code fills at run time. The signer name menus are
-// cleared and rebuilt from the DNA data on load, so options set here would be
-// wiped: having none is correct, not an omission.
+// The starter code clears and rebuilds these menus from DNA on load, so options
+// set here would be wiped. Having none is correct rather than an omission.
 export function isRuntimeFilledDropdown(name) {
   const parsed = parseSpecialName(name);
   return parsed?.family === 'signer' && parsed.part === 'name';
@@ -99,10 +89,8 @@ export function isEsignField(name) {
   return parseSpecialName(name)?.family === 'esign';
 }
 
-// The type a special field must be. A signer's name is a dropdown whose options
-// are built at run time, everything else is text. Enforced on import the way
-// system field types are, so a wrong one from an old PDF is corrected rather
-// than left as an unfixable dead end.
+// Corrected on import the way system field types are, since type is fixed once
+// a field is drawn and a wrong one would otherwise be an unfixable dead end.
 export function specialFieldType(name) {
   return parseSpecialName(name)?.type ?? null;
 }
@@ -119,8 +107,8 @@ const signerName = (index, key) =>
 const jointName = (index, key) =>
   `${JOINT_PREFIX}${index}${JOINT_PARTS.find((p) => p.key === key).suffix}`;
 
-// index to parts, for whichever family. Placements of one name collapse to one
-// entry, since a name placed twice is still one field.
+// Placements of one name collapse to one entry, since a name placed twice is
+// still one field.
 function partsByIndex(fields, family) {
   const rows = new Map();
   for (const field of fields) {
@@ -281,9 +269,8 @@ export function removeSpecialField(fields, id) {
   return { fields: shifted, renumbered };
 }
 
-// Rows stack down the page, each one laid out as its parts read across. Placed
-// out of the way rather than in the right spot, since only the artwork knows
-// where that is. Joint lines start higher so they clear the signer block.
+// Placed out of the way rather than in the right spot, since only the artwork
+// knows where that is. Joint lines start higher so they clear the signer block.
 const LAYOUT = { height: 18, gap: 10, margin: 40, column: 8 };
 const SIGNER_TOP = 260;
 const JOINT_TOP = 420;
@@ -368,15 +355,9 @@ export function addSignerRow(fields, cropBox, page = 0) {
   ];
 }
 
-// Completes a half placed pair on the way in, rather than reporting one.
-//
-// The pair is added, moved and removed with its button, so the designer cannot
-// produce a half. Only a form where someone deleted one of them in Acrobat can,
-// and there is exactly one right answer for where the missing one goes, so
-// there is nothing for a person to decide.
-//
-// The missing partner is placed against the button when it is there, and beside
-// the one that survived when it is not.
+// Completed rather than reported. Only a hand edit in Acrobat can split the
+// pair, and where the missing one goes is fully determined, so there is nothing
+// for a person to decide.
 export function completeEsignPair(fields) {
   const found = ESIGN_PARTS.map((part) => ({
     part,

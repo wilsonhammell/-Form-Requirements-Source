@@ -1,16 +1,12 @@
 // The requirements workbook, in the shape the business already writes by hand.
 //
-// Deliberately its own module. It reads the serialized document, the same JSON
-// that goes in the sidecar, and nothing else: no live field array, no pdf-lib,
-// no reaching into the export path. So the whole feature is this file plus a
-// button, and nothing it does can affect the PDF.
+// Its own module, reading the serialized document and nothing else. No live
+// field array, no pdf-lib, no reaching into the export path, so nothing it does
+// can affect the PDF.
 //
-// One direction only. This is a testing document, not a format to read back, so
-// nothing here needs to round trip.
+// One direction only. This is a testing document, not a format to read back.
 //
-// Layout comes from the existing workbooks. Columns A to E are a band down the
-// left holding the page pictures, the table starts at F, and the header reads
-// Field, Form Field, Load Validation, Save Validation, Logic.
+// Layout comes from the existing workbooks rather than being invented.
 
 import ExcelJS from 'exceljs';
 import { isSystemField } from './systemFields.js';
@@ -31,16 +27,15 @@ import {
 // The picture band, then the table.
 const COL = { section: 6, label: 7, load: 8, save: 9, logic: 10, comment: 12, test: 13 };
 
-// Columns A to E hold the page pictures. A picture wider than the band covers
-// the table, which is exactly what happened when it was sized in points.
+// A picture wider than the band covers the table, which is what happened when
+// it was sized in points.
 const BAND_COLUMNS = 5;
 const BAND_COLUMN_WIDTH = 16;
-// Excel's column width is roughly in characters, and its own conversion is not
+// Excel's column width is roughly in characters and its conversion is not
 // exactly this, so the picture is held a little inside the band. Flush to the
-// edge it clipped the first letters of the Field column underneath.
+// edge it clipped the Field column underneath.
 const BAND_MARGIN_PX = 16;
-// Excel's default row is 15 points, which is 20 pixels at the usual scale. Used
-// to work out which row a field's position on the page corresponds to.
+// Excel's default row is 15 points, 20 pixels at the usual scale.
 const ROW_HEIGHT_PX = 20;
 const BAND_WIDTH_PX =
   BAND_COLUMNS * (BAND_COLUMN_WIDTH * 7 + 5) - BAND_MARGIN_PX;
@@ -71,17 +66,13 @@ const edged = (cell) => {
   };
 };
 
-/**
- * The fields that belong in the table, in reading order.
- *
- * Only the fields a person interacts with. System fields are plumbing and the
- * submission buttons drive the signing sections instead, which is why neither
- * appears in the documents this is modelled on.
- *
- * One row per name. A name placed more than once is one field carrying one
- * value, so there is one thing to test; the pages it appears on are listed
- * instead of repeating the row.
- */
+// Only the fields a person interacts with. System fields are plumbing and the
+// buttons drive the signing sections, which is why neither appears in the
+// documents this is modelled on.
+//
+// One row per name. A repeated name is one field carrying one value, so there
+// is one thing to test, and two rows could be ticked Pass and Fail with nothing
+// to resolve the contradiction.
 export function requirementRows(
   doc,
   { systemIndex = new Map(), buttonIndex = new Map(), dbIndex = null } = {}
@@ -100,8 +91,8 @@ export function requirementRows(
     });
     if (!wanted.includes(scope)) continue;
 
-    // The same rule the canvas and the field list colour by, so a name reads
-    // the same here as it does on screen.
+    // The same rule the canvas and the field list use, so a name reads the same
+    // colour here as on screen.
     const tone = fieldTone(field, { system, attempted: dbIndex?.has(name) ?? false });
 
     const existing = byName.get(name);
@@ -137,17 +128,10 @@ export function requirementRows(
   );
 }
 
-/**
- * Down the page, then across, the way a person reads it.
- *
- * Boxes meant to sit on one line are rarely at the same height. A signer row on
- * a real form has its name, signature and date tops within a point of each
- * other and their heights differing by four, so sorting on the top edge alone
- * interleaves the columns and the table reads out of order.
- *
- * So fields are gathered into bands by their vertical centre, within half the
- * height of the tallest box on that line, and each band is read left to right.
- */
+// Down the page then across, banded by vertical centre rather than top edge.
+// Boxes meant to sit on one line rarely share a top. A signer row on a real
+// form has its three tops within a point of each other and their heights
+// differing by four, so sorting on the top alone interleaves the columns.
 export function readingOrder(rows) {
   const centre = (r) => r.top + (r.height ?? 0) / 2;
 
@@ -186,15 +170,12 @@ export function readingOrder(rows) {
   return out;
 }
 
-// Their convention: Yes, or Yes* where it depends on something the note
-// explains. Custom Save Validation is exactly that, and already forces a note.
+// Their own convention. The star means it depends on something explained
+// alongside, and Custom Save Validation already forces a note.
 const saveMark = (row) => (row.customSaveValidated ? 'Yes*' : row.saveValidated ? 'Yes' : '');
 
-/**
- * Builds the workbook. pageImages is optional, one PNG per page as
- * { page, data, width, height }, rendered by the caller because rasterising
- * needs pdf.js and a canvas.
- */
+// pageImages is optional, one PNG per page as { page, data, width, height },
+// rendered by the caller because rasterising needs pdf.js and a canvas.
 export function buildRequirementsWorkbook({
   doc,
   buttons = [],
@@ -226,13 +207,11 @@ export function buildRequirementsWorkbook({
     ...testHeaders.map(() => ({ width: 20 })),
   ];
 
-  // The header follows you down, which is how the originals are set up and the
-  // only way a table this long stays readable.
+  // Follows you down, as the originals do and as a table this long needs.
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
 
   const bold = (row, cols) => cols.forEach((c) => (row.getCell(c).font = { bold: true }));
 
-  // Header. The picture band gets the one heading it has in the originals.
   const header = sheet.getRow(1);
   header.getCell(1).value = 'Future Enhancement Notes';
   sheet.mergeCells(1, 1, 1, 5);
@@ -266,7 +245,7 @@ export function buildRequirementsWorkbook({
   };
   const LAST = () => COL.test + testHeaders.length - 1;
 
-  // A section heading is banded across the table so the eye finds it.
+  // Banded across the table so the eye finds it.
   const heading = (text) => {
     const row = write(text);
     for (let col = COL.section; col <= LAST(); col += 1) {
@@ -303,8 +282,10 @@ export function buildRequirementsWorkbook({
   };
 
   heading('FO Processing');
-  for (const label of METADATA_ROWS) {  // eslint-disable-line
-    // Membership Type is the one value here this tool knows.
+  for (const label of METADATA_ROWS) {
+    // The one value in this block the tool knows. The rest describe how
+    // FileOptics files and routes the document, which it has no way to know,
+    // and a filled in guess would be read as a checked fact.
     const value = label === 'Membership Type' ? (doc?.config?.formType ?? '') : '';
     edgedRow(write(label, value, '', '', label === 'Membership Type' ? 'Person, Organization or Combined' : ''));
   }
@@ -319,7 +300,7 @@ export function buildRequirementsWorkbook({
   const writeSteps = (steps) => {
     for (const [label, note] of steps) {
       // A double underscore marks a sub heading, which sits in the Field column
-      // with the rest of its block indented under it.
+      // with its block indented under it.
       if (label.startsWith('__')) subHeading(write(label.slice(2), note ?? '', '', '', ''));
       else edgedRow(write('', label, '', '', note ?? ''));
     }
@@ -328,8 +309,8 @@ export function buildRequirementsWorkbook({
   for (const identifier of CHANNEL_ORDER) {
     const channel = CHANNEL_STEPS[identifier];
     subHeading(write(channel.title));
-    // A channel the form does not offer stays a bare heading, so a reader can
-    // see it was considered rather than missed. The trust form does this.
+    // A channel not offered stays a bare heading, so a reader sees it was
+    // considered rather than missed. The trust form does this.
     if (offered.has(identifier)) writeSteps(channel.steps);
   }
   subHeading(write(SUBMIT_FOR_PROCESSING.title));
@@ -355,8 +336,7 @@ export function buildRequirementsWorkbook({
 
   blank();
 
-  // A key for the colours, since a name is coloured by what kind of field it is
-  // and nothing else on the sheet says so.
+  // Nothing else on the sheet says what the colours mean.
   const key = write('Field Name colours');
   key.getCell(COL.section).font = { bold: true };
   let keyAt = COL.label;
@@ -384,18 +364,18 @@ export function buildRequirementsWorkbook({
     const start = at;
     pageStart.set(page, start);
     const image = imageByPage.get(page);
-    // Without a picture there is nothing to line up against, so the rows simply
-    // follow each other.
+    // Without a picture there is nothing to line up against, so the rows follow
+    // each other.
     const scale = image ? BAND_WIDTH_PX / image.width : 0;
 
     for (const row of byPage.get(page)) {
       if (image) {
-        // How far down the picture this field sits, in rows. PDF user space
-        // counts up from the bottom, so this measures from the page top.
+        // PDF user space counts up from the bottom, so this measures down from
+        // the page top.
         const fromTop = (image.height - (row.top + (row.height ?? 0))) * scale;
         const target = start + Math.round(fromTop / ROW_HEIGHT_PX);
-        // Never backwards: two fields close together keep their order and take
-        // consecutive rows rather than landing on top of each other.
+        // Never backwards, so two fields close together take consecutive rows
+        // rather than landing on top of each other.
         if (target > at) at = target;
       }
       writeFieldRow(row, index);
@@ -407,18 +387,18 @@ export function buildRequirementsWorkbook({
     const written = write(
       ACCESS[row.editable],
       // Form Field is left empty on purpose. It is the label a member reads
-      // beside the box, which only someone looking at the form can say, and it
-      // is not the same thing as the customer facing name: that one exists to
-      // name a field in an error message and only load validated fields carry
-      // it, so filling from it would populate a few rows and leave the rest
-      // blank while looking authoritative.
+      // beside the box, which only someone looking at the form can say. The
+      // customer facing name is not the same thing, since it names a field in
+      // an error message and only load validated fields carry one, so filling
+      // from it would populate a few rows and leave the rest blank while
+      // looking authoritative.
       '',
       row.loadValidated ? 'Yes' : '',
       saveMark(row),
       row.note
     );
-    // The identifier the downstream filler matches on, which the documents
-    // this is modelled on never carried.
+    // The identifier the filler matches on, the one column their documents
+    // never carried.
     written.getCell(COL.comment).value = row.name;
     written.getCell(COL.comment).font = {
       name: 'Consolas',
@@ -431,18 +411,16 @@ export function buildRequirementsWorkbook({
         .filter(Boolean)
         .join(' — ');
     }
-    // Banded, because this is the part someone reads across to a Pass column.
+    // Banded, since this is the part someone reads across to a Pass column.
     edgedRow(written, index % 2 ? INK.band : undefined);
   }
   sheet.getCell(1, COL.comment).value = 'Field Name';
   sheet.getCell(1, COL.comment).font = { bold: true };
 
-  // The pictures, down the left band, each beside the rows for its page.
   for (const image of pageImages) {
     const id = book.addImage({ buffer: image.data, extension: 'png' });
     const top = pageStart.get(image.page) ?? tableTop;
-    // Scaled to the band. Sized in points it was wider than the five columns
-    // and covered the table underneath.
+    // Sized in points it was wider than the five columns and covered the table.
     const scale = BAND_WIDTH_PX / image.width;
     sheet.addImage(id, {
       tl: { col: 0, row: top - 1 },
@@ -453,7 +431,6 @@ export function buildRequirementsWorkbook({
   return book;
 }
 
-/** The bytes, ready to download. */
 export async function requirementsWorkbookBytes(options) {
   const book = buildRequirementsWorkbook(options);
   return new Uint8Array(await book.xlsx.writeBuffer());

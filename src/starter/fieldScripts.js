@@ -1,15 +1,13 @@
 // Field level Acrobat scripts, generated per field.
 //
-// The old forms wrote these at load time, walking every field and calling
-// setAction. That pass is gone: it could only run once safely, and re-running it
-// flattened the signer dropdown scripts back to the generic line. These are
-// generated at export instead, so what a field carries is decided here.
+// The old forms wrote these at load time, a pass that was only safe once and
+// flattened the signer dropdown scripts whenever it ran again. Generating at
+// export removes the hazard.
 //
 // Output is Acrobat's JavaScript, ES3 era. Nothing here is executed.
 //
-// Formatting is deliberately not generated beyond this. Fields drawn in Acrobat
-// are formatted in Acrobat and export leaves their Format and Keystroke entries
-// untouched, so the only one written here is on a field Acrobat never saw.
+// Formatting stops here. Fields drawn in Acrobat are formatted in Acrobat, so
+// the only Keystroke written is on a field Acrobat never saw.
 
 import { SIGNER_PARTS, SIGNER_PREFIX, ESIGN_PARTS } from '../core/specialFields.js';
 
@@ -17,26 +15,24 @@ import { SIGNER_PARTS, SIGNER_PREFIX, ESIGN_PARTS } from '../core/specialFields.
 // being pasted between quotes.
 const js = (value) => JSON.stringify(String(value));
 
-// Taken from the one definition, so a generated script cannot name a field the
+// From the one definition, so a generated script cannot name a field the
 // designer would not have placed.
 const SUFFIX = Object.fromEntries(SIGNER_PARTS.map((p) => [p.key, p.suffix]));
 const memberField = (index, part) => `${SIGNER_PREFIX}${index}${SUFFIX[part]}`;
 
-// Clears the required flag once a field has a value, which is what takes the
-// red highlight off after a failed validation. Off is a checkbox with nothing
-// ticked, so it counts as empty.
+// Takes the red highlight off after a failed validation. Off is a checkbox with
+// nothing ticked, so it counts as empty.
 export function clearRequiredOnBlur(fieldName) {
   const f = `this.getField(${js(fieldName)})`;
   return `if (${f}.value !== "" && ${f}.value !== "Off") { ${f}.required = false; }`;
 }
 
-// The signer dropdown. Picking a name reveals that row's signature and date,
-// clearing it hides them again, which is how rows past the first get turned on.
-// enableSignerRows only ever enables row 1, deliberately, because this is what
-// handles the rest.
+// How rows past the first get turned on. enableSignerRows enabling only row 1
+// is the design rather than a quirk, since every other row is revealed by its
+// own dropdown.
 //
-// The row's shape is known when this runs, so only the parts the row actually
-// carries are written. Nothing checks a flag at run time.
+// The row's shape is known when this runs, so only the parts it carries are
+// written and nothing checks a flag at run time.
 export function signerNameOnBlur(index, row) {
   if (!row || !row.name) return null;
 
@@ -57,18 +53,13 @@ export function signerNameOnBlur(index, row) {
     'name'
   )}.required = false;${shown.join('')}\n}`;
 
-  // With no signature and no date there is nothing to reveal, so the else is
-  // dead weight and is left off.
+  // With no signature and no date there is nothing to reveal.
   return hidden.length === 0 ? head : `${head} else {${hidden.join('')}\n}`;
 }
 
-// The Remote eSign code box. Lower cases what is typed and refuses anything that
-// is not alphanumeric.
-//
-// This is the one formatting script the tool writes, because eSign_Code is
-// placed by the tool rather than drawn in Acrobat, so there is no earlier step
-// where a person could have set it. Verified against both example forms, where
-// it is also the only Format or Keystroke entry on any field.
+// The only formatting script the tool writes, since eSign_Code is placed here
+// rather than drawn in Acrobat, so there was no earlier step where a person
+// could have set it.
 //
 // The star matters. On a backspace, and on the final firing where willCommit is
 // true, event.change is empty, and an empty string has to pass or a character
@@ -83,8 +74,8 @@ export function esignCodeKeystroke() {
 
 const ESIGN_CODE = ESIGN_PARTS.find((p) => p.key === 'code').name;
 
-// Every script a form's fields carry, keyed by field name. Rows come from the
-// same SIGNER_ROWS the config block is built from, so the two cannot disagree.
+// Rows come from the same derivation the config block is built from, so the two
+// cannot disagree.
 export function fieldScripts({ fieldNames = [], signerRows = [] } = {}) {
   const out = new Map();
 
@@ -97,7 +88,7 @@ export function fieldScripts({ fieldNames = [], signerRows = [] } = {}) {
     if (script) out.set(memberField(i + 1, 'name'), { OnBlur: script });
   });
 
-  // Alongside the OnBlur it already has, which is how the real form carries it.
+  // Alongside its OnBlur, which is how the real form carries it.
   if (out.has(ESIGN_CODE)) {
     out.get(ESIGN_CODE).Keystroke = esignCodeKeystroke();
   }

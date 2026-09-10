@@ -1,19 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { parseOptionLines, formatOptionLines } from '../core/schema.js';
 
-// The option list for a dropdown, one per line.
-//
-// An option carries two things: the value written into the PDF, and the text
-// the reader sees. They are usually the same, so a bare line means both. Where
-// they differ, "ON = Ontario" splits them, and a tab does the same so a two
-// column paste out of a spreadsheet lands correctly.
+// One option per line, the value written into the PDF and the text the reader
+// sees. A bare line means both, and "ON = Ontario" splits them.
 export default function OptionsEditor({ options, onChange }) {
   const [draft, setDraft] = useState(() => formatOptionLines(options));
 
-  // Typing reparses the list, which comes back here as a brand new array every
-  // keystroke. Resyncing on that would rewrite the box from the parsed list mid
-  // line and swallow the newline or the "=" just typed, so a change this box
-  // caused is skipped. Only a field selected elsewhere refills it.
+  // Typing reparses, which comes back as a new array every keystroke. Resyncing
+  // on that would rewrite the box mid line and swallow the newline or the equals
+  // just typed, so a change this box caused is skipped and only a field selected
+  // elsewhere refills it.
   const typing = useRef(false);
   useEffect(() => {
     if (typing.current) {

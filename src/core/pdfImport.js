@@ -1,14 +1,9 @@
-// Reading an uploaded PDF into the field model.
-//
-// Three cases, in priority order:
-//   1. embedded requirements JSON, an exact round trip
-//   2. an AcroForm with no JSON, rebuilt from the real widgets and flagged as
-//      imported because the result is inferred
-//   3. neither, a flat PDF and an empty field set
+// Reading an uploaded PDF into the field model. Three cases in priority order,
+// embedded requirements JSON, an AcroForm rebuilt from the real widgets and
+// flagged as inferred, then a flat PDF and an empty field set.
 //
 // A radio group is one field whose options are its widgets, so each option
-// arrives as its own placement sharing the group's name, the same shape a name
-// placed more than once takes.
+// arrives as its own placement sharing the group's name.
 
 import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib';
 import {
@@ -66,9 +61,8 @@ export async function loadPdfBytes(bytes) {
 export async function importPdf(bytes, dbIndex, systemFields = [], buttons = []) {
   const pdfDoc = await loadPdfBytes(bytes);
 
-  // System fields belong on every form, so whichever way this document arrives,
-  // any that are missing get added and any carrying the wrong type are put
-  // right. Ones already placed correctly keep their position.
+  // System fields belong on every form however it arrives. Ones already placed
+  // correctly keep their position.
   const systemIndex = buildSystemIndex(systemFields);
   const systemNotes = [];
   const withSystem = (fields) => {
@@ -80,9 +74,6 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
         } the starter code reads as text: ${corrected.join(', ')}.`
       );
     }
-    // The eSign label and code box go together, and only a hand edit in Acrobat
-    // can leave one without the other. Where it goes is fully determined, so it
-    // is put back rather than reported.
     const { fields: paired, added: pairAdded } = completeEsignPair(retyped);
     if (pairAdded.length > 0) {
       systemNotes.push(`Replaced ${pairAdded.join(', ')}, which the Remote eSign pair needs.`);
@@ -99,13 +90,10 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
     return complete;
   };
 
-  // Export rewrites Helper_Functions and Main wholesale, so anything the form
-  // keeps in them that this tool does not generate is about to go. Keeping the
-  // bodies would not help, every call site is in regenerated code too.
-  //
-  // The warning is deliberately blunt. Working out which lines are bespoke and
-  // which are an older version of the same flow needs guesswork, and a detector
-  // that guesses wrong is worse than one that states the plain fact.
+  // Blunt on purpose. Telling a bespoke line from an older version of the same
+  // flow needs guesswork, and a detector that guesses wrong is worse than one
+  // that states the plain fact. Keeping the bodies would not help either, since
+  // every call site is in regenerated code too.
   const documentScripts = readDocumentScripts(pdfDoc);
   if (OWNED_SCRIPTS.some((name) => documentScripts.has(name))) {
     systemNotes.push(
@@ -113,15 +101,14 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
     );
   }
 
-  // The scripts export leaves alone, which is the safe place for a form's own
-  // code. Saying which they are is how someone checks their code is in one.
+  // Saying which scripts survive is how someone checks their code is in one.
   const own = ownScripts(documentScripts);
   if (own.length > 0) {
     systemNotes.push(`Export leaves these scripts untouched: ${own.join(', ')}.`);
   }
 
-  // Sorting after Main means loading after Main() has already run, so a hook
-  // defined there never fires and nothing reports an error.
+  // Loading after Main() has run means a hook defined there never fires, and
+  // nothing reports an error.
   const late = lateScripts(documentScripts);
   if (late.length > 0) {
     systemNotes.push(
@@ -129,12 +116,10 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
     );
   }
 
-  // A form that has been through the old process states its own validation in
-  // Main. Reported, never applied: filling the requirements in from the form
-  // they describe would leave a tester ticking Pass against inherited values.
   systemNotes.push(...declaredValidationNotes(declaredValidation(documentScripts), dbIndex));
 
-  // Named functions can be reported exactly, so they are.
+  // Named functions can be reported exactly, so unlike the blunt warning above
+  // they are.
   const replaced = replacedFunctions(documentScripts);
   if (replaced.length > 0) {
     systemNotes.push(
@@ -181,8 +166,8 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
   };
 }
 
-// Walk the pages rather than form.getFields(), because the page a widget sits on
-// is part of the model and walking pages is the only place that is unambiguous.
+// Pages rather than form.getFields(), because the page a widget sits on is part
+// of the model and walking pages is the only way that is unambiguous.
 export function reconstructFromAcroForm(pdfDoc, buttonIndex = new Map()) {
   const context = pdfDoc.context;
   const fields = [];
@@ -223,9 +208,8 @@ export function reconstructFromAcroForm(pdfDoc, buttonIndex = new Map()) {
       const multiline = type === 'text' && (flags & FLAG_MULTILINE) !== 0;
       // Visibility rides on the widget, so it is read per placement.
       const hidden = (numberOf(context.lookup(annot.get(PDFName.of('F')))) & ANNOT_HIDDEN) !== 0;
-      // Every widget becomes its own entry, matching how Acrobat treats one
-      // field placed several times: one name, one shared value, a separate
-      // placement per widget. Export groups them back into a single field.
+      // Every widget becomes its own entry, and export groups them back into
+      // one field.
       if (seenNames.has(name)) repeatedNames.add(name);
       seenNames.add(name);
 
@@ -247,9 +231,8 @@ export function reconstructFromAcroForm(pdfDoc, buttonIndex = new Map()) {
           exportValue,
           options,
           // Nothing in a PDF records what a field is called on the printed
-          // form, so this is left for someone to fill in.
+          // form, and a validation flag this tool did not write is not trusted.
           customerFacingName: '',
-          // Never trust a validation flag that was not written by this tool.
           loadValidated: false,
           saveValidated: false,
           customSaveValidated: false,
@@ -277,14 +260,9 @@ export function reconstructFromAcroForm(pdfDoc, buttonIndex = new Map()) {
   return { fields, notes };
 }
 
-// Signatures carry no value to fill, so they are left alone. /Ch is both
-// dropdowns and list boxes, and only the dropdown is modelled, so a list box
-// passes through untouched rather than being silently converted.
-//
-// A pushbutton is only recognised when its name is one this tool knows about.
-// Any other button in an existing PDF stays unmodelled and survives export
-// untouched, which is the conservative reading until generic buttons are
-// actually asked for.
+// Anything returning null passes through export untouched rather than being
+// silently converted. A signature has no value to fill, /Ch covers list boxes
+// as well as dropdowns, and a pushbutton is only ours when the list knows it.
 function mapType(fieldType, flags, name, buttonIndex) {
   if (fieldType === '/Tx') return 'text';
   if (fieldType === '/Ch') return flags & FLAG_COMBO ? 'dropdown' : null;
@@ -295,8 +273,7 @@ function mapType(fieldType, flags, name, buttonIndex) {
   return null;
 }
 
-// A button widget's on-state name is its export value, the string a filler
-// compares a database value against. It is whatever the appearance dictionary
+// The on-state name is the export value, whatever the appearance dictionary
 // calls it, anything other than /Off.
 function readExportValue(context, annot) {
   const ap = context.lookup(annot.get(PDFName.of('AP')));
@@ -309,8 +286,6 @@ function readExportValue(context, annot) {
   return '';
 }
 
-// Choice options live in /Opt, either as a bare string, where the stored value
-// is also what the reader sees, or as a [value, label] pair where they differ.
 // Both halves are kept, since a form can store ON and show Ontario.
 function readOptions(context, annot) {
   const opt = context.lookup(inherited(context, annot, 'Opt'));
@@ -329,9 +304,9 @@ function readOptions(context, annot) {
   return options;
 }
 
-// /FT, /Ff and /T can live on a parent field node, so look up the chain.
-// Exported because the round trip test reads the same forms the same way, and
-// two copies of this would let import and the check that guards it disagree.
+// /FT, /Ff and /T can live on a parent field node. Exported because the round
+// trip test reads the same forms the same way, and two copies would let import
+// and the check that guards it disagree.
 export function inherited(context, dict, key) {
   let node = dict;
   let guard = 0;
@@ -364,9 +339,8 @@ function decodeText(obj) {
   return '';
 }
 
-// Best effort read of an existing field's /DA, e.g. "0 g /Helv 10 Tf". The
-// parsing lives in defaultAppearance.js, shared with export so the two cannot
-// disagree about what a given string means.
+// The parsing lives in defaultAppearance.js, shared with export so the two
+// cannot disagree about what a given string means.
 function readFont(context, annot) {
   return fontFromDa(decodeText(inherited(context, annot, 'DA')));
 }

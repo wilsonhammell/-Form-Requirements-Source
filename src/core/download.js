@@ -1,5 +1,4 @@
-// Browser download helpers. Kept apart from the export logic so the export path
-// stays testable outside a browser.
+// Apart from the export logic so that path stays testable outside a browser.
 
 export function downloadBytes(bytes, fileName, mimeType) {
   const blob = new Blob([bytes], { type: mimeType });
