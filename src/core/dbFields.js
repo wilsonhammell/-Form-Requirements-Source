@@ -31,9 +31,9 @@ export function buildCaseInsensitiveIndex(dbFields) {
   return map;
 }
 
-export function searchDbFields(dbFields, query, limit = 50) {
+export function searchDbFields(dbFields, query) {
   const q = query.trim().toLowerCase();
-  if (!q) return dbFields.slice(0, limit);
+  if (!q) return dbFields;
   const scored = [];
   for (const f of dbFields) {
     const id = f.identifier.toLowerCase();
@@ -47,5 +47,5 @@ export function searchDbFields(dbFields, query, limit = 50) {
     if (score >= 0) scored.push({ f, score });
   }
   scored.sort((a, b) => a.score - b.score || a.f.identifier.localeCompare(b.f.identifier));
-  return scored.slice(0, limit).map((s) => s.f);
+  return scored.map((s) => s.f);
 }

@@ -333,9 +333,16 @@ Config shows all of it read only. There is nothing to set.
 ## Form config
 
 The right panel switches between **Fields** and **Config**. Config is form level,
-one set per document, carried in the requirements JSON for whatever generates
-code from it later. Nothing in it affects the exported AcroForm.
+one set per document, carried in the requirements JSON.
 
+- **Form Menu Group(s)**, **Form ID**, **Form Description** and **FO Cabinet**,
+  free text, all carried into the requirements workbook. Export also writes Form
+  ID and Form Description into `FORM_ID` and `FORM_NAME`. A blank box clears the
+  field. Opening a PDF fills a blank box from the field, so a form that already
+  carries them keeps them.
+- **Post Processing**, **Admin Queue** and **Support Services**, checkboxes.
+  They fill the first three rows of the workbook's FO Processing block, a ticked
+  box reading Yes and a clear one No.
 - **Form type**, one of Person, Org or Combined.
 - **FileOptics environment**, Test or Production. Decides the flow id the submit
   paths send, `FO` against `TFO` and so on. **Defaults to Test**, so a form that
@@ -347,7 +354,18 @@ code from it later. Nothing in it affects the exported AcroForm.
   something downstream matches on these and this tool does not get to decide.
 
 ```json
-"config": { "formType": "org", "productCodes": ["M101", "RSP"], "environment": "TEST" }
+"config": {
+  "formMenuGroups": "Deposits",
+  "formId": "K_COV",
+  "formDescription": "Coverdraft Protection",
+  "foCabinet": "Member Services",
+  "postProcessing": true,
+  "adminQueue": false,
+  "supportServices": false,
+  "formType": "org",
+  "productCodes": ["M101", "RSP"],
+  "environment": "TEST"
+}
 ```
 
 ## Starter code
@@ -1300,14 +1318,11 @@ Validation, Logic`.
 | signing channel sections | the buttons placed. A channel not offered stays a bare heading, which is what the trust form does |
 | test columns | the membership type. One column each for a person or org form, two for combined |
 | field table | the fields, in reading order |
-| Membership Type | the config |
-| everything else in the metadata block | **left empty on purpose** |
+| the metadata block | the config, every row of it |
 
-Those eight metadata rows describe how FileOptics files and routes the document,
-which this tool has no way to know. A filled in guess would be read as a checked
-fact, so they are left blank and a person fills them. The tool does not even
-know which form it is looking at: there is no form identity in the model, only
-the uploaded filename.
+Nothing in that block is guessed. A filled in guess would be read as a checked
+fact, so every row has a box or a checkbox in Config instead, a ticked box
+reading Yes and a clear one No.
 
 ### The field table
 
@@ -1391,13 +1406,12 @@ line rather than every name.
 
 ## Out of scope for this build
 
-**Initial field values.** The real form ships 15 fields carrying a value, from
-constants like `VALID_ID` = `1` to per-form ones like `FORM_ID` and `PACK_TYPE`.
-None of them are set here. Filling is the downstream filler's job, the same as
-the data line, so this tool defines the fields and that tool supplies every
-value. The filler's list therefore has to cover the static ones too, such as
-`eSignLBL` = `Remote eSign Code:` and the `DNA_REQ` message, which are captions
-rather than data.
+**Initial field values, apart from two.** The real form ships 15 fields carrying
+a value, from constants like `VALID_ID` = `1` to per-form ones like `FORM_ID` and
+`PACK_TYPE`. Only `FORM_ID` and `FORM_NAME` are set here, from Config. The rest
+are the downstream filler's job, the same as the data line, so its list has to
+cover the static ones too, such as `eSignLBL` = `Remote eSign Code:` and the
+`DNA_REQ` message, which are captions rather than data.
 
 **Formatting, apart from one script.** Fields are drawn and formatted in
 Acrobat, then imported here for their requirements, so whoever creates a field

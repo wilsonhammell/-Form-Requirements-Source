@@ -283,19 +283,57 @@ describe('the test columns', () => {
 });
 
 describe('the metadata block', () => {
-  it('leaves the values empty, apart from the one this tool knows', async () => {
-    // A filled in guess would be read as a checked fact.
+  const rowsOf = async (config = {}) => {
     const { column, sheet } = await read(
-      await requirementsWorkbookBytes({ doc: doc([], { formType: 'combined' }), buttons: BUTTONS })
+      await requirementsWorkbookBytes({ doc: doc([], config), buttons: BUTTONS })
     );
-    const rowOf = (label) => column(6).find(([, v]) => v === label)?.[0];
+    return { sheet, labels: column(6).map(([, v]) => v), rowOf: (label) => column(6).find(([, v]) => v === label)?.[0] };
+  };
 
-    expect(sheet.getRow(rowOf('Membership Type')).getCell(7).value).toBe('combined');
-    for (const label of ['FO Cabinet', 'Form Name', 'Welcome Tree Folder(s)', 'Data Line Info']) {
-      const row = rowOf(label);
-      expect(row).toBeDefined();
-      expect(sheet.getRow(row).getCell(7).value ?? '').toBe('');
+  it('fills every row of the block from Config', async () => {
+    // Nothing here is guessed, so nothing is left blank either.
+    const { sheet, rowOf } = await rowsOf({
+      formType: 'combined',
+      formMenuGroups: 'Deposits, Lending',
+      formId: ' K_COV ',
+      formDescription: 'Coverdraft Protection',
+      foCabinet: 'Member Services',
+      postProcessing: true,
+      adminQueue: false,
+      supportServices: true,
+    });
+    const valueOf = (label) => sheet.getRow(rowOf(label)).getCell(7).value;
+
+    expect(valueOf('Membership Type')).toBe('combined');
+    expect(valueOf('Form Menu Group(s)')).toBe('Deposits, Lending');
+    expect(valueOf('Form ID')).toBe('K_COV');
+    expect(valueOf('Form Description')).toBe('Coverdraft Protection');
+    expect(valueOf('FO Cabinet')).toBe('Member Services');
+    // A checkbox answers its row either way.
+    expect(valueOf('Post Processing Req’d')).toBe('Yes');
+    expect(valueOf('Admin Q Req’d')).toBe('No');
+    expect(valueOf('Support Services Q Req’d')).toBe('Yes');
+  });
+
+  it('puts Form ID directly above Form Description', async () => {
+    const { rowOf } = await rowsOf();
+    expect(rowOf('Form Description') - rowOf('Form ID')).toBe(1);
+  });
+
+  it('drops the rows the business no longer uses', async () => {
+    const { labels } = await rowsOf();
+    for (const gone of ['Dynamic Package', 'Data Line Info', 'Form Name']) {
+      expect(labels).not.toContain(gone);
     }
+  });
+
+  it('retires the Welcome Tree wording everywhere on the sheet', async () => {
+    const { labels, rowOf } = await rowsOf();
+    expect(labels.filter((label) => label.includes('Welcome Tree'))).toEqual([]);
+    // Post Production follows the same rule, Form ID above Form Description.
+    expect(
+      rowOf('Form Description in Form Menu Group(s)') - rowOf('Form ID in Form Menu Group(s)')
+    ).toBe(1);
   });
 });
 

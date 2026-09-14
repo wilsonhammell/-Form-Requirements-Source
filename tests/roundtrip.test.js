@@ -224,6 +224,13 @@ describe('export then reopen', () => {
   it('brings the config back, not just the fields', async () => {
     const originalBytes = await buildFlatForm();
     const config = {
+      formMenuGroups: 'Consents',
+      formId: 'K_CON',
+      formDescription: 'Consent Form',
+      foCabinet: 'Lending',
+      postProcessing: true,
+      adminQueue: true,
+      supportServices: false,
       formType: 'org',
       productCodes: ['K_CON001', 'K_CON002'],
       environment: 'PROD',
@@ -240,7 +247,18 @@ describe('export then reopen', () => {
 
   it('keeps the config through a second export from the reopened file', async () => {
     const originalBytes = await buildFlatForm();
-    const config = { formType: 'combined', productCodes: ['K_PADQR'], environment: 'PROD' };
+    const config = {
+      formMenuGroups: 'Payments',
+      formId: 'K_PADQR',
+      formDescription: 'PAD Questionnaire & Reimbursemant Claim',
+      foCabinet: 'Member Services',
+      postProcessing: false,
+      adminQueue: false,
+      supportServices: true,
+      formType: 'combined',
+      productCodes: ['K_PADQR'],
+      environment: 'PROD',
+    };
 
     const first = await exportPdf({ originalBytes, fields: sampleFields(), meta: { config } });
     const reopened = await importPdf(first.pdfBytes, dbIndex);
@@ -258,7 +276,9 @@ describe('export then reopen', () => {
     const { pdfBytes } = await exportPdf({
       originalBytes,
       fields: sampleFields(),
-      meta: { config: { formType: 'nonsense', environment: 'STAGING', productCodes: 'K_ONE' } },
+      meta: {
+        config: { formType: 'nonsense', environment: 'STAGING', productCodes: 'K_ONE', formId: 7 },
+      },
     });
 
     const reopened = await importPdf(pdfBytes, dbIndex);
@@ -267,6 +287,67 @@ describe('export then reopen', () => {
     expect(reopened.config.formType).toBe('person');
     expect(reopened.config.environment).toBe('TEST');
     expect(reopened.config.productCodes).toEqual(['K_ONE']);
+    expect(reopened.config.formId).toBe('');
+  });
+});
+
+// Config owns two system field values. The box and the field must never
+// disagree, and a form that already carries them must not lose them.
+describe('the config values in FORM_ID and FORM_NAME', () => {
+  const systemBoxes = () => [
+    createField({ name: 'FORM_ID', page: 0, rect: { x: 10, y: 10, width: 54, height: 10 } }),
+    createField({ name: 'FORM_NAME', page: 0, rect: { x: 70, y: 10, width: 54, height: 10 } }),
+  ];
+  const textOf = async (bytes, name) =>
+    (await PDFDocument.load(bytes)).getForm().getTextField(name).getText() ?? '';
+
+  it('writes them from the config, trimmed', async () => {
+    const { pdfBytes } = await exportPdf({
+      originalBytes: await buildFlatForm(),
+      fields: [...sampleFields(), ...systemBoxes()],
+      meta: { config: { formId: ' K_COV ', formDescription: 'Coverdraft Protection' } },
+    });
+    expect(await textOf(pdfBytes, 'FORM_ID')).toBe('K_COV');
+    expect(await textOf(pdfBytes, 'FORM_NAME')).toBe('Coverdraft Protection');
+  });
+
+  it('clears one when its box is emptied, and it stays cleared', async () => {
+    const first = await exportPdf({
+      originalBytes: await buildFlatForm(),
+      fields: systemBoxes(),
+      meta: { config: { formId: 'K_COV', formDescription: 'Coverdraft Protection' } },
+    });
+    const reopened = await importPdf(first.pdfBytes, dbIndex);
+    const second = await exportPdf({
+      originalBytes: first.pdfBytes,
+      fields: reopened.fields,
+      meta: { config: { ...reopened.config, formId: '' } },
+    });
+    expect(await textOf(second.pdfBytes, 'FORM_ID')).toBe('');
+    expect(await textOf(second.pdfBytes, 'FORM_NAME')).toBe('Coverdraft Protection');
+    expect((await importPdf(second.pdfBytes, dbIndex)).config.formId).toBe('');
+  });
+
+  it('fills a blank box from a form that already carries them', async () => {
+    const source = await PDFDocument.create();
+    const page = source.addPage([612, 792]);
+    const id = source.getForm().createTextField('FORM_ID');
+    id.setText('K_COV');
+    id.addToPage(page, { x: 10, y: 10, width: 54, height: 10 });
+    const bytes = await source.save();
+
+    const opened = await importPdf(bytes, dbIndex);
+    expect(opened.source).toBe(SOURCE.ACROFORM);
+    expect(opened.config.formId).toBe('K_COV');
+    expect(opened.config.formDescription).toBe('');
+
+    // So exporting it straight back does not wipe the value.
+    const { pdfBytes } = await exportPdf({
+      originalBytes: bytes,
+      fields: opened.fields,
+      meta: { config: opened.config },
+    });
+    expect(await textOf(pdfBytes, 'FORM_ID')).toBe('K_COV');
   });
 });
 
@@ -1213,6 +1294,85 @@ describe('preserving what the tool does not model', () => {
 
     const out = await PDFDocument.load(pdfBytes);
     expect(out.getForm().getFields().map((f) => f.getName())).toEqual(['CUSTNAME']);
+  });
+
+  // Most real forms leave appearances to the viewer, so a widget often has no
+  // /AP at all. pdf-lib's removeField finds each annotation through that
+  // appearance and throws "Unexpected N type: undefined" when it is missing.
+  async function withoutAppearances(build) {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([612, 792]);
+    build(doc.getForm(), page);
+    for (const field of doc.getForm().getFields()) {
+      for (const widget of field.acroField.getWidgets()) widget.dict.delete(PDFName.of('AP'));
+    }
+    // Saving with appearance updates on would quietly put them all back.
+    const bytes = await doc.save({ updateFieldAppearances: false });
+
+    const check = await PDFDocument.load(bytes);
+    for (const field of check.getForm().getFields()) {
+      for (const widget of field.acroField.getWidgets()) {
+        expect(widget.dict.get(PDFName.of('AP'))).toBeUndefined();
+      }
+    }
+    return bytes;
+  }
+
+  it('removes a field that has no appearance stream', async () => {
+    const originalBytes = await withoutAppearances((form, page) => {
+      form.createTextField('CUSTNAME').addToPage(page, { x: 10, y: 10, width: 100, height: 20 });
+      form.createTextField('POLICYNUM').addToPage(page, { x: 10, y: 50, width: 100, height: 20 });
+    });
+
+    const { pdfBytes } = await exportPdf({
+      originalBytes,
+      fields: [
+        createField({ name: 'CUSTNAME', page: 0, rect: { x: 10, y: 10, width: 100, height: 20 } }),
+      ],
+    });
+
+    const out = await PDFDocument.load(pdfBytes);
+    expect(out.getForm().getFields().map((f) => f.getName())).toEqual(['CUSTNAME']);
+    // Off the page as well as the field list, or a viewer still draws the box.
+    expect(out.getPage(0).node.Annots().size()).toBe(1);
+  });
+
+  it('renames a field that has no appearance stream', async () => {
+    // A rename is a removal and a creation, and it is the most common thing done
+    // to an imported form.
+    const originalBytes = await withoutAppearances((form, page) => {
+      form.createTextField('Text1').addToPage(page, { x: 10, y: 10, width: 100, height: 20 });
+    });
+    const imported = await importPdf(originalBytes, dbIndex);
+    const renamed = imported.fields.map((f) => ({ ...f, name: 'CUSTNAME' }));
+
+    const { pdfBytes } = await exportPdf({ originalBytes, fields: renamed });
+
+    const out = await PDFDocument.load(pdfBytes);
+    expect(out.getForm().getFields().map((f) => f.getName())).toEqual(['CUSTNAME']);
+    expect(out.getPage(0).node.Annots().size()).toBe(1);
+  });
+
+  it('rebuilds a field that has no appearance stream when its type changes', async () => {
+    const originalBytes = await withoutAppearances((form, page) => {
+      form.createTextField('CLAIMSFLAG').addToPage(page, { x: 10, y: 10, width: 20, height: 20 });
+    });
+
+    const { pdfBytes } = await exportPdf({
+      originalBytes,
+      fields: [
+        createField({
+          name: 'CLAIMSFLAG',
+          type: 'checkbox',
+          page: 0,
+          rect: { x: 10, y: 10, width: 20, height: 20 },
+        }),
+      ],
+    });
+
+    const out = await PDFDocument.load(pdfBytes);
+    expect(out.getForm().getCheckBox('CLAIMSFLAG')).toBeTruthy();
+    expect(out.getPage(0).node.Annots().size()).toBe(1);
   });
 });
 

@@ -230,6 +230,32 @@ describeForm('%s', (file) => {
     }
     expect([...new Set(changed)]).toEqual(before.has('eSign_Code') ? ['eSign_Code'] : []);
   });
+
+  it('exports after one field is renamed and another deleted', async () => {
+    // Most widgets on these forms carry no appearance stream, and pdf-lib's own
+    // removeField throws on those. Renaming and deleting both go through
+    // removal, and renaming is the main thing this tool is used for.
+    const originalBytes = fs.readFileSync(path.join(DIR, file));
+    const names = [...new Set(imported.fields.map((f) => f.name))];
+    expect(names.length).toBeGreaterThan(1);
+    const [dropped, renamed] = names;
+
+    const fields = imported.fields
+      .filter((f) => f.name !== dropped)
+      .map((f) => (f.name === renamed ? { ...f, name: `${renamed}_RENAMED` } : f));
+
+    const { pdfBytes } = await exportPdf({
+      originalBytes,
+      fields,
+      meta: { config: imported.config },
+    });
+
+    const out = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+    const outNames = out.getForm().getFields().map((f) => f.getName());
+    expect(outNames).not.toContain(dropped);
+    expect(outNames).not.toContain(renamed);
+    expect(outNames).toContain(`${renamed}_RENAMED`);
+  }, 120000);
 });
 
 it('has a readable forms directory when one is present', () => {

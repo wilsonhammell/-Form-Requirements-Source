@@ -30,9 +30,16 @@ console.error = (...args) => {
   realConsoleError(...args);
 };
 
-// The notices bar is where the app reports what it made of an upload.
+// The notices bar is where the app reports what it made of an upload. Absent
+// while minimized.
+function noticesBar() {
+  return document.querySelector('#root [role=status]');
+}
+
 function notices() {
-  return document.querySelector('#root header + div')?.textContent?.trim() ?? '(none)';
+  const bar = noticesBar();
+  if (!bar) return '(not shown)';
+  return [...bar.querySelectorAll('p')].map((p) => p.textContent.trim()).join(' ');
 }
 
 function check(name, ok, detail = '') {
@@ -756,6 +763,63 @@ async function run() {
       ?.getAttribute('aria-pressed') === 'true'
   );
 
+  // Free text boxes, labelled exactly as the business names them and in their
+  // order. Typed a character at a time, since the config is rebuilt on every
+  // keystroke and a trim there would eat a space.
+  const TEXT_LABELS = ['Form Menu Group(s)', 'Form ID', 'Form Description', 'FO Cabinet'];
+  const textBox = (label) =>
+    [...document.querySelectorAll('#root aside label')]
+      .find((l) => l.textContent.trim() === label)
+      ?.parentElement.querySelector('input[type=text]');
+  const shownLabels = [...document.querySelectorAll('#root aside label')]
+    .map((l) => l.textContent.trim())
+    .filter((t) => TEXT_LABELS.includes(t));
+  check(
+    'Config has the four text boxes, in the order the business names them',
+    JSON.stringify(shownLabels) === JSON.stringify(TEXT_LABELS) &&
+      TEXT_LABELS.every((t) => !!textBox(t)),
+    JSON.stringify(shownLabels)
+  );
+
+  // The three FO Processing questions. A checkbox answers its row either way,
+  // so the sheet reads Yes or No rather than being left blank.
+  const cfgCheck = (label) =>
+    [...document.querySelectorAll('#root aside label')]
+      .find((l) => l.textContent.trim() === label)
+      ?.querySelector('input[type=checkbox]');
+  const CHECK_LABELS = ['Post Processing', 'Admin Queue', 'Support Services'];
+  check(
+    'Config offers Post Processing, Admin Queue and Support Services, all off',
+    CHECK_LABELS.every((l) => cfgCheck(l) && !cfgCheck(l).checked)
+  );
+  cfgCheck('Admin Queue').click();
+  await sleep(150);
+  check(
+    'one can be ticked without the others',
+    cfgCheck('Admin Queue').checked &&
+      !cfgCheck('Post Processing').checked &&
+      !cfgCheck('Support Services').checked
+  );
+  for (const ch of 'Coverdraft Protection') {
+    const box = textBox('Form Description');
+    setInputValue(box, box.value + ch);
+    await sleep(20);
+  }
+  check(
+    'a space survives being typed into the description',
+    textBox('Form Description').value === 'Coverdraft Protection',
+    JSON.stringify(textBox('Form Description').value)
+  );
+  setInputValue(textBox('Form ID'), ' K_COV ');
+  await sleep(120);
+  textBox('Form ID').dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+  await sleep(120);
+  check(
+    'leaving the Form ID box trims it',
+    textBox('Form ID').value === 'K_COV',
+    JSON.stringify(textBox('Form ID').value)
+  );
+
   const codeBox = configPanel.querySelector('textarea');
   setInputValue(codeBox, 'M101,RSP,C101, LMNOP,,M101');
   await sleep(180);
@@ -1035,10 +1099,23 @@ async function run() {
   // The picker only offers what is legal to place, which is what keeps rows
   // contiguous without a rule to break.
   const signerNameInput = document.querySelector('#root aside input[type=text]');
+  const dbList = await (await fetch('/dbFields.json')).json();
+  const picker = () => signerNameInput.parentElement;
+  const pickerNames = () =>
+    [...picker().querySelectorAll('ul button span:first-child')].map((s) => s.textContent);
   signerNameInput.focus();
-  // The picker filters on what is typed, and the field already carries its own
-  // name, so widen it first. The list below the box is the field list, whose
-  // rows read "nametype", so options are matched on the label they carry.
+  await sleep(250);
+  // The box arrives holding a name, and filtering by it hid everything else.
+  check(
+    'opening the picker shows every DB field',
+    dbList.every((f) => pickerNames().includes(f.identifier)),
+    `${pickerNames().length} offered, ${dbList.length} in the DB list`
+  );
+  const highlighted = () => picker().querySelector('ul button.bg-sky-50 span')?.textContent;
+  check('and lands on the name already in the box', highlighted() === 'Member1Name', highlighted());
+
+  // Typing narrows it. The list below the box is the field list, whose rows
+  // read "nametype", so options are matched on the label they carry.
   const offeredNames = () =>
     [...document.querySelectorAll('#root aside ul button')].map((b) => b.textContent.trim());
   setInputValue(signerNameInput, 'Member');
@@ -1301,6 +1378,28 @@ async function run() {
   exportBtn?.click();
   await waitFor('the requirements workbook', () => notices().includes('.requirements.xlsx'), 30000);
   check('it reports the workbook it wrote', notices().includes('.requirements.xlsx'), notices().slice(0, 70));
+
+  // Minimized rather than closed, and anything new brings it back.
+  clickButton('Hide', noticesBar());
+  await sleep(100);
+  const showNotices = () =>
+    [...document.querySelectorAll('#root header button')].find(
+      (b) => b.textContent.trim() === 'Messages'
+    );
+  check('the notices bar minimizes to a toolbar button', !noticesBar() && !!showNotices());
+  showNotices()?.click();
+  await sleep(100);
+  check(
+    'which brings it back as it was',
+    notices().includes('.requirements.xlsx') && !showNotices(),
+    notices().slice(0, 70)
+  );
+
+  clickButton('Hide', noticesBar());
+  await sleep(100);
+  clickButton('Enforce Font Standards', document.querySelector('#root header'));
+  await sleep(100);
+  check('a new message opens it again', notices().startsWith('Set '), notices().slice(0, 70));
 
   // Full export and reopen, in the browser rather than node.
   const dbIndex = buildDbIndex(await (await fetch('/dbFields.json')).json());

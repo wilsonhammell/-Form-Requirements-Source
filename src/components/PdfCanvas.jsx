@@ -255,18 +255,22 @@ export default function PdfCanvas({
           onPointerCancel={handlePointerUp}
         >
           {geom &&
-            fields.map((field) => (
-              <FieldBox
-                key={field.id}
-                field={field}
-                view={pdfRectToView(geom, zoom, field.rect)}
-                selected={selectedIds ? selectedIds.has(field.id) : field.id === selectedId}
-                attempted={isLoadAttempted(field.name, dbIndex)}
-                system={canonicalIds?.has(field.id) ?? false}
-                caption={buttonIndex?.get(field.name.trim())?.caption ?? ''}
-                zoom={zoom}
-              />
-            ))}
+            // Larger boxes first, so a small one is never buried under a big one.
+            // A page sized DNA_REQ would otherwise swallow every click.
+            [...fields]
+              .sort((a, b) => b.rect.width * b.rect.height - a.rect.width * a.rect.height)
+              .map((field) => (
+                <FieldBox
+                  key={field.id}
+                  field={field}
+                  view={pdfRectToView(geom, zoom, field.rect)}
+                  selected={selectedIds ? selectedIds.has(field.id) : field.id === selectedId}
+                  attempted={isLoadAttempted(field.name, dbIndex)}
+                  system={canonicalIds?.has(field.id) ?? false}
+                  caption={buttonIndex?.get(field.name.trim())?.caption ?? ''}
+                  zoom={zoom}
+                />
+              ))}
 
           {draft && (
             <div

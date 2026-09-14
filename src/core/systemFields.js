@@ -21,6 +21,50 @@ import {
 // Letter is wrong on A4 and 80 percent of the width is a ratio anyway.
 const COMPACT = { width: 54, height: 10, gap: 2, rowGap: 2, margin: 6 };
 const WIDE = { widthRatio: 0.8, height: 18, gap: 6 };
+
+// The message boxes the starter code shows a person. Measured off the seven
+// example forms, which agree to the point, so this is their look rather than a
+// design. Colours are rgb from 0 to 1, heights and margins are points.
+//
+// Listed bottom to top, the order they stack in on export, above every other
+// field. DNA_REQ is last so it covers the rest, as on most of the forms.
+const RED = [0.898, 0.133, 0.215];
+const GREEN = [0.415, 0.851, 0.156];
+const MESSAGE_MARGIN = { top: 80, bottom: 55 };
+
+export const MESSAGE_BOXES = {
+  // One strip, the three sharing a centre line. Only one shows at a time.
+  SUBMIT_SUCCESS: { color: GREEN, background: true, widthRatio: 0.9575, height: 17, band: 'strip' },
+  SUBMIT_FAILED: { color: RED, background: true, widthRatio: 0.9575, height: 17, band: 'strip', noScroll: true },
+  VALIDATE_REQ: { color: RED, background: false, widthRatio: 0.8824, height: 19, band: 'strip' },
+  // Tall enough to list the members missing an email.
+  eSIGN_FAILED: { color: RED, background: true, widthRatio: 0.9, height: 141, band: 'top', noScroll: true },
+  // Covers the form when the wrong account is selected.
+  DNA_REQ: { color: RED, background: true, widthRatio: 0.92, band: 'page' },
+};
+
+function messageBoxRect(box, [x0, y0, x1, y1]) {
+  const width = (x1 - x0) * box.widthRatio;
+  const x = x0 + (x1 - x0 - width) / 2;
+  if (box.band === 'page') {
+    const height = Math.max(0, y1 - y0 - MESSAGE_MARGIN.top - MESSAGE_MARGIN.bottom);
+    return { x, y: y0 + MESSAGE_MARGIN.bottom, width, height };
+  }
+  if (box.band === 'top') {
+    return { x, y: y1 - MESSAGE_MARGIN.top - box.height, width, height: box.height };
+  }
+  const centre = y0 + (y1 - y0) / 2;
+  return { x, y: centre - box.height / 2, width, height: box.height };
+}
+
+// The system fields whose value comes from Config rather than the filler, and
+// the config entry each is read from. Every example form carries both, as K_COV
+// and Coverdraft Protection.
+export const CONFIG_VALUE_FIELDS = [
+  { identifier: 'FORM_ID', key: 'formId' },
+  { identifier: 'FORM_NAME', key: 'formDescription' },
+];
+
 // A column per signer along the bottom, roughly where they land on a real form.
 const SIGNER = { columns: 5, height: 10, rowGap: 2, colGap: 4, margin: 6 };
 
@@ -53,8 +97,8 @@ export function isLastSystemPlacement(field, fields, systemIndex) {
   return fields.filter((f) => f.name.trim() === name).length <= 1;
 }
 
-// They ship hidden, so where they land matters less than that they do not sit
-// on top of each other and can be found.
+// They ship hidden. The message boxes sit where the example forms put them, and
+// everything else is kept apart so it can be found.
 export function layoutSystemFields(entries, cropBox) {
   const [x0, y0, x1, y1] = cropBox;
   const width = x1 - x0;
@@ -80,12 +124,17 @@ export function layoutSystemFields(entries, cropBox) {
     });
   });
 
-  // Wide enough to read, since these are shown to a person and DNA_REQ often
-  // gets stretched over the whole page.
+  // The message boxes land where every example form puts them, overlapping as
+  // those do. Anything else on the wide list stacks in the middle.
+  for (const entry of wide) {
+    const box = MESSAGE_BOXES[entry.identifier];
+    if (box) rects.set(entry.identifier, messageBoxRect(box, cropBox));
+  }
+  const plain = wide.filter((entry) => !MESSAGE_BOXES[entry.identifier]);
   const wideWidth = width * WIDE.widthRatio;
-  const block = wide.length * WIDE.height + Math.max(0, wide.length - 1) * WIDE.gap;
+  const block = plain.length * WIDE.height + Math.max(0, plain.length - 1) * WIDE.gap;
   const firstTop = y0 + height / 2 + block / 2;
-  wide.forEach((entry, i) => {
+  plain.forEach((entry, i) => {
     const top = firstTop - i * (WIDE.height + WIDE.gap);
     rects.set(entry.identifier, {
       x: x0 + (width - wideWidth) / 2,

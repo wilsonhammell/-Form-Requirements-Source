@@ -95,6 +95,9 @@ export default function App() {
   const [zoom, setZoom] = useState(1);
   const [newFieldType, setNewFieldType] = useState('text');
   const [notices, setNotices] = useState([]);
+  // Minimized rather than cleared, since an import note or an export warning is
+  // worth reading again. Anything new opens it back up.
+  const [noticesOpen, setNoticesOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [config, setConfig] = useState(() => createConfig());
   const [panel, setPanel] = useState('fields');
@@ -248,7 +251,15 @@ export default function App() {
 
   const say = useCallback((messages) => {
     setNotices(Array.isArray(messages) ? messages : [messages]);
+    setNoticesOpen(true);
   }, []);
+
+  // The load errors do not go through say, so they open the bar themselves.
+  useEffect(() => {
+    if (dbError || pdfError) setNoticesOpen(true);
+  }, [dbError, pdfError]);
+
+  const hasNotices = notices.length > 0 || !!dbError || !!pdfError;
 
   // The three jobs slow enough to disable the toolbar. Whatever they throw is
   // said out loud rather than leaving the button looking like it did nothing.
@@ -565,15 +576,29 @@ export default function App() {
         onZoomChange={setZoom}
         onNewFieldType={setNewFieldType}
         onEnforceFontStandards={handleEnforceFontStandards}
+        noticesHidden={hasNotices && !noticesOpen}
+        onShowNotices={() => setNoticesOpen(true)}
       />
 
-      {(notices.length > 0 || dbError || pdfError) && (
-        <div className="border-b border-slate-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-900">
-          {dbError && <p>Could not load the DB field list: {dbError}</p>}
-          {pdfError && <p>Could not read the PDF: {pdfError.message}</p>}
-          {notices.map((note, i) => (
-            <p key={i}>{note}</p>
-          ))}
+      {hasNotices && noticesOpen && (
+        <div
+          role="status"
+          className="flex items-start gap-3 border-b border-slate-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-900"
+        >
+          <div className="min-w-0 flex-1">
+            {dbError && <p>Could not load the DB field list: {dbError}</p>}
+            {pdfError && <p>Could not read the PDF: {pdfError.message}</p>}
+            {notices.map((note, i) => (
+              <p key={i}>{note}</p>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="shrink-0 rounded px-1.5 font-medium text-amber-800 hover:bg-amber-100"
+            onClick={() => setNoticesOpen(false)}
+          >
+            Hide
+          </button>
         </div>
       )}
 

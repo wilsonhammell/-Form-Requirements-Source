@@ -5,7 +5,7 @@
 // A radio group is one field whose options are its widgets, so each option
 // arrives as its own placement sharing the group's name.
 
-import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib';
+import { PDFDocument, PDFName, PDFString, PDFHexString, PDFTextField } from 'pdf-lib';
 import {
   createField,
   parseDocument,
@@ -21,6 +21,7 @@ import {
   ensureSystemFields,
   reconcileSystemTypes,
   buildSystemIndex,
+  CONFIG_VALUE_FIELDS,
 } from './systemFields.js';
 import { extractRequirements } from './pdfEmbed.js';
 import { fontFromDa } from './defaultAppearance.js';
@@ -137,7 +138,7 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
     return {
       pdfDoc,
       fields: withSystem(fields),
-      config,
+      config: withFieldValues(config, pdfDoc),
       source: SOURCE.EMBEDDED,
       notes: [
         `Loaded ${fields.length} field${fields.length === 1 ? '' : 's'} from embedded JSON.`,
@@ -151,7 +152,7 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
     return {
       pdfDoc,
       fields: withSystem(reconcileFields(fields, dbIndex)),
-      config: createConfig(),
+      config: withFieldValues(createConfig(), pdfDoc),
       source: SOURCE.ACROFORM,
       notes: [...notes, ...systemNotes],
     };
@@ -164,6 +165,25 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
     source: SOURCE.FLAT,
     notes: ['No form fields found, starting empty.', ...systemNotes],
   };
+}
+
+// A blank config value is filled from the field it is written to. Export writes
+// a blank box as an empty field, so this only picks up a value that was really
+// there, such as on a form built before Config held it. A field that cannot be
+// read leaves the box blank rather than stopping the PDF opening.
+function withFieldValues(config, pdfDoc) {
+  if (!pdfDoc.catalog.getAcroForm()) return config;
+  const filled = { ...config };
+  for (const { identifier, key } of CONFIG_VALUE_FIELDS) {
+    if (filled[key].trim()) continue;
+    try {
+      const field = pdfDoc.getForm().getFieldMaybe(identifier);
+      if (field instanceof PDFTextField) filled[key] = field.acroField.getValue()?.decodeText() ?? '';
+    } catch {
+      // Left blank.
+    }
+  }
+  return filled;
 }
 
 // Pages rather than form.getFields(), because the page a widget sits on is part

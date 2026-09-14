@@ -111,10 +111,10 @@ describe('laying them out', () => {
     }
   });
 
-  it('makes the message fields most of the page width', () => {
+  it('makes DNA_REQ cover the page, as every example form has it', () => {
     const wide = layoutSystemFields(LIST, LETTER).get('DNA_REQ');
-    expect(wide.width).toBeCloseTo(612 * 0.8, 5);
-    expect(wide.height).toBe(18);
+    expect(wide.width).toBeCloseTo(612 * 0.92, 5);
+    expect(wide.height).toBeGreaterThan(792 * 0.8);
     // Centred, so the margins either side match.
     expect(wide.x).toBeCloseTo((612 - wide.width) / 2, 5);
   });
@@ -122,7 +122,7 @@ describe('laying them out', () => {
   it('works against a page that is not Letter', () => {
     const a4 = [0, 0, 595.28, 841.89];
     const rects = layoutSystemFields(LIST, a4);
-    expect(rects.get('DNA_REQ').width).toBeCloseTo(595.28 * 0.8, 5);
+    expect(rects.get('DNA_REQ').width).toBeCloseTo(595.28 * 0.92, 5);
     // Everything lands inside the page.
     for (const r of rects.values()) {
       expect(r.x).toBeGreaterThanOrEqual(0);

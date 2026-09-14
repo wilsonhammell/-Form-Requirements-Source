@@ -26,6 +26,7 @@ import {
   setFontAndSize,
   setFillingColor,
   grayscale,
+  rgb,
 } from 'pdf-lib';
 import {
   serializeDocument,
@@ -34,6 +35,7 @@ import {
   DEFAULT_FONT,
 } from './schema.js';
 import { BUTTON_STYLE, buildButtonIndex } from './signingButtons.js';
+import { MESSAGE_BOXES, CONFIG_VALUE_FIELDS } from './systemFields.js';
 import { embedRequirements } from './pdfEmbed.js';
 import { daMatchesFont, replaceDaFont } from './defaultAppearance.js';
 import { stripComments } from './pdfComments.js';
@@ -77,7 +79,7 @@ export async function exportPdf({
   // delete.
   for (const [name, field] of existing) {
     if (!groups.has(name)) {
-      form.removeField(field);
+      removeField(pdfDoc, field);
       existing.delete(name);
     }
   }
@@ -109,7 +111,7 @@ export async function exportPdf({
 
     if (prior) {
       // Type changed, or the widget count no longer lines up. Rebuild it.
-      form.removeField(prior);
+      removeField(pdfDoc, prior);
     }
     createField(form, pages, name, group, fontsByFamily, warnings);
   }
@@ -124,6 +126,12 @@ export async function exportPdf({
     deriveSignerRows(fields)
   );
 
+  const doc = serializeDocument(fields, meta);
+
+  // Before the merge, since /V is a field entry and the merge carries it down
+  // onto the widget.
+  fillConfigValues(form, groups, doc.config, warnings);
+
   // Keeps a filled value visible without this tool regenerating, and so
   // overwriting, appearances it did not create.
   form.acroForm.dict.set(PDFName.of('NeedAppearances'), PDFBool.True);
@@ -136,7 +144,7 @@ export async function exportPdf({
     warnings.push(`Removed ${comments} comment${comments === 1 ? '' : 's'} left on the form.`);
   }
 
-  const doc = serializeDocument(fields, meta);
+  raiseMessageBoxes(pdfDoc);
 
   // Written last, so the config reflects everything that was placed.
   //
@@ -202,6 +210,25 @@ function applyFieldScripts(form, groups, systemNames, signerRows) {
     const script = scripts.get(name);
     for (const widget of field.acroField.getWidgets()) {
       setFieldActions(widget.dict, script);
+    }
+  }
+}
+
+// Owned the way the scripts are, so a blank Config box clears the field. Only
+// written when it differs, so a form that already says the same thing is left
+// exactly as it was.
+function fillConfigValues(form, groups, config, warnings) {
+  for (const { identifier, key } of CONFIG_VALUE_FIELDS) {
+    if (groups.get(identifier)?.type !== 'text') continue;
+    const field = form.getFieldMaybe(identifier);
+    if (!(field instanceof PDFTextField)) continue;
+    const wanted = (config[key] ?? '').trim();
+    if ((field.acroField.getValue()?.decodeText() ?? '') === wanted) continue;
+    try {
+      field.setText(wanted || undefined);
+    } catch (err) {
+      // A MaxLen shorter than the value is the one way this throws.
+      warnings.push(`Could not write ${identifier}: ${err.message}`);
     }
   }
 }
@@ -448,9 +475,9 @@ function decodeTextValue(obj) {
   return obj instanceof PDFString || obj instanceof PDFHexString ? obj.decodeText() : '';
 }
 
-function fontDefaultAppearance(font, size) {
-  const parts = [setFillingColor(grayscale(0)).toString(), setFontAndSize(font.name, size).toString()];
-  return parts.join('\n');
+function fontDefaultAppearance(font, size, color) {
+  const fill = setFillingColor(color ? rgb(...color) : grayscale(0));
+  return [fill.toString(), setFontAndSize(font.name, size).toString()].join('\n');
 }
 
 // On the widget rather than the field, because that is where a PDF allows it to
@@ -459,11 +486,12 @@ function fontDefaultAppearance(font, size) {
 // A field from the source PDF keeps the /DA it arrived with unless the font was
 // actually changed. Rebuilding it every time drops the colour, which on a real
 // form is load bearing, the error fields being red and the success one green.
-// A field this tool creates has no prior appearance to respect.
+// A field this tool creates gets black text, or its message box colour.
 //
 // widgets must already be lined up with group.rects, see alignWidgets.
 function applyFont(field, group, fontsByFamily, fromSource, widgets) {
   if (!TEXT_RENDERING_TYPES.includes(group.type)) return;
+  const color = MESSAGE_BOXES[field.getName()]?.color;
 
   widgets.forEach((widget, index) => {
     // A widget past the end keeps the group's font.
@@ -472,7 +500,7 @@ function applyFont(field, group, fontsByFamily, fromSource, widgets) {
     const write = (da) => widget.dict.set(PDFName.of('DA'), PDFString.of(da));
 
     if (!fromSource) {
-      write(fontDefaultAppearance(font, wanted.size));
+      write(fontDefaultAppearance(font, wanted.size, color));
       return;
     }
 
@@ -487,7 +515,7 @@ function applyFont(field, group, fontsByFamily, fromSource, widgets) {
     if (daMatchesFont(existing, wanted)) return;
 
     // Changed, so swap the font and leave every other operator as it is.
-    write(replaceDaFont(existing, font.name, wanted.size) ?? fontDefaultAppearance(font, wanted.size));
+    write(replaceDaFont(existing, font.name, wanted.size) ?? fontDefaultAppearance(font, wanted.size, color));
   });
 }
 
@@ -501,6 +529,17 @@ const TRANSPARENT_WIDGET = {
   rotate: degrees(0),
 };
 
+// A message box is drawn the way the example forms draw it, border and text in
+// one colour, on white apart from VALIDATE_REQ. Keys passed for the same reason.
+function messageWidget(look) {
+  return {
+    borderColor: rgb(...look.color),
+    backgroundColor: look.background ? rgb(1, 1, 1) : undefined,
+    borderWidth: 1,
+    rotate: degrees(0),
+  };
+}
+
 function createField(form, pages, name, group, fontsByFamily, warnings) {
   let field;
   try {
@@ -510,6 +549,8 @@ function createField(form, pages, name, group, fontsByFamily, warnings) {
     return;
   }
 
+  const look = MESSAGE_BOXES[name];
+
   group.rects.forEach((placement, index) => {
     const target = pages[placement.page];
     const geometry = {
@@ -517,7 +558,7 @@ function createField(form, pages, name, group, fontsByFamily, warnings) {
       y: placement.rect.y,
       width: placement.rect.width,
       height: placement.rect.height,
-      ...TRANSPARENT_WIDGET,
+      ...(look ? messageWidget(look) : TRANSPARENT_WIDGET),
     };
 
     if (group.type === 'radio') {
@@ -551,6 +592,9 @@ function createField(form, pages, name, group, fontsByFamily, warnings) {
   }
 
   applyFieldSettings(field, group, fontsByFamily, field.acroField.getWidgets(), false);
+
+  // Fixed boxes that do not scroll, as on the example forms.
+  if (look?.noScroll && field instanceof PDFTextField) field.disableScrolling();
 }
 
 // Caption, look and action are all ours, the button list fixing all three. One
@@ -674,6 +718,46 @@ function applyRotation(widget, page) {
 function setReadOnly(field, readOnly) {
   if (readOnly) field.enableReadOnly();
   else field.disableReadOnly();
+}
+
+// pdf-lib has its own removeField, but it finds each widget annotation through
+// the widget appearance stream and throws when there is none. Most real forms
+// leave appearances to the viewer, so most of their widgets have no /AP at all,
+// and renaming or deleting any of those failed the whole export. This removes
+// by reference instead, which never needs an appearance.
+function removeField(pdfDoc, field) {
+  const refs = new Set([field.ref]);
+  for (const widget of field.acroField.getWidgets()) {
+    const ref = findWidgetRef(pdfDoc, field, widget);
+    if (ref) refs.add(ref);
+  }
+  // Every page rather than the one a widget names, since /P is optional.
+  for (const page of pdfDoc.getPages()) {
+    const annots = page.node.Annots();
+    if (!annots) continue;
+    for (const ref of refs) removeRefFromArray(annots, ref);
+  }
+  pdfDoc.getForm().acroForm.removeField(field.acroField);
+  for (const ref of refs) pdfDoc.context.delete(ref);
+}
+
+// A page draws its annotations in /Annots order, so the message boxes go last,
+// in MESSAGE_BOXES order. Everything else keeps its place, which on a form set
+// to widget order is also the tab order.
+function raiseMessageBoxes(pdfDoc) {
+  const form = pdfDoc.getForm();
+  const refs = Object.keys(MESSAGE_BOXES).flatMap((name) => {
+    const field = form.getFieldMaybe(name);
+    return field ? field.acroField.getWidgets().map((w) => findWidgetRef(pdfDoc, field, w)) : [];
+  });
+  for (const page of pdfDoc.getPages()) {
+    const annots = page.node.Annots();
+    if (!annots) continue;
+    for (const ref of refs.filter((r) => r && arrayIncludesRef(annots, r))) {
+      removeRefFromArray(annots, ref);
+      annots.push(ref);
+    }
+  }
 }
 
 // Moving a widget between pages means fixing the Annots arrays too.

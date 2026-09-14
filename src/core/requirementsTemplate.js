@@ -8,19 +8,18 @@
 // A step is [label, note]. The label goes in the Form Field column and the note,
 // where there is one, in Logic, matching how the existing sheets read.
 
-// Rows 2 to 11 of every sheet. Values are left empty on purpose: these describe
-// how FileOptics files and routes the document, which this tool has no way to
-// know, and a filled in guess would be taken for a checked fact.
+// Rows 2 to 10 of every sheet. Every one is filled from Config, named here by
+// the entry it reads, so nothing in this block is guessed. A filled in guess
+// would be taken for a checked fact.
 export const METADATA_ROWS = [
-  'Post Processing Req’d',
-  'Admin Q Req’d',
-  'Support Services Q Req’d',
-  'Data Line Info',
-  'FO Cabinet',
-  'Form Name',
-  'Welcome Tree Folder(s)',
-  'Membership Type',
-  'Dynamic Package',
+  { label: 'Post Processing Req’d', from: 'postProcessing' },
+  { label: 'Admin Q Req’d', from: 'adminQueue' },
+  { label: 'Support Services Q Req’d', from: 'supportServices' },
+  { label: 'FO Cabinet', from: 'foCabinet' },
+  { label: 'Form ID', from: 'formId' },
+  { label: 'Form Description', from: 'formDescription' },
+  { label: 'Form Menu Group(s)', from: 'formMenuGroups' },
+  { label: 'Membership Type', from: 'formType', note: 'Person, Organization or Combined' },
 ];
 
 // Keyed by the button that offers the channel, so a form gets the sections it
@@ -151,8 +150,9 @@ export const SIGNING_ROLES = [
 ];
 
 export const POST_PRODUCTION = [
-  ['Welcome Tree Folder(s)'],
-  ['Form Name in Welcome Tree'],
+  ['Form Menu Group(s)'],
+  ['Form ID in Form Menu Group(s)'],
+  ['Form Description in Form Menu Group(s)'],
   ['Confirm Production FO', 'Phone Auth', 'If a "test" acct is NOT used then request removal'],
   ['Confirm Production FO', 'In - Branch eSign'],
   ['Confirm Production FO', 'Remote eSign', 'TEST account MUST be used'],

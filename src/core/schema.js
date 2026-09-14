@@ -10,8 +10,7 @@ export const SCHEMA_VERSION = 1;
 // do.
 export const FIELD_TYPES = ['text', 'checkbox', 'radio', 'dropdown', 'button'];
 
-// Form level, one set per document. Carried in the JSON for whatever generates
-// code from it later, so nothing here affects the exported AcroForm.
+// Form level, one set per document, carried in the JSON.
 export const FORM_TYPES = [
   { value: 'person', label: 'Person' },
   { value: 'org', label: 'Org' },
@@ -29,7 +28,18 @@ export const ENVIRONMENTS = [
 
 const ENVIRONMENT_VALUES = new Set(ENVIRONMENTS.map((e) => e.value));
 
-export const DEFAULT_CONFIG = { formType: 'person', productCodes: [], environment: 'TEST' };
+export const DEFAULT_CONFIG = {
+  formMenuGroups: '',
+  formId: '',
+  formDescription: '',
+  foCabinet: '',
+  postProcessing: false,
+  adminQueue: false,
+  supportServices: false,
+  formType: 'person',
+  productCodes: [],
+  environment: 'TEST',
+};
 
 // These are pasted, so a spreadsheet column's newlines and tabs count as
 // separators too. Case is left as typed, since something downstream matches on
@@ -47,7 +57,17 @@ export function parseProductCodes(text) {
 }
 
 export function createConfig(partial = {}) {
+  // Kept as typed. The panel rebuilds the config on every keystroke, so a trim
+  // here would eat a space the moment it was typed. What writes them out trims.
+  const text = (key) => (typeof partial?.[key] === 'string' ? partial[key] : '');
   return {
+    formMenuGroups: text('formMenuGroups'),
+    formId: text('formId'),
+    formDescription: text('formDescription'),
+    foCabinet: text('foCabinet'),
+    postProcessing: !!partial?.postProcessing,
+    adminQueue: !!partial?.adminQueue,
+    supportServices: !!partial?.supportServices,
     formType: FORM_TYPE_VALUES.has(partial?.formType)
       ? partial.formType
       : DEFAULT_CONFIG.formType,

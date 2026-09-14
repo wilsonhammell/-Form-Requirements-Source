@@ -449,8 +449,27 @@ describe('form config', () => {
     ]);
   });
 
+  it('keeps the form id and description exactly as typed', () => {
+    // The panel rebuilds the config on every keystroke, so trimming here would
+    // eat a space the moment it was typed.
+    expect(createConfig({ formDescription: 'Coverdraft ' }).formDescription).toBe('Coverdraft ');
+    expect(createConfig({ formId: 42 }).formId).toBe('');
+    expect(createConfig().formId).toBe('');
+  });
+
   it('round trips through the document', () => {
-    const config = { formType: 'combined', productCodes: ['M101', 'RSP'], environment: 'PROD' };
+    const config = {
+      formMenuGroups: 'Deposits',
+      formId: 'K_COV',
+      formDescription: 'Coverdraft Protection',
+      foCabinet: 'Member Services',
+      postProcessing: true,
+      adminQueue: false,
+      supportServices: true,
+      formType: 'combined',
+      productCodes: ['M101', 'RSP'],
+      environment: 'PROD',
+    };
     const doc = serializeDocument([createField({ name: 'CUSTNAME' })], { config });
     expect(doc.config).toEqual(config);
 

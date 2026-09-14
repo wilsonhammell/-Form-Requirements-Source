@@ -13,22 +13,25 @@ export default function NameCombobox({
   onChange,
 }) {
   const [open, setOpen] = useState(false);
+  // The box arrives holding a name, so filtering waits for a keystroke. Filter
+  // by the name already there and every other choice is hidden.
+  const [filtering, setFiltering] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const wrapRef = useRef(null);
   const inputRef = useRef(null);
+  const listRef = useRef(null);
 
-  const matches = useMemo(
-    () => searchDbFields(dbFields, value ?? '', 40),
-    [dbFields, value]
-  );
+  const query = filtering ? value ?? '' : '';
+
+  const matches = useMemo(() => searchDbFields(dbFields, query), [dbFields, query]);
 
   // Above the DB list, and only while placing one would be legal, which is what
   // keeps rows contiguous with no rule to break.
   const specialMatches = useMemo(() => {
-    const q = (value ?? '').trim().toLowerCase();
+    const q = query.trim().toLowerCase();
     const hit = (o) => o.name.toLowerCase().includes(q) || o.label.toLowerCase().includes(q);
-    return specialNames.filter((o) => !q || hit(o)).slice(0, 12);
-  }, [specialNames, value]);
+    return specialNames.filter((o) => !q || hit(o));
+  }, [specialNames, query]);
 
   const options = useMemo(
     () => [
@@ -53,10 +56,31 @@ export default function NameCombobox({
     return () => document.removeEventListener('pointerdown', onDocPointerDown);
   }, [open]);
 
-  useEffect(() => setHighlight(0), [value]);
+  // Scrolls the list itself, never the panel around it.
+  const reveal = (index) => {
+    const list = listRef.current;
+    const item = list?.children[index];
+    if (!item) return;
+    if (item.offsetTop < list.scrollTop) list.scrollTop = item.offsetTop;
+    else if (item.offsetTop + item.offsetHeight > list.scrollTop + list.clientHeight) {
+      list.scrollTop = item.offsetTop + item.offsetHeight - list.clientHeight;
+    }
+  };
+
+  const move = (index) => {
+    setHighlight(index);
+    reveal(index);
+  };
+
+  // Typing lands on the best match. Opening lands on the name already there, or
+  // on nothing, so Enter straight after focus cannot swap it for the top entry.
+  useEffect(() => {
+    move(filtering ? 0 : options.findIndex((o) => o.identifier === trimmed));
+  }, [value, filtering, open]);
 
   const choose = (identifier) => {
     onChange(identifier);
+    setFiltering(false);
     setOpen(false);
     inputRef.current?.focus();
   };
@@ -65,10 +89,10 @@ export default function NameCombobox({
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       setOpen(true);
-      setHighlight((h) => Math.min(h + 1, options.length - 1));
+      move(Math.min(highlight + 1, options.length - 1));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setHighlight((h) => Math.max(h - 1, 0));
+      move(Math.max(highlight - 1, 0));
     } else if (event.key === 'Enter') {
       if (open && options[highlight]) {
         event.preventDefault();
@@ -92,6 +116,7 @@ export default function NameCombobox({
         className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 font-mono text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
         onChange={(e) => {
           onChange(e.target.value);
+          setFiltering(true);
           setOpen(true);
         }}
         // Renaming is the common action and the box arrives with a name in it,
@@ -99,8 +124,11 @@ export default function NameCombobox({
         // edit. A second click still places the caret to amend.
         onFocus={(e) => {
           e.target.select();
+          setFiltering(false);
           setOpen(true);
         }}
+        // A pick leaves focus in the box, so no focus event follows to reopen it.
+        onClick={() => setOpen(true)}
         onKeyDown={onKeyDown}
       />
 
@@ -134,7 +162,7 @@ export default function NameCombobox({
       )}
 
       {open && options.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded border border-slate-300 bg-white shadow-lg">
+        <ul ref={listRef} className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded border border-slate-300 bg-white shadow-lg">
           {options.map((entry, index) => (
             <li key={entry.identifier}>
               {entry.special && index === 0 && (
@@ -153,6 +181,8 @@ export default function NameCombobox({
                   index === highlight ? 'bg-sky-50' : 'hover:bg-slate-50'
                 }`}
                 onMouseEnter={() => setHighlight(index)}
+                // Keeps focus in the box, or refocusing it after a pick reopens the list.
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => choose(entry.identifier)}
               >
                 <span className={`font-mono ${entry.special ? 'text-teal-800' : 'text-slate-800'}`}>

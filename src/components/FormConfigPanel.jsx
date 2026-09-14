@@ -88,9 +88,44 @@ function RowList({ rows, prefix, parts, width, onPlace }) {
   );
 }
 
-// Form level settings, one set for the whole document. Nothing here changes the
-// exported AcroForm, it is carried in the requirements JSON for whatever
-// generates code from it later.
+// Stored as typed, so a space survives the config being rebuilt on every
+// keystroke, and trimmed when the box is left.
+function TextSetting({ label, value, onChange }) {
+  return (
+    <div>
+      <label className={LABEL}>{label}</label>
+      <input
+        type="text"
+        spellCheck={false}
+        value={value}
+        className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={(e) => {
+          const trimmed = e.target.value.trim();
+          if (trimmed !== e.target.value) onChange(trimmed);
+        }}
+      />
+    </div>
+  );
+}
+
+// A plain yes or no, drawn the way the submission buttons are.
+function CheckSetting({ label, checked, onChange }) {
+  return (
+    <label className="flex items-center gap-2 text-sm text-slate-800">
+      <input
+        type="checkbox"
+        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      {label}
+    </label>
+  );
+}
+
+// Form level settings, one set for the whole document, carried in the
+// requirements JSON.
 export default function FormConfigPanel({
   config,
   onChange,
@@ -125,6 +160,48 @@ export default function FormConfigPanel({
 
   return (
     <div className="flex flex-col gap-4 p-4">
+      <TextSetting
+        label="Form Menu Group(s)"
+        value={config.formMenuGroups}
+        onChange={(formMenuGroups) => onChange({ formMenuGroups })}
+      />
+
+      <TextSetting
+        label="Form ID"
+        value={config.formId}
+        onChange={(formId) => onChange({ formId })}
+      />
+
+      <TextSetting
+        label="Form Description"
+        value={config.formDescription}
+        onChange={(formDescription) => onChange({ formDescription })}
+      />
+
+      <TextSetting
+        label="FO Cabinet"
+        value={config.foCabinet}
+        onChange={(foCabinet) => onChange({ foCabinet })}
+      />
+
+      <div className="flex flex-col gap-1.5">
+        <CheckSetting
+          label="Post Processing"
+          checked={config.postProcessing}
+          onChange={(postProcessing) => onChange({ postProcessing })}
+        />
+        <CheckSetting
+          label="Admin Queue"
+          checked={config.adminQueue}
+          onChange={(adminQueue) => onChange({ adminQueue })}
+        />
+        <CheckSetting
+          label="Support Services"
+          checked={config.supportServices}
+          onChange={(supportServices) => onChange({ supportServices })}
+        />
+      </div>
+
       <div>
         <label className={LABEL}>Form type</label>
         <Choice

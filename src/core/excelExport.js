@@ -42,6 +42,11 @@ const BAND_WIDTH_PX =
 
 const ACCESS = { true: 'Editable', false: 'Read Only' };
 
+// A checkbox answers its row either way rather than leaving it blank. Text is
+// trimmed, since the boxes keep what was typed.
+const metadataValue = (value) =>
+  typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value ?? '').trim();
+
 // Light tints of the Office accents, which is what the originals use.
 const INK = {
   header: 'FF44546A',
@@ -265,12 +270,11 @@ export function buildRequirementsWorkbook({
   };
 
   heading('FO Processing');
-  for (const label of METADATA_ROWS) {
-    // The one value in this block the tool knows. The rest describe how
-    // FileOptics files and routes the document, which it has no way to know,
-    // and a filled in guess would be read as a checked fact.
-    const value = label === 'Membership Type' ? (doc?.config?.formType ?? '') : '';
-    edgedRow(write(label, value, '', '', label === 'Membership Type' ? 'Person, Organization or Combined' : ''));
+  // Every row here is set in Config, so nothing is guessed and nothing is left
+  // blank. A filled in guess would be read as a checked fact.
+  const config = doc?.config ?? {};
+  for (const { label, from, note } of METADATA_ROWS) {
+    edgedRow(write(label, metadataValue(config[from]), '', '', note ?? ''));
   }
 
   blank();

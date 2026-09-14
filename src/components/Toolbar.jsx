@@ -27,6 +27,8 @@ export default function Toolbar({
   onZoomChange,
   onNewFieldType,
   onEnforceFontStandards,
+  noticesHidden,
+  onShowNotices,
 }) {
   const pdfInput = useRef(null);
   const jsonInput = useRef(null);
@@ -111,6 +113,15 @@ export default function Toolbar({
       </Button>
 
       <div className="ml-auto flex items-center gap-2">
+        {noticesHidden && (
+          <button
+            type="button"
+            className="rounded border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+            onClick={onShowNotices}
+          >
+            Messages
+          </button>
+        )}
         <input
           ref={jsonInput}
           type="file"
