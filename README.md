@@ -107,11 +107,16 @@ The **All / Standard / System / Signers / Submission** filter above the field li
 as well, and **starts on Standard**, so a form opens showing what it is actually
 about rather than 38 pieces of infrastructure.
 
+Where a system name is placed more than once, only the **first placement
+filters as System** and the rest filter as Standard, because those extra ones
+exist to show the value on the form and behave like any other field. That is
+also what keeps a standard field from vanishing when it is renamed to a system
+name that is already on the form.
+
 Colour follows the same split, and says one thing rather than four: a system
 field is grey and recedes, an ordinary field is blue, and green means Load
-Attempted. Where a system name is placed more than once the **first placement is
-grey** and the rest are blue, because those extra ones exist to show the value on
-the form and behave like any other field.
+Attempted. The extra placements are blue for the same reason they filter as
+Standard.
 
 Imported fields carry no colour of their own. The property panel still says a
 field was rebuilt from an existing AcroForm and that its name and position are
@@ -332,7 +337,7 @@ Config shows all of it read only. There is nothing to set.
 
 ## Form config
 
-The right panel switches between **Fields** and **Config**. Config is form level,
+The right panel switches between **Config** and **Fields**. Config is form level,
 one set per document, carried in the requirements JSON.
 
 - **Form Menu Group(s)**, **Form Name**, **FO Form ID**, **FO Form Description**
@@ -1330,7 +1335,9 @@ reading Yes and a clear one No.
 Only the fields a person interacts with, which is the Standard and Signers
 groups. System fields are plumbing and the submission buttons drive the signing
 sections instead, which is why neither appears in the documents this is modelled
-on.
+on. Only the first placement of a system name counts as plumbing: a second box
+carrying that name was put on the form to show the value, so it earns a row like
+any other field.
 
 **One row per name.** A name placed more than once is one field carrying one
 value, so there is one thing to test; two rows could be ticked Pass and Fail with

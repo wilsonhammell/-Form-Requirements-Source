@@ -1,8 +1,8 @@
 import { FIELD_SCOPES } from '../core/fieldTone.js';
 
 const PANELS = [
-  ['fields', 'Fields'],
   ['config', 'Config'],
+  ['fields', 'Fields'],
 ];
 
 export function PanelTabs({ panel, onPick, counts }) {

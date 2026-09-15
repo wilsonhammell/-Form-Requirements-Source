@@ -207,17 +207,17 @@ existing approved runtime. Both are standard library only:
 
 FILE MANIFEST (SHA-256)
 -----------------------
-  671a82d6834749ac7dcc00ec2ec2f01e29272e7ef602a3faac21bbca89354ff3  assets/index-prPS2fta.js
-  90f7aaec469ccad2a07019ac007d61f1b3670d6616532e6fb70242baba991469  assets/index-WtL79moD.css
+  a8ebca09978d478ef45742cab2eb13acaf8d514313df25a1b6e52bbd6093e98b  assets/index-BimZtgV0.css
+  86893762f8655cd674083d9c8a154d131c0af40f9dfb7928bfdf2ab2cb210b70  assets/index-C5yDb6cO.js
   52fadd5b81b6abd1eb665bab0c3749a8ad6a293fcb6ee9d9e0309f29d4f82619  assets/pdf.worker.min-iDqQPrd3.mjs
   ad88cf9d6d8c3576873229b7314742121d6c128bc5a75a2d060755bde3fc15a0  dbFields.json
   137eabc1a1557f3ec640b8f06af17e1fa172ea0b369a4ee241f84a5e6ab43047  HOSTING.txt
-  08b187b864108dd92c424dba78476bbcf05e7076e5bb516a9f6aa325630856ee  index.html
+  699975aaf7f6a592b575dfb8e90cd60e7ab915a557409e1cc80119aa167dcee6  index.html
   ea7e3e1850cd32c138c14d14b674cbf661cf85b5365775e5f37c941a520a4b80  README.txt
   97420cd231e6f86018db9d361af368a3234b1cd148efbedae263dd0451b858a0  sbom.cyclonedx.json
   6c210091c57a6a78b736ad9d54845e09a86e7f6d06053970c829988c8024b68b  serve.mjs
-  22a83a781e676a1c1d30522cd9866828f878a7b89ad9f5fcc151c78d75dca68d  serve.ps1
+  27e8bca0bfc39db4a4abb5028a805098a77f0874e73f0d0d71f91c871882c0ff  serve.ps1
   f71f0a7a384026f68af50a4b1ece4ae8cad91737dfaa52b69ace4e6b3e518664  serve.py
-  b526c9594e8a53f80b07efa91b6a6fe23cd2c1a62ab987c1c7117b5d4549fc3e  Start.cmd
+  c435df66b8ee66eea357171ee8a54ffe75c0788253145e4ece094d52c4de9f02  Start.cmd
   137478e3410a3ecca8ca909876edccb96e11765c7544087becbd9cc64a521603  systemFields.json
   3810a78c113b2fae41745775edc2a41898397f649857ce4fc4a2dbcac2b473af  web.config

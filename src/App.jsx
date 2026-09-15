@@ -20,7 +20,6 @@ import {
 import {
   loadSystemFields,
   buildSystemIndex,
-  isSystemField,
   isLastSystemPlacement,
   canonicalSystemIds,
 } from './core/systemFields.js';
@@ -100,7 +99,8 @@ export default function App() {
   const [noticesOpen, setNoticesOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [config, setConfig] = useState(() => createConfig());
-  const [panel, setPanel] = useState('fields');
+  // Opens on Config, the first tab and the form level questions answered first.
+  const [panel, setPanel] = useState('config');
   const [systemFields, setSystemFields] = useState([]);
   // Maintained in source rather than fetched, so it is ready on first render.
   const buttons = useMemo(() => signingButtons(), []);
@@ -156,17 +156,29 @@ export default function App() {
     [fields, selectedIds]
   );
 
+  // Worked out over every field, not the filtered set, so a display copy still
+  // knows the canonical placement exists while that one is filtered away.
+  const canonicalIds = useMemo(
+    () => canonicalSystemIds(fields, systemIndex),
+    [fields, systemIndex]
+  );
+
   // The system fields outnumber the rest, so being able to look at one or the
   // other is what keeps a page readable. Both the list and the page follow it.
+  //
+  // Only the canonical placement filters as System. A second box carrying a
+  // system name is there to show the value, so it filters as Standard, which is
+  // also what stops a standard field renamed to a system name from vanishing
+  // out from under whoever just named it.
   const inScope = useCallback(
     (f) =>
       scopes.has(
         fieldScope(f, {
-          system: isSystemField(f.name, systemIndex),
+          system: canonicalIds.has(f.id),
           submissionButton: isSubmissionButton(f.name, buttonIndex),
         })
       ),
-    [scopes, systemIndex, buttonIndex]
+    [scopes, canonicalIds, buttonIndex]
   );
   const scopedFields = useMemo(() => {
     const inList = fields.filter(inScope);
@@ -210,13 +222,6 @@ export default function App() {
       setSelectedIds(new Set([id]));
     },
     [selectedId, scopedFields]
-  );
-
-  // Worked out over every field, not the filtered set, so a display copy still
-  // knows the canonical placement exists while that one is filtered away.
-  const canonicalIds = useMemo(
-    () => canonicalSystemIds(fields, systemIndex),
-    [fields, systemIndex]
   );
 
   const pageFields = useMemo(

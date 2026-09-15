@@ -57,6 +57,17 @@ describe('which fields reach the table', () => {
     expect(rows.map((r) => r.name)).toEqual(['CUSTNAME', 'Member1Name']);
   });
 
+  it('keeps a system name that was placed a second time to show its value', () => {
+    const fields = [
+      createField({ name: 'ERRORS_FOUND', hidden: true, ...at(50, 300) }),
+      createField({ name: 'ERRORS_FOUND', ...at(50, 700) }),
+    ];
+    const rows = requirementRows(doc(fields), { systemIndex, buttonIndex });
+    expect(rows.map((r) => r.name)).toEqual(['ERRORS_FOUND']);
+    // The row comes from the visible copy, so it reads as an ordinary field.
+    expect(rows[0].tone).toBe('standard');
+  });
+
   it('keeps a signer row together even though its boxes are not level', () => {
     // Real geometry from K_ITAOB. Name, signature and date sit on one line but
     // their tops differ by nearly a point and their heights by four, so sorting

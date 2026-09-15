@@ -9,7 +9,7 @@
 // Layout comes from the existing workbooks rather than being invented.
 
 import ExcelJS from 'exceljs';
-import { isSystemField } from './systemFields.js';
+import { canonicalSystemIds } from './systemFields.js';
 import { isSubmissionButton } from './signingButtons.js';
 import { fieldScope, fieldTone, TONE_HEX, TONE_TITLE } from './fieldTone.js';
 import {
@@ -75,6 +75,10 @@ const edged = (cell) => {
 // buttons drive the signing sections, which is why neither appears in the
 // documents this is modelled on.
 //
+// Only the canonical placement of a system name counts as plumbing. A second
+// box carrying that name was put on the form to show the value, so it is a
+// field a person sees and it earns a row like any other.
+//
 // One row per name. A repeated name is one field carrying one value, so there
 // is one thing to test, and two rows could be ticked Pass and Fail with nothing
 // to resolve the contradiction.
@@ -84,12 +88,13 @@ export function requirementRows(
 ) {
   const wanted = ['standard', 'signers'];
   const byName = new Map();
+  const canonicalIds = canonicalSystemIds(doc.fields ?? [], systemIndex);
 
   for (const field of doc.fields ?? []) {
     const name = (field.name ?? '').trim();
     if (!name) continue;
 
-    const system = isSystemField(name, systemIndex);
+    const system = canonicalIds.has(field.id);
     const scope = fieldScope(field, {
       system,
       submissionButton: isSubmissionButton(name, buttonIndex),
