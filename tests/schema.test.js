@@ -461,7 +461,8 @@ describe('form config', () => {
     const config = {
       formMenuGroups: 'Deposits',
       formId: 'K_COV',
-      formDescription: 'Coverdraft Protection',
+      formDescription: 'Overdraft protection agreement',
+      formName: 'Coverdraft Protection',
       foCabinet: 'Member Services',
       postProcessing: true,
       adminQueue: false,

@@ -296,7 +296,10 @@ describe('the metadata block', () => {
       formType: 'combined',
       formMenuGroups: 'Deposits, Lending',
       formId: ' K_COV ',
-      formDescription: 'Coverdraft Protection',
+      // Deliberately different from the name, so a row fed by the wrong one
+      // fails rather than passing on a coincidence.
+      formDescription: 'Overdraft protection agreement',
+      formName: 'Coverdraft Protection',
       foCabinet: 'Member Services',
       postProcessing: true,
       adminQueue: false,
@@ -306,8 +309,9 @@ describe('the metadata block', () => {
 
     expect(valueOf('Membership Type')).toBe('combined');
     expect(valueOf('Form Menu Group(s)')).toBe('Deposits, Lending');
-    expect(valueOf('Form ID')).toBe('K_COV');
-    expect(valueOf('Form Description')).toBe('Coverdraft Protection');
+    expect(valueOf('FO Form ID')).toBe('K_COV');
+    expect(valueOf('FO Form Description')).toBe('Overdraft protection agreement');
+    expect(valueOf('Form Name')).toBe('Coverdraft Protection');
     expect(valueOf('FO Cabinet')).toBe('Member Services');
     // A checkbox answers its row either way.
     expect(valueOf('Post Processing Req’d')).toBe('Yes');
@@ -315,14 +319,16 @@ describe('the metadata block', () => {
     expect(valueOf('Support Services Q Req’d')).toBe('Yes');
   });
 
-  it('puts Form ID directly above Form Description', async () => {
+  it('runs FO Form ID, FO Form Description then Form Name', async () => {
     const { rowOf } = await rowsOf();
-    expect(rowOf('Form Description') - rowOf('Form ID')).toBe(1);
+    expect(rowOf('FO Form Description') - rowOf('FO Form ID')).toBe(1);
+    expect(rowOf('Form Name') - rowOf('FO Form Description')).toBe(1);
   });
 
   it('drops the rows the business no longer uses', async () => {
     const { labels } = await rowsOf();
-    for (const gone of ['Dynamic Package', 'Data Line Info', 'Form Name']) {
+    // The bare pair is gone too, both carry the FO prefix now.
+    for (const gone of ['Dynamic Package', 'Data Line Info', 'Form ID', 'Form Description']) {
       expect(labels).not.toContain(gone);
     }
   });
@@ -330,9 +336,9 @@ describe('the metadata block', () => {
   it('retires the Welcome Tree wording everywhere on the sheet', async () => {
     const { labels, rowOf } = await rowsOf();
     expect(labels.filter((label) => label.includes('Welcome Tree'))).toEqual([]);
-    // Post Production follows the same rule, Form ID above Form Description.
+    // Post Production names the form rather than describing it.
     expect(
-      rowOf('Form Description in Form Menu Group(s)') - rowOf('Form ID in Form Menu Group(s)')
+      rowOf('Form Name in Form Menu Group(s)') - rowOf('FO Form ID in Form Menu Group(s)')
     ).toBe(1);
   });
 });

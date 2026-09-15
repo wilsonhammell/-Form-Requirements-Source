@@ -335,11 +335,11 @@ Config shows all of it read only. There is nothing to set.
 The right panel switches between **Fields** and **Config**. Config is form level,
 one set per document, carried in the requirements JSON.
 
-- **Form Menu Group(s)**, **Form ID**, **Form Description** and **FO Cabinet**,
-  free text, all carried into the requirements workbook. Export also writes Form
-  ID and Form Description into `FORM_ID` and `FORM_NAME`. A blank box clears the
-  field. Opening a PDF fills a blank box from the field, so a form that already
-  carries them keeps them.
+- **Form Menu Group(s)**, **Form Name**, **FO Form ID**, **FO Form Description**
+  and **FO Cabinet**, free text, all carried into the requirements workbook.
+  Export also writes FO Form ID into `FORM_ID` and Form Name into `FORM_NAME`. A
+  blank box clears the field. Opening a PDF fills a blank box from the field, so
+  a form that already carries them keeps them.
 - **Post Processing**, **Admin Queue** and **Support Services**, checkboxes.
   They fill the first three rows of the workbook's FO Processing block, a ticked
   box reading Yes and a clear one No.
@@ -357,7 +357,8 @@ one set per document, carried in the requirements JSON.
 "config": {
   "formMenuGroups": "Deposits",
   "formId": "K_COV",
-  "formDescription": "Coverdraft Protection",
+  "formDescription": "Overdraft protection agreement",
+  "formName": "Coverdraft Protection",
   "foCabinet": "Member Services",
   "postProcessing": true,
   "adminQueue": false,

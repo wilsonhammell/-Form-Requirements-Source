@@ -8,7 +8,7 @@
 // A step is [label, note]. The label goes in the Form Field column and the note,
 // where there is one, in Logic, matching how the existing sheets read.
 
-// Rows 2 to 10 of every sheet. Every one is filled from Config, named here by
+// Rows 2 to 11 of every sheet. Every one is filled from Config, named here by
 // the entry it reads, so nothing in this block is guessed. A filled in guess
 // would be taken for a checked fact.
 export const METADATA_ROWS = [
@@ -16,8 +16,9 @@ export const METADATA_ROWS = [
   { label: 'Admin Q Req’d', from: 'adminQueue' },
   { label: 'Support Services Q Req’d', from: 'supportServices' },
   { label: 'FO Cabinet', from: 'foCabinet' },
-  { label: 'Form ID', from: 'formId' },
-  { label: 'Form Description', from: 'formDescription' },
+  { label: 'FO Form ID', from: 'formId' },
+  { label: 'FO Form Description', from: 'formDescription' },
+  { label: 'Form Name', from: 'formName' },
   { label: 'Form Menu Group(s)', from: 'formMenuGroups' },
   { label: 'Membership Type', from: 'formType', note: 'Person, Organization or Combined' },
 ];
@@ -151,8 +152,8 @@ export const SIGNING_ROLES = [
 
 export const POST_PRODUCTION = [
   ['Form Menu Group(s)'],
-  ['Form ID in Form Menu Group(s)'],
-  ['Form Description in Form Menu Group(s)'],
+  ['FO Form ID in Form Menu Group(s)'],
+  ['Form Name in Form Menu Group(s)'],
   ['Confirm Production FO', 'Phone Auth', 'If a "test" acct is NOT used then request removal'],
   ['Confirm Production FO', 'In - Branch eSign'],
   ['Confirm Production FO', 'Remote eSign', 'TEST account MUST be used'],

@@ -766,7 +766,13 @@ async function run() {
   // Free text boxes, labelled exactly as the business names them and in their
   // order. Typed a character at a time, since the config is rebuilt on every
   // keystroke and a trim there would eat a space.
-  const TEXT_LABELS = ['Form Menu Group(s)', 'Form ID', 'Form Description', 'FO Cabinet'];
+  const TEXT_LABELS = [
+    'Form Menu Group(s)',
+    'Form Name',
+    'FO Form ID',
+    'FO Form Description',
+    'FO Cabinet',
+  ];
   const textBox = (label) =>
     [...document.querySelectorAll('#root aside label')]
       .find((l) => l.textContent.trim() === label)
@@ -775,7 +781,7 @@ async function run() {
     .map((l) => l.textContent.trim())
     .filter((t) => TEXT_LABELS.includes(t));
   check(
-    'Config has the four text boxes, in the order the business names them',
+    'Config has its text boxes, in the order the business names them',
     JSON.stringify(shownLabels) === JSON.stringify(TEXT_LABELS) &&
       TEXT_LABELS.every((t) => !!textBox(t)),
     JSON.stringify(shownLabels)
@@ -801,23 +807,23 @@ async function run() {
       !cfgCheck('Support Services').checked
   );
   for (const ch of 'Coverdraft Protection') {
-    const box = textBox('Form Description');
+    const box = textBox('FO Form Description');
     setInputValue(box, box.value + ch);
     await sleep(20);
   }
   check(
     'a space survives being typed into the description',
-    textBox('Form Description').value === 'Coverdraft Protection',
-    JSON.stringify(textBox('Form Description').value)
+    textBox('FO Form Description').value === 'Coverdraft Protection',
+    JSON.stringify(textBox('FO Form Description').value)
   );
-  setInputValue(textBox('Form ID'), ' K_COV ');
+  setInputValue(textBox('FO Form ID'), ' K_COV ');
   await sleep(120);
-  textBox('Form ID').dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+  textBox('FO Form ID').dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
   await sleep(120);
   check(
-    'leaving the Form ID box trims it',
-    textBox('Form ID').value === 'K_COV',
-    JSON.stringify(textBox('Form ID').value)
+    'leaving the FO Form ID box trims it',
+    textBox('FO Form ID').value === 'K_COV',
+    JSON.stringify(textBox('FO Form ID').value)
   );
 
   const codeBox = configPanel.querySelector('textarea');

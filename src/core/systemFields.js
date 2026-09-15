@@ -62,7 +62,7 @@ function messageBoxRect(box, [x0, y0, x1, y1]) {
 // and Coverdraft Protection.
 export const CONFIG_VALUE_FIELDS = [
   { identifier: 'FORM_ID', key: 'formId' },
-  { identifier: 'FORM_NAME', key: 'formDescription' },
+  { identifier: 'FORM_NAME', key: 'formName' },
 ];
 
 // A column per signer along the bottom, roughly where they land on a real form.

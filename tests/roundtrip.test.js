@@ -226,7 +226,8 @@ describe('export then reopen', () => {
     const config = {
       formMenuGroups: 'Consents',
       formId: 'K_CON',
-      formDescription: 'Consent Form',
+      formDescription: 'Consent to share information',
+      formName: 'Consent Form',
       foCabinet: 'Lending',
       postProcessing: true,
       adminQueue: true,
@@ -250,7 +251,8 @@ describe('export then reopen', () => {
     const config = {
       formMenuGroups: 'Payments',
       formId: 'K_PADQR',
-      formDescription: 'PAD Questionnaire & Reimbursemant Claim',
+      formDescription: 'Claim for a reimbursement of a PAD',
+      formName: 'PAD Questionnaire & Reimbursemant Claim',
       foCabinet: 'Member Services',
       postProcessing: false,
       adminQueue: false,
@@ -305,7 +307,14 @@ describe('the config values in FORM_ID and FORM_NAME', () => {
     const { pdfBytes } = await exportPdf({
       originalBytes: await buildFlatForm(),
       fields: [...sampleFields(), ...systemBoxes()],
-      meta: { config: { formId: ' K_COV ', formDescription: 'Coverdraft Protection' } },
+      meta: {
+        config: {
+          formId: ' K_COV ',
+          formName: 'Coverdraft Protection',
+          // A different thing from the name, and it goes nowhere near the field.
+          formDescription: 'Overdraft protection agreement',
+        },
+      },
     });
     expect(await textOf(pdfBytes, 'FORM_ID')).toBe('K_COV');
     expect(await textOf(pdfBytes, 'FORM_NAME')).toBe('Coverdraft Protection');
@@ -315,7 +324,7 @@ describe('the config values in FORM_ID and FORM_NAME', () => {
     const first = await exportPdf({
       originalBytes: await buildFlatForm(),
       fields: systemBoxes(),
-      meta: { config: { formId: 'K_COV', formDescription: 'Coverdraft Protection' } },
+      meta: { config: { formId: 'K_COV', formName: 'Coverdraft Protection' } },
     });
     const reopened = await importPdf(first.pdfBytes, dbIndex);
     const second = await exportPdf({
@@ -339,7 +348,8 @@ describe('the config values in FORM_ID and FORM_NAME', () => {
     const opened = await importPdf(bytes, dbIndex);
     expect(opened.source).toBe(SOURCE.ACROFORM);
     expect(opened.config.formId).toBe('K_COV');
-    expect(opened.config.formDescription).toBe('');
+    // FORM_NAME is not on this form, so its box stays blank.
+    expect(opened.config.formName).toBe('');
 
     // So exporting it straight back does not wipe the value.
     const { pdfBytes } = await exportPdf({

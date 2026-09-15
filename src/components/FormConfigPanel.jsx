@@ -167,13 +167,19 @@ export default function FormConfigPanel({
       />
 
       <TextSetting
-        label="Form ID"
+        label="Form Name"
+        value={config.formName}
+        onChange={(formName) => onChange({ formName })}
+      />
+
+      <TextSetting
+        label="FO Form ID"
         value={config.formId}
         onChange={(formId) => onChange({ formId })}
       />
 
       <TextSetting
-        label="Form Description"
+        label="FO Form Description"
         value={config.formDescription}
         onChange={(formDescription) => onChange({ formDescription })}
       />
