@@ -13,15 +13,12 @@
   { "identifier": "SUBMITTED_TO_FO", "placement": "compact" },
   { "identifier": "ERRORS_FOUND", "placement": "compact" },
   { "identifier": "NAMES_MDAS", "placement": "compact" },
-  { "identifier": "IN_PERSNBR", "placement": "compact" },
-  { "identifier": "IN_ORGNBR", "placement": "compact" },
+  { "identifier": "PRIMARY_MEMBERSHIP_TYPE", "placement": "compact" },
   { "identifier": "PROD_CODE", "placement": "compact" },
   { "identifier": "PRIMARY_FULL_LEGAL_NAME", "placement": "compact" },
+  { "identifier": "ENVIRONMENT", "placement": "compact" },
 
-  { "identifier": "SUBMIT_SUCCESS", "placement": "wide" },
-  { "identifier": "SUBMIT_FAILED", "placement": "wide", "multiline": true },
-  { "identifier": "VALIDATE_REQ", "placement": "wide" },
-  { "identifier": "eSIGN_FAILED", "placement": "wide", "multiline": true },
+  { "identifier": "FORM_MESSAGE", "placement": "wide", "multiline": true },
   { "identifier": "DNA_REQ", "placement": "wide", "multiline": true },
 
   { "identifier": "SIGNER1_FULL_LEGAL_NAME", "placement": "signer", "column": 1 },

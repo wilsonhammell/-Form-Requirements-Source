@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { isLoadAttempted } from '../core/schema.js';
-import { fieldTone, TONE_TITLE } from '../core/fieldTone.js';
+import { fieldTone, MARKER_TONE, TONE_TITLE } from '../core/fieldTone.js';
 
 // The dot beside each row, one class per tone.
 const DOT = {
@@ -9,6 +9,7 @@ const DOT = {
   system: 'bg-slate-400',
   attempted: 'bg-emerald-600',
   standard: 'bg-blue-500',
+  marker: 'bg-amber-600',
 };
 
 // Two shapes, the same two Acrobat's Fields panel uses. A radio group nests,
@@ -38,12 +39,15 @@ function groupByPage(fields) {
 
 export default function FieldList({
   fields,
+  markers = [],
   selectedId,
   selectedIds,
+  selectedMarkerId,
   dbIndex,
   systemIndex,
   canonicalIds,
   onSelect,
+  onSelectMarker,
   onGoToPage,
 }) {
   const selectedRef = useRef(null);
@@ -67,11 +71,20 @@ export default function FieldList({
     return { indexById, countByName };
   }, [fields]);
 
-  if (fields.length === 0) {
+  if (fields.length === 0 && markers.length === 0) {
     return <p className="px-3 py-4 text-sm text-slate-500">No fields yet.</p>;
   }
 
-  const pages = groupByPage(fields);
+  // Markers sit under the fields of the page they are on, and a page carrying
+  // only markers still gets its heading rather than disappearing.
+  const markersByPage = new Map();
+  for (const marker of markers) {
+    if (!markersByPage.has(marker.page)) markersByPage.set(marker.page, []);
+    markersByPage.get(marker.page).push(marker);
+  }
+  const byPage = new Map(groupByPage(fields));
+  for (const page of markersByPage.keys()) if (!byPage.has(page)) byPage.set(page, []);
+  const pages = [...byPage.entries()].sort((a, b) => a[0] - b[0]);
 
   const rowProps = (field) => ({
     field,
@@ -129,9 +142,58 @@ export default function FieldList({
               );
             })}
           </ul>
+          {(markersByPage.get(page) ?? []).length > 0 && (
+            <ul>
+              {markersByPage.get(page).map((marker) => (
+                <li key={marker.id}>
+                  <MarkerRow
+                    marker={marker}
+                    selected={marker.id === selectedMarkerId}
+                    onSelect={onSelectMarker}
+                    onGoToPage={onGoToPage}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
         </li>
       ))}
     </ul>
+  );
+}
+
+// A square dot rather than a round one, the way a system field is turned 45
+// degrees: the shape says it is not an ordinary field before the colour does.
+function MarkerRow({ marker, selected, onSelect, onGoToPage }) {
+  const role = (marker.role ?? '').trim();
+  return (
+    <button
+      type="button"
+      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left ${
+        selected ? 'bg-sky-50 ring-1 ring-inset ring-sky-400' : 'hover:bg-slate-50'
+      }`}
+      onClick={() => {
+        onSelect(marker.id);
+        onGoToPage(marker.page);
+      }}
+    >
+      <span className={`h-2 w-2 shrink-0 ${DOT[MARKER_TONE]}`} title={TONE_TITLE[MARKER_TONE]} />
+      <span
+        className={`flex-1 truncate text-xs ${role ? 'text-slate-800' : 'italic text-slate-400'}`}
+        title={role || 'No one named yet'}
+      >
+        {role || 'who initials here?'}
+      </span>
+      {!role && (
+        <span
+          className="rounded bg-red-100 px-1 text-[10px] font-medium text-red-800"
+          title="An initials marker has to say whose initials go there"
+        >
+          !
+        </span>
+      )}
+      <span className="w-12 shrink-0 text-right text-[10px] text-slate-400">initials</span>
+    </button>
   );
 }
 

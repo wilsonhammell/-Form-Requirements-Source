@@ -117,17 +117,52 @@ function flagError(fieldName) {
     }
 }
 
+// The one message strip, FORM_MESSAGE. It replaced SUBMIT_SUCCESS,
+// SUBMIT_FAILED, VALIDATE_REQ and eSIGN_FAILED, which were four boxes to place
+// on every form and could never be on screen at the same time anyway.
+//
+// The colour moved with them. The box is drawn red, so a success sets green
+// here and everything else leaves it alone, which is how the old pair read.
+// These are the rgb values the example forms use, and MESSAGE_COLORS in
+// systemFields.js holds the same two.
+var MESSAGE_COLOR_ERROR = ["RGB", 0.898, 0.133, 0.215];
+var MESSAGE_COLOR_SUCCESS = ["RGB", 0.415, 0.851, 0.156];
+
+function showFormMessage(text, isSuccess) {
+    var box = getSafeField("FORM_MESSAGE");
+
+    if (!box) {
+        return;
+    }
+
+    var tone = isSuccess ? MESSAGE_COLOR_SUCCESS : MESSAGE_COLOR_ERROR;
+
+    box.value = text;
+    box.textColor = tone;
+    box.strokeColor = tone;
+    box.readonly = true;
+    box.display = display.visible;
+}
+
+// Hidden and emptied together, so a stale message can never outlive the attempt
+// that produced it.
+function clearFormMessage() {
+    var box = getSafeField("FORM_MESSAGE");
+
+    if (box) {
+        box.value = "";
+        box.display = display.hidden;
+    }
+}
+
 function resetValidationState() {
     var errorsFound = getSafeField("ERRORS_FOUND");
-    var validateReq = getSafeField("VALIDATE_REQ");
 
     if (errorsFound) {
         errorsFound.value = 0;
     }
 
-    if (validateReq) {
-        validateReq.display = display.hidden;
-    }
+    clearFormMessage();
 }
 
 function setFieldState(fieldName, isVisible, isReadonly) {
@@ -301,6 +336,13 @@ function LoadValidation(isPerson, requiredFields) {
 
         return true;
     }
+}
+
+// PRIMARY_MEMBERSHIP_TYPE is P for a person membership and B for an
+// organization. Anything that is not P reads as an organization, the way a blank
+// IN_PERSNBR did before it replaced that field and IN_ORGNBR.
+function isPersonMembership() {
+    return getSafeValue("PRIMARY_MEMBERSHIP_TYPE").toUpperCase() === "P";
 }
 
 function MembershipTypeValidation(isPerson) {
@@ -534,7 +576,6 @@ function runBaseSaveValidationOnly()
 function showValidationResult()
 {
     var errorsFound = getSafeField("ERRORS_FOUND");
-    var validateReq = getSafeField("VALIDATE_REQ");
 
     var errorCount = 0;
 
@@ -543,18 +584,10 @@ function showValidationResult()
     }
 
     if (errorCount > 0) {
-        if (validateReq) {
-            validateReq.readonly = true;
-            validateReq.value = errorCount + " errors have been found. Fields highlighted in RED are required before you can print/submit the form.";
-            validateReq.display = display.visible;
-        }
-
+        showFormMessage(errorCount + " errors have been found. Fields highlighted in RED are required before you can print/submit the form.", false);
         return false;
     } else {
-        if (validateReq) {
-            validateReq.display = display.hidden;
-        }
-
+        clearFormMessage();
         return true;
     }
 }
@@ -703,7 +736,27 @@ function validateESignCode() {
     }
 }
 
+// Signers whose DNA record carries no email. Collected rather than appended to
+// the message as they are found, since the strip takes one line and the old
+// eSIGN_FAILED box took one line per name.
+var MISSING_EMAIL_SIGNERS = [];
+
+// Built at the end so the names read as a list. The count leads, because a long
+// enough list still runs past two lines and the number survives the clipping.
+function eSignFailureMessage() {
+    var base = "Error: Your form did not get submitted to FileOptics for eSign.";
+
+    if (MISSING_EMAIL_SIGNERS.length === 0) {
+        return base;
+    }
+
+    return base + " " + MISSING_EMAIL_SIGNERS.length + " member(s) missing an email in DNA: " +
+        MISSING_EMAIL_SIGNERS.join(", ");
+}
+
 function prepareESigners() {
+    MISSING_EMAIL_SIGNERS = [];
+
     if (!anyRowHas("name")) {
         var errorsFound = getSafeField("ERRORS_FOUND");
         if (errorsFound) {
@@ -714,7 +767,7 @@ function prepareESigners() {
         return "";
     }
 
-    if (getSafeValue("IN_PERSNBR").length > 0) {
+    if (isPersonMembership()) {
         return preparePersonESigners();
     } else {
         return prepareOrgESigners();
@@ -732,11 +785,6 @@ function preparePersonESigners() {
     var strKCU_TAG = kcuField.value;
     var aKCU_TAG = strKCU_TAG.split("#");
     var aMemberEmailAddresses = aKCU_TAG[3].split("~");
-
-    var failedField = getSafeField("eSIGN_FAILED");
-    if (failedField) {
-        failedField.value = "Error: Your form did not get submitted to FileOptics for eSign.\nThe following members are missing their email:";
-    }
 
     // One slot per row, joined at the end. Building the string by appending
     // commas needs row 1 to be a special case, which breaks as soon as row 1 is
@@ -776,9 +824,7 @@ function preparePersonESigners() {
                     errorsFound.value = 1;
                 }
 
-                if (failedField) {
-                    failedField.value = failedField.value + "\n- " + memberName;
-                }
+                MISSING_EMAIL_SIGNERS.push(memberName);
 
                 // ERRORS_FOUND stops the submit before this is read, so the
                 // slot only keeps the rows lined up.
@@ -819,12 +865,6 @@ function buildOrgESignerList(signerCtr) {
 function prepareOrgESigners() {
     setKCU_TAG(14, "Y");
 
-    var failedField = getSafeField("eSIGN_FAILED");
-
-    if (failedField) {
-        failedField.value = "Error: The following persons are missing their email in DNA which is required for Remote eSign";
-    }
-
     var signerCtr = 0;
     var signerNames = "~";
     var signerNumbers = "~";
@@ -854,9 +894,7 @@ function prepareOrgESigners() {
             signerEmails = signerEmails + signerEmail + "~";
 
             if (signerEmail === "" || typeof signerEmail === "undefined") {
-                if (failedField) {
-                    failedField.value = failedField.value + "\n- " + signerName;
-                }
+                MISSING_EMAIL_SIGNERS.push(signerName);
 
                 var errorsFound = getSafeField("ERRORS_FOUND");
                 if (errorsFound) {
@@ -874,7 +912,7 @@ function prepareOrgESigners() {
 }
 
 function getFlowId(authType) {
-    if (FILEOPTICS_ENVIRONMENT === "PROD") {
+    if (!isTestEnvironment()) {
         if (authType === "PHONE") return "FO";
         if (authType === "ESIGN") return "ES";
         if (authType === "DIGITAL") return "DS";
@@ -911,19 +949,16 @@ function sendToFileOptics(flowId, successMsg) {
         setFileOpticsButtonsState(false, true);
         FileOptics(this, this.path);
 
-        var sField = getSafeField("SUBMIT_SUCCESS");
-        if (sField) {
-            if (successMsg && successMsg !== "") {
-                sField.value = successMsg;
-            }
-
-            sField.display = display.visible;
-        }
+        // The default is what SUBMIT_SUCCESS shipped with on every example
+        // form. It used to live in the field, which one shared box cannot do.
+        showFormMessage(
+            successMsg && successMsg !== ""
+                ? successMsg
+                : "Your form has been successfully submitted to FileOptics",
+            true
+        );
     } else {
-        var failedField = getSafeField("SUBMIT_FAILED");
-        if (failedField) {
-            failedField.display = display.visible;
-        }
+        showFormMessage("Error: Your FileOptics.js file is missing. Open a ServiceNow ticket and assign to Service Desk", false);
     }
 }
 
@@ -972,11 +1007,7 @@ function submitRemoteESign() {
 
     var errorsFound = getSafeField("ERRORS_FOUND");
     if (errorsFound && Number(errorsFound.value) > 0) {
-        var failedField = getSafeField("eSIGN_FAILED");
-        if (failedField) {
-            failedField.display = display.visible;
-        }
-
+        showFormMessage(eSignFailureMessage(), false);
         return;
     }
 
@@ -991,8 +1022,12 @@ function submitRemoteESign() {
 }
 
 
+// The filler writes ENVIRONMENT as it fills the form, so the same PDF is a test
+// form or a live one by virtue of which filler produced it. Anything that is not
+// PROD reads as test, so a form that never went through the filler cannot reach
+// the live flows.
 function isTestEnvironment() {
-    return FILEOPTICS_ENVIRONMENT === "TEST";
+    return getSafeValue("ENVIRONMENT").toUpperCase() !== "PROD";
 }
 
 function promptForTestEmail(signerName) {

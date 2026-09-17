@@ -134,11 +134,15 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
 
   const embedded = extractRequirements(pdfDoc);
   if (embedded) {
-    const { fields, config } = parseDocument(embedded, dbIndex);
+    const { fields, config, markers } = parseDocument(embedded, dbIndex);
     return {
       pdfDoc,
       fields: withSystem(fields),
       config: withFieldValues(config, pdfDoc),
+      // Only this route carries them. Markers are never written to the PDF, so
+      // there are no widgets for the AcroForm route to rebuild them from, the
+      // same way notes and validation flags are not inferred there.
+      markers,
       source: SOURCE.EMBEDDED,
       notes: [
         `Loaded ${fields.length} field${fields.length === 1 ? '' : 's'} from embedded JSON.`,
@@ -153,6 +157,7 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
       pdfDoc,
       fields: withSystem(reconcileFields(fields, dbIndex)),
       config: withFieldValues(createConfig(), pdfDoc),
+      markers: [],
       source: SOURCE.ACROFORM,
       notes: [...notes, ...systemNotes],
     };
@@ -162,6 +167,7 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
     pdfDoc,
     fields: withSystem([]),
     config: createConfig(),
+    markers: [],
     source: SOURCE.FLAT,
     notes: ['No form fields found, starting empty.', ...systemNotes],
   };

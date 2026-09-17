@@ -13,17 +13,17 @@ export function downloadBytes(bytes, fileName, mimeType) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// "application.pdf" becomes "application.fields.json" and "application.fields.pdf".
+// "application.pdf" becomes "application.json", "application.pdf" and "application.xlsx".
 const baseName = (pdfFileName) => (pdfFileName || 'form').replace(/\.pdf$/i, '');
 
 export function sidecarName(pdfFileName) {
-  return baseName(pdfFileName) + '.fields.json';
+  return baseName(pdfFileName) + '.json';
 }
 
 export function exportedPdfName(pdfFileName) {
-  return baseName(pdfFileName) + '.fields.pdf';
+  return baseName(pdfFileName) + '.pdf';
 }
 
 export function requirementsName(pdfFileName) {
-  return baseName(pdfFileName) + '.requirements.xlsx';
+  return baseName(pdfFileName) + '.xlsx';
 }

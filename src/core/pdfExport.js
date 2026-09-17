@@ -530,11 +530,14 @@ const TRANSPARENT_WIDGET = {
 };
 
 // A message box is drawn the way the example forms draw it, border and text in
-// one colour, on white apart from VALIDATE_REQ. Keys passed for the same reason.
+// one colour on white. Keys passed for the same reason.
+//
+// The colour here is only the seed. The strip carries the success message as
+// well as the errors, so the starter code recolours it per message at fill time.
 function messageWidget(look) {
   return {
     borderColor: rgb(...look.color),
-    backgroundColor: look.background ? rgb(1, 1, 1) : undefined,
+    backgroundColor: rgb(1, 1, 1),
     borderWidth: 1,
     rotate: degrees(0),
   };
@@ -592,9 +595,6 @@ function createField(form, pages, name, group, fontsByFamily, warnings) {
   }
 
   applyFieldSettings(field, group, fontsByFamily, field.acroField.getWidgets(), false);
-
-  // Fixed boxes that do not scroll, as on the example forms.
-  if (look?.noScroll && field instanceof PDFTextField) field.disableScrolling();
 }
 
 // Caption, look and action are all ours, the button list fixing all three. One

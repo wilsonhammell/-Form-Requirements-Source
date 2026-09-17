@@ -3,7 +3,17 @@
 //
 // Load Attempted is derived, never stored. loadValidated clears itself as soon
 // as the name stops matching the DB list. saveValidated stands on any field.
+//
+// Depends only on markers.js, which depends on nothing, so nothing that depends
+// on this module can be reached from it.
 
+import { serializeMarkers, parseMarkers } from './markers.js';
+
+// Markers were added without a bump. They are an optional array, so a document
+// written before them reads with none, and nothing about them reaches the PDF:
+// an older build dropping them exports the same form with a thinner
+// requirements sheet, where a bump would have rejected every file already
+// written.
 export const SCHEMA_VERSION = 1;
 
 // A button carries no value, so it takes none of the machinery the other four
@@ -19,15 +29,6 @@ export const FORM_TYPES = [
 
 const FORM_TYPE_VALUES = new Set(FORM_TYPES.map((t) => t.value));
 
-// Decides the flow id the submit paths send, so a form left on TEST sends
-// nowhere real.
-export const ENVIRONMENTS = [
-  { value: 'TEST', label: 'Test' },
-  { value: 'PROD', label: 'Production' },
-];
-
-const ENVIRONMENT_VALUES = new Set(ENVIRONMENTS.map((e) => e.value));
-
 export const DEFAULT_CONFIG = {
   formMenuGroups: '',
   formId: '',
@@ -39,7 +40,6 @@ export const DEFAULT_CONFIG = {
   supportServices: false,
   formType: 'person',
   productCodes: [],
-  environment: 'TEST',
 };
 
 // These are pasted, so a spreadsheet column's newlines and tabs count as
@@ -76,11 +76,6 @@ export function createConfig(partial = {}) {
     productCodes: Array.isArray(partial?.productCodes)
       ? parseProductCodes(partial.productCodes.join(','))
       : parseProductCodes(partial?.productCodes),
-    // A form that reaches production untouched fails safe by talking to the
-    // test endpoint rather than the live one.
-    environment: ENVIRONMENT_VALUES.has(partial?.environment)
-      ? partial.environment
-      : DEFAULT_CONFIG.environment,
   };
 }
 
@@ -320,6 +315,9 @@ export function serializeDocument(fields, meta = {}) {
     generatedAt: new Date().toISOString(),
     ...(meta.sourceFileName ? { sourceFileName: meta.sourceFileName } : {}),
     config,
+    // Always written, empty or not, so the key is discoverable in any document
+    // this build produces rather than appearing only on the forms that use it.
+    markers: serializeMarkers(meta.markers),
     fields: fields.map((f) => ({
       id: f.id,
       name: f.name,
@@ -379,6 +377,7 @@ export function parseDocument(raw, dbIndex) {
     meta: { sourceFileName: data.sourceFileName, generatedAt: data.generatedAt },
     config: createConfig(data.config),
     fields: reconcileFields(fields, dbIndex),
+    markers: parseMarkers(data.markers),
   };
 }
 

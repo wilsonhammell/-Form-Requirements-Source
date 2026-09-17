@@ -22,9 +22,13 @@ import {
 const COMPACT = { width: 54, height: 10, gap: 2, rowGap: 2, margin: 6 };
 const WIDE = { widthRatio: 0.8, height: 18, gap: 6 };
 
-// The message boxes the starter code shows a person. Measured off the seven
-// example forms, which agree to the point, so this is their look rather than a
-// design. Colours are rgb from 0 to 1, heights and margins are points.
+// The message boxes the starter code shows a person. Colours are rgb from 0 to
+// 1, heights and margins are points, measured off the seven example forms.
+//
+// Two boxes, where there were five. Only one of the old five could ever be on
+// screen at once, so the strip carries whichever message is current and the
+// starter code sets the text and the colour together. That is one thing to
+// place per form instead of four.
 //
 // Listed bottom to top, the order they stack in on export, above every other
 // field. DNA_REQ is last so it covers the rest, as on most of the forms.
@@ -32,15 +36,19 @@ const RED = [0.898, 0.133, 0.215];
 const GREEN = [0.415, 0.851, 0.156];
 const MESSAGE_MARGIN = { top: 80, bottom: 55 };
 
+// What the strip is recoloured to at fill time. The starter code carries its
+// own copy of these numbers, because it ships as text rather than as a module,
+// and a test pins the two together.
+export const MESSAGE_COLORS = { error: RED, success: GREEN };
+
 export const MESSAGE_BOXES = {
-  // One strip, the three sharing a centre line. Only one shows at a time.
-  SUBMIT_SUCCESS: { color: GREEN, background: true, widthRatio: 0.9575, height: 17, band: 'strip' },
-  SUBMIT_FAILED: { color: RED, background: true, widthRatio: 0.9575, height: 17, band: 'strip', noScroll: true },
-  VALIDATE_REQ: { color: RED, background: false, widthRatio: 0.8824, height: 19, band: 'strip' },
-  // Tall enough to list the members missing an email.
-  eSIGN_FAILED: { color: RED, background: true, widthRatio: 0.9, height: 141, band: 'top', noScroll: true },
-  // Covers the form when the wrong account is selected.
-  DNA_REQ: { color: RED, background: true, widthRatio: 0.92, band: 'page' },
+  // Seeded red, since all but one of the messages are errors. Two lines tall at
+  // the strip width: the eSign failure names the members missing an email, and
+  // a couple of long names run past one line.
+  FORM_MESSAGE: { color: RED, widthRatio: 0.9575, height: 34, band: 'strip' },
+  // Covers the form when the wrong account is selected. Kept separate because a
+  // page of missing DNA data was never going to fit a strip.
+  DNA_REQ: { color: RED, widthRatio: 0.92, band: 'page' },
 };
 
 function messageBoxRect(box, [x0, y0, x1, y1]) {
@@ -49,9 +57,6 @@ function messageBoxRect(box, [x0, y0, x1, y1]) {
   if (box.band === 'page') {
     const height = Math.max(0, y1 - y0 - MESSAGE_MARGIN.top - MESSAGE_MARGIN.bottom);
     return { x, y: y0 + MESSAGE_MARGIN.bottom, width, height };
-  }
-  if (box.band === 'top') {
-    return { x, y: y1 - MESSAGE_MARGIN.top - box.height, width, height: box.height };
   }
   const centre = y0 + (y1 - y0) / 2;
   return { x, y: centre - box.height / 2, width, height: box.height };

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FORM_TYPES, ENVIRONMENTS, parseProductCodes } from '../core/schema.js';
+import { FORM_TYPES, parseProductCodes } from '../core/schema.js';
 import {
   SIGNER_PARTS,
   JOINT_PARTS,
@@ -20,9 +20,8 @@ const ACTION =
   'rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40';
 const CHIP = 'rounded bg-teal-50 px-1.5 py-0.5 text-[10px] font-medium text-teal-800 ring-1 ring-teal-200';
 
-// One row of segmented buttons. Production takes amber rather than sky, since
-// it is the choice worth noticing.
-function Choice({ options, value, onPick, alert = null }) {
+// One row of segmented buttons.
+function Choice({ options, value, onPick }) {
   return (
     <div className="mt-1 flex gap-1.5">
       {options.map(({ value: option, label }) => (
@@ -33,9 +32,7 @@ function Choice({ options, value, onPick, alert = null }) {
           className={`flex-1 rounded border px-2 py-1.5 text-sm ${
             value !== option
               ? 'border-slate-300 text-slate-700 hover:bg-slate-50'
-              : option === alert
-                ? 'border-amber-600 bg-amber-600 text-white'
-                : 'border-sky-600 bg-sky-600 text-white'
+              : 'border-sky-600 bg-sky-600 text-white'
           }`}
           onClick={() => onPick(option)}
         >
@@ -216,20 +213,6 @@ export default function FormConfigPanel({
           onPick={(formType) => onChange({ formType })}
         />
         <p className={HELP}>Who this form is about.</p>
-      </div>
-
-      <div>
-        <label className={LABEL}>FileOptics environment</label>
-        <Choice
-          options={ENVIRONMENTS}
-          value={config.environment}
-          alert="PROD"
-          onPick={(environment) => onChange({ environment })}
-        />
-        <p className={HELP}>
-          Which endpoint the submit paths send to, and the flow id they use. Defaults to Test, so a
-          form that never gets touched fails safe rather than talking to the live system.
-        </p>
       </div>
 
       <div>

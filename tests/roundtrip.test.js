@@ -234,7 +234,6 @@ describe('export then reopen', () => {
       supportServices: false,
       formType: 'org',
       productCodes: ['K_CON001', 'K_CON002'],
-      environment: 'PROD',
     };
     const { pdfBytes } = await exportPdf({
       originalBytes,
@@ -259,7 +258,6 @@ describe('export then reopen', () => {
       supportServices: true,
       formType: 'combined',
       productCodes: ['K_PADQR'],
-      environment: 'PROD',
     };
 
     const first = await exportPdf({ originalBytes, fields: sampleFields(), meta: { config } });
@@ -279,15 +277,12 @@ describe('export then reopen', () => {
       originalBytes,
       fields: sampleFields(),
       meta: {
-        config: { formType: 'nonsense', environment: 'STAGING', productCodes: 'K_ONE', formId: 7 },
+        config: { formType: 'nonsense', productCodes: 'K_ONE', formId: 7 },
       },
     });
 
     const reopened = await importPdf(pdfBytes, dbIndex);
-    // Environment fails safe to TEST, so a broken config cannot send a form to
-    // production FileOptics.
     expect(reopened.config.formType).toBe('person');
-    expect(reopened.config.environment).toBe('TEST');
     expect(reopened.config.productCodes).toEqual(['K_ONE']);
     expect(reopened.config.formId).toBe('');
   });

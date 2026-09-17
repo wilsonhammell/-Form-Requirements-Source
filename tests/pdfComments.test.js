@@ -1,7 +1,8 @@
-// Reviewer comments are stripped on export, and nothing else is.
-import { describe, it, expect } from 'vitest';
+// Reviewer comments are stripped on export, and nothing else is. Until then a
+// click on one shows what it says.
+import { describe, it, expect, beforeAll } from 'vitest';
 import { PDFDocument, PDFName, PDFDict, PDFArray, PDFString } from 'pdf-lib';
-import { stripComments, COMMENT_SUBTYPES } from '../src/core/pdfComments.js';
+import { stripComments, readComments, COMMENT_SUBTYPES } from '../src/core/pdfComments.js';
 import { exportPdf } from '../src/core/pdfExport.js';
 import { createField } from '../src/core/schema.js';
 
@@ -42,7 +43,9 @@ async function formWithComments() {
   const text = doc.getForm().createTextField('CUSTNAME');
   text.addToPage(page, { x: 50, y: 500, width: 200, height: 20 });
   annotate(doc, page, 'Text');
-  annotate(doc, page, 'Highlight');
+  // Acrobat always writes QuadPoints on a highlight, and pdf.js paints nothing
+  // for one without.
+  annotate(doc, page, 'Highlight', { QuadPoints: [100, 720, 120, 720, 100, 700, 120, 700] });
   annotate(doc, page, 'Link', { A: doc.context.obj({ S: 'URI', URI: PDFString.of('#') }) });
   return doc;
 }
@@ -130,5 +133,101 @@ describe('export', () => {
       ],
     });
     expect(warnings).toEqual([]);
+  });
+});
+
+describe('reading comments to open', () => {
+  let pdfjs;
+
+  beforeAll(async () => {
+    pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      '../node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs',
+      import.meta.url
+    ).href;
+  });
+
+  // Through pdf.js rather than hand written data, since what pdf.js hands the
+  // page is what the reader has to make sense of.
+  async function commentsOf(doc) {
+    const loaded = await pdfjs.getDocument({ data: await doc.save(), isEvalSupported: false }).promise;
+    const page = await loaded.getPage(1);
+    const comments = readComments(await page.getAnnotations());
+    await loaded.destroy();
+    return comments;
+  }
+
+  it('gives a note its text, author, date and place on the page', async () => {
+    const doc = await formWithComments();
+    const page = doc.getPage(0);
+    annotate(doc, page, 'Square', {
+      Rect: [300, 400, 360, 440],
+      Contents: PDFString.of('Move this\rbelow the signature'),
+      T: PDFString.of('Underwriting'),
+      M: PDFString.of("D:20260917093000-05'00"),
+    });
+
+    const comments = await commentsOf(doc);
+    const square = comments.find((c) => c.author === 'Underwriting');
+    expect(square).toMatchObject({
+      rect: { x: 300, y: 400, width: 60, height: 40 },
+      text: 'Move this\nbelow the signature',
+      date: "D:20260917093000-05'00",
+      replies: [],
+    });
+    // The field and the link are not comments.
+    expect(comments.map((c) => c.text).sort()).toEqual([
+      'Move this\nbelow the signature',
+      'a Highlight note',
+      'a Text note',
+    ]);
+  });
+
+  it('puts replies under the comment they answer, however deep', async () => {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([612, 792]);
+    const note = annotate(doc, page, 'Text', { Contents: PDFString.of('Is this required?') });
+    const reply = annotate(doc, page, 'Text', {
+      Contents: PDFString.of('Yes'),
+      T: PDFString.of('Compliance'),
+      IRT: note,
+    });
+    annotate(doc, page, 'Text', { Contents: PDFString.of('Thanks'), IRT: reply });
+    annotate(doc, page, 'Popup', { Parent: note });
+
+    const comments = await commentsOf(doc);
+    expect(comments).toHaveLength(1);
+    expect(comments[0].text).toBe('Is this required?');
+    expect(comments[0].replies.map((r) => [r.author, r.text])).toEqual([
+      ['Compliance', 'Yes'],
+      ['Reviewer', 'Thanks'],
+    ]);
+  });
+
+  it('opens a group member on its own, with the text of the comment it is grouped with', async () => {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([612, 792]);
+    const note = annotate(doc, page, 'Square', { Contents: PDFString.of('This whole block') });
+    annotate(doc, page, 'Square', {
+      Rect: [50, 50, 90, 60],
+      Contents: PDFString.of('ignored'),
+      IRT: note,
+      RT: 'Group',
+    });
+
+    const comments = await commentsOf(doc);
+    expect(comments.map((c) => [c.rect.x, c.text])).toEqual([
+      [100, 'This whole block'],
+      [50, 'This whole block'],
+    ]);
+  });
+
+  it('skips a hidden comment and one with nothing to say', async () => {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage([612, 792]);
+    annotate(doc, page, 'Text', { F: 2 });
+    annotate(doc, page, 'Highlight', { Contents: PDFString.of('  ') });
+
+    expect(await commentsOf(doc)).toEqual([]);
   });
 });

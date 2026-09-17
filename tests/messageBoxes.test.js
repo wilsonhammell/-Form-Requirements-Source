@@ -1,9 +1,13 @@
 // The message boxes the starter code shows a person, drawn and placed the way
 // the example forms have them. The numbers are measured off those forms.
+//
+// Two boxes now. FORM_MESSAGE carries every one line message, the starter code
+// setting the text and the colour together, and DNA_REQ still covers the form.
 import { describe, it, expect } from 'vitest';
 import { PDFDocument, PDFName, PDFDict, PDFArray, PDFString, PDFHexString } from 'pdf-lib';
 import {
   MESSAGE_BOXES,
+  MESSAGE_COLORS,
   layoutSystemFields,
   normalizeSystemFields,
   ensureSystemFields,
@@ -12,14 +16,12 @@ import { exportPdf } from '../src/core/pdfExport.js';
 import { importPdf } from '../src/core/pdfImport.js';
 import { createField } from '../src/core/schema.js';
 import { buildDbIndex, normalizeDbFields } from '../src/core/dbFields.js';
+import { helperScript } from '../src/starter/index.js';
 
 const LETTER = [0, 0, 612, 792];
-const NAMES = ['SUBMIT_SUCCESS', 'SUBMIT_FAILED', 'VALIDATE_REQ', 'eSIGN_FAILED', 'DNA_REQ'];
+const NAMES = ['FORM_MESSAGE', 'DNA_REQ'];
 const LIST = normalizeSystemFields([
-  { identifier: 'SUBMIT_SUCCESS', placement: 'wide' },
-  { identifier: 'SUBMIT_FAILED', placement: 'wide', multiline: true },
-  { identifier: 'VALIDATE_REQ', placement: 'wide' },
-  { identifier: 'eSIGN_FAILED', placement: 'wide', multiline: true },
+  { identifier: 'FORM_MESSAGE', placement: 'wide', multiline: true },
   { identifier: 'DNA_REQ', placement: 'wide', multiline: true },
 ]);
 
@@ -80,21 +82,18 @@ describe('how a message box is drawn', () => {
     }
   });
 
-  it('puts every box on white apart from VALIDATE_REQ', async () => {
-    const doc = await PDFDocument.load(await exportBoxes());
-    for (const name of NAMES) {
-      const { background } = lookOf(doc, name);
-      if (name === 'VALIDATE_REQ') expect(background).toBeNull();
-      else closeTo(background, [1, 1, 1]);
-    }
+  it('seeds both boxes red, the colour all but one message uses', () => {
+    for (const name of NAMES) expect(MESSAGE_BOXES[name].color).toEqual(MESSAGE_COLORS.error);
   });
 
-  it('stops only SUBMIT_FAILED and eSIGN_FAILED scrolling', async () => {
+  it('puts every box on white', async () => {
     const doc = await PDFDocument.load(await exportBoxes());
-    expect(NAMES.filter((name) => lookOf(doc, name).noScroll)).toEqual([
-      'SUBMIT_FAILED',
-      'eSIGN_FAILED',
-    ]);
+    for (const name of NAMES) closeTo(lookOf(doc, name).background, [1, 1, 1]);
+  });
+
+  it('leaves every box scrolling, so a long message is reachable', async () => {
+    const doc = await PDFDocument.load(await exportBoxes());
+    expect(NAMES.filter((name) => lookOf(doc, name).noScroll)).toEqual([]);
   });
 
   it('leaves an ordinary field transparent', async () => {
@@ -124,6 +123,26 @@ describe('how a message box is drawn', () => {
   });
 });
 
+// The starter code ships as text rather than as a module, so it cannot import
+// the colours it recolours the strip with. This is what keeps the copies equal.
+describe('the colours the starter code recolours the strip with', () => {
+  const script = helperScript();
+
+  it('matches MESSAGE_COLORS', () => {
+    expect(script).toContain(`["RGB", ${MESSAGE_COLORS.error.join(', ')}]`);
+    expect(script).toContain(`["RGB", ${MESSAGE_COLORS.success.join(', ')}]`);
+  });
+
+  it('sets both the text and the border, so the whole box changes tone', () => {
+    expect(script).toContain('box.textColor = tone;');
+    expect(script).toContain('box.strokeColor = tone;');
+  });
+
+  it('clears the strip on every submit attempt', () => {
+    expect(script).toMatch(/function resetValidationState\(\)[\s\S]*?clearFormMessage\(\);/);
+  });
+});
+
 describe('how the message boxes stack', () => {
   it('puts them above a field added after them, DNA_REQ on top', async () => {
     const custname = createField({ name: 'CUSTNAME', page: 0, rect: { x: 50, y: 700, width: 200, height: 18 } });
@@ -135,21 +154,17 @@ describe('how the message boxes stack', () => {
   it('lifts boxes a form buried, leaving every other field in tab order', async () => {
     const source = await PDFDocument.create();
     const page = source.addPage([612, 792]);
-    ['FIRST', 'DNA_REQ', 'SECOND', 'VALIDATE_REQ', 'THIRD'].forEach((name, i) => {
+    ['FIRST', 'DNA_REQ', 'SECOND', 'FORM_MESSAGE', 'THIRD'].forEach((name, i) => {
       source.getForm().createTextField(name).addToPage(page, { x: 50, y: 700 - i * 30, width: 200, height: 18 });
     });
     const bytes = await source.save();
-    const list = normalizeSystemFields([
-      { identifier: 'VALIDATE_REQ', placement: 'wide' },
-      { identifier: 'DNA_REQ', placement: 'wide', multiline: true },
-    ]);
-    const reopened = await importPdf(bytes, buildDbIndex(normalizeDbFields([])), list);
-    const { pdfBytes } = await exportPdf({ originalBytes: bytes, fields: reopened.fields, systemFields: list });
+    const reopened = await importPdf(bytes, buildDbIndex(normalizeDbFields([])), LIST);
+    const { pdfBytes } = await exportPdf({ originalBytes: bytes, fields: reopened.fields, systemFields: LIST });
     expect(stackOf(await PDFDocument.load(pdfBytes))).toEqual([
       'FIRST',
       'SECOND',
       'THIRD',
-      'VALIDATE_REQ',
+      'FORM_MESSAGE',
       'DNA_REQ',
     ]);
   });
@@ -157,24 +172,16 @@ describe('how the message boxes stack', () => {
 
 describe('where a message box goes', () => {
   const rects = layoutSystemFields(LIST, LETTER);
-  const centre = (r) => r.y + r.height / 2;
 
-  it('lays the three status boxes on one strip, overlapping as the forms do', () => {
-    expect(rects.get('SUBMIT_FAILED')).toEqual(rects.get('SUBMIT_SUCCESS'));
-    expect(centre(rects.get('VALIDATE_REQ'))).toBeCloseTo(centre(rects.get('SUBMIT_SUCCESS')), 5);
+  it('puts the strip on the centre line, at the width the forms use', () => {
+    const box = rects.get('FORM_MESSAGE');
+    expect(box.width).toBeCloseTo(586, 0);
+    expect(box.y + box.height / 2).toBeCloseTo(396, 5);
+    expect(box.x).toBeCloseTo((612 - box.width) / 2, 5);
   });
 
-  it('matches the sizes measured off the example forms', () => {
-    expect(rects.get('SUBMIT_SUCCESS').width).toBeCloseTo(586, 0);
-    expect(rects.get('SUBMIT_SUCCESS').height).toBe(17);
-    expect(rects.get('VALIDATE_REQ').width).toBeCloseTo(540, 0);
-    expect(rects.get('VALIDATE_REQ').height).toBe(19);
-  });
-
-  it('gives eSIGN_FAILED room for a list, near the top', () => {
-    const box = rects.get('eSIGN_FAILED');
-    expect(box.height).toBe(141);
-    expect(box.y + box.height).toBe(792 - 80);
+  it('gives the strip two lines, since the eSign failure names members', () => {
+    expect(rects.get('FORM_MESSAGE').height).toBe(34);
   });
 
   it('covers most of the page with DNA_REQ', () => {

@@ -1,4 +1,5 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { DRAW_MARKER } from '../core/markers.js';
 
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
 
@@ -10,14 +11,21 @@ const DRAW_TYPES = [
   { type: 'dropdown', label: 'Dropdown' },
 ];
 
+// Set apart by a rule, because this one does not draw a field. It records where
+// FileOptics should be configured to put an initials box and never reaches the
+// PDF.
+const DRAW_MARKERS = [{ type: DRAW_MARKER, label: 'Initials' }];
+
 export default function Toolbar({
   fileName,
   pageIndex,
   pageCount,
   zoom,
-  newFieldType,
+  drawKind,
   hasPdf,
   busy,
+  commentsShown,
+  onToggleComments,
   onOpenPdf,
   onImportJson,
   onExportPdf,
@@ -25,7 +33,7 @@ export default function Toolbar({
   onExportRequirements,
   onPageChange,
   onZoomChange,
-  onNewFieldType,
+  onDrawKind,
   onEnforceFontStandards,
   noticesHidden,
   onShowNotices,
@@ -35,21 +43,32 @@ export default function Toolbar({
 
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 bg-white px-4 py-2">
-      <div className="flex items-center gap-2">
-        <h1 className="text-sm font-semibold text-slate-800">PDF Requirement Designer</h1>
-        <input
-          ref={pdfInput}
-          type="file"
-          accept="application/pdf,.pdf"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (file) onOpenPdf(file);
-          }}
-        />
-        <Button onClick={() => pdfInput.current?.click()}>Open PDF</Button>
-      </div>
+      {/* Outside the menus, which unmount on close, so the picker a menu item
+          opens still has an input to report back to. */}
+      <input
+        ref={pdfInput}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) onOpenPdf(file);
+        }}
+      />
+      <input
+        ref={jsonInput}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) onImportJson(file);
+        }}
+      />
+
+      <h1 className="text-sm font-semibold text-slate-800">PDF Requirement Designer</h1>
 
       {fileName && (
         <span className="max-w-[220px] truncate text-xs text-slate-500" title={fileName}>
@@ -57,20 +76,25 @@ export default function Toolbar({
         </span>
       )}
 
-      <div className="flex items-center gap-1">
-        <Button disabled={!hasPdf || pageIndex <= 0} onClick={() => onPageChange(pageIndex - 1)}>
-          Prev
-        </Button>
-        <span className="min-w-[86px] text-center text-xs text-slate-600">
-          Page {hasPdf ? pageIndex + 1 : 0} of {pageCount}
-        </span>
-        <Button
-          disabled={!hasPdf || pageIndex >= pageCount - 1}
-          onClick={() => onPageChange(pageIndex + 1)}
-        >
-          Next
-        </Button>
-      </div>
+      {/* A dropdown rather than Prev and Next, so every page is one pick away,
+          a page with nothing placed on it included. */}
+      <select
+        aria-label="Page"
+        className="rounded border border-slate-300 px-1.5 py-1 text-xs"
+        value={hasPdf && pageCount > 0 ? pageIndex : 0}
+        disabled={!hasPdf}
+        onChange={(e) => onPageChange(Number(e.target.value))}
+      >
+        {hasPdf && pageCount > 0 ? (
+          Array.from({ length: pageCount }, (_, page) => (
+            <option key={page} value={page}>
+              Page {page + 1} of {pageCount}
+            </option>
+          ))
+        ) : (
+          <option value={0}>Page 0 of {pageCount}</option>
+        )}
+      </select>
 
       <div className="flex items-center gap-1">
         <label className="text-xs text-slate-500">Zoom</label>
@@ -91,22 +115,42 @@ export default function Toolbar({
       <div className="flex items-center gap-1.5">
         <label className="text-xs text-slate-500">Draw</label>
         {DRAW_TYPES.map(({ type, label }) => (
-          <button
+          <DrawButton
             key={type}
-            type="button"
+            label={label}
             disabled={!hasPdf}
-            aria-pressed={newFieldType === type}
-            className={`rounded border px-2.5 py-1 text-xs font-medium disabled:opacity-40 ${
-              newFieldType === type
-                ? 'border-sky-600 bg-sky-600 text-white'
-                : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-            }`}
-            onClick={() => onNewFieldType(type)}
-          >
-            {label}
-          </button>
+            on={drawKind === type}
+            onClick={() => onDrawKind(type)}
+          />
+        ))}
+        <span className="mx-0.5 h-4 w-px bg-slate-300" />
+        {DRAW_MARKERS.map(({ type, label }) => (
+          <DrawButton
+            key={type}
+            label={label}
+            disabled={!hasPdf}
+            on={drawKind === type}
+            marker
+            onClick={() => onDrawKind(type)}
+          />
         ))}
       </div>
+
+      {/* Filled when on, the way a filter pill is, since it shows and hides
+          rather than picking what a drag draws. */}
+      <button
+        type="button"
+        disabled={!hasPdf}
+        aria-pressed={commentsShown}
+        className={`rounded border px-2.5 py-1 text-xs font-medium disabled:opacity-40 ${
+          commentsShown
+            ? 'border-slate-700 bg-slate-700 text-white'
+            : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+        }`}
+        onClick={onToggleComments}
+      >
+        Comments
+      </button>
 
       <Button disabled={!hasPdf} onClick={onEnforceFontStandards}>
         Enforce Font Standards
@@ -122,40 +166,118 @@ export default function Toolbar({
             Messages
           </button>
         )}
-        <input
-          ref={jsonInput}
-          type="file"
-          accept="application/json,.json"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (file) onImportJson(file);
-          }}
+        <Menu
+          label="Import"
+          items={[
+            { label: 'Open PDF', onClick: () => pdfInput.current?.click() },
+            { label: 'Import JSON', disabled: !hasPdf, onClick: () => jsonInput.current?.click() },
+          ]}
         />
-        <Button disabled={!hasPdf} onClick={() => jsonInput.current?.click()}>
-          Import JSON
-        </Button>
-        <Button disabled={!hasPdf} onClick={onExportJson}>
-          Export JSON
-        </Button>
-        <Button disabled={!hasPdf || busy} onClick={onExportRequirements}>
-          Export Requirements
-        </Button>
-        <Button primary disabled={!hasPdf || busy} onClick={onExportPdf}>
-          {busy ? 'Exporting...' : 'Export PDF'}
-        </Button>
+        <Menu
+          label={busy ? 'Exporting...' : 'Export'}
+          primary
+          disabled={!hasPdf}
+          items={[
+            { label: 'Export JSON', onClick: onExportJson },
+            { label: 'Export Requirements', disabled: busy, onClick: onExportRequirements },
+            { label: 'Export PDF', disabled: busy, onClick: onExportPdf },
+          ]}
+        />
       </div>
     </header>
   );
 }
 
-function Button({ children, onClick, disabled, primary }) {
+// A button that opens its actions underneath. Closes on a pick, a click anywhere
+// else, or Escape.
+function Menu({ label, items, primary, disabled }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = (event) => {
+      if (!ref.current?.contains(event.target)) setOpen(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <Button
+        primary={primary}
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="flex items-center gap-1">
+          {label}
+          <svg viewBox="0 0 10 6" className="h-1.5 w-2.5" aria-hidden="true">
+            <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+        </span>
+      </Button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-1 min-w-full rounded border border-slate-200 bg-white py-1 shadow-lg"
+        >
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              disabled={item.disabled}
+              className="block w-full whitespace-nowrap px-3 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+              onClick={() => {
+                setOpen(false);
+                item.onClick();
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Amber when it is on, the marker's colour everywhere else, so the page you are
+// about to draw on and the box you draw agree.
+function DrawButton({ label, on, marker, disabled, onClick }) {
+  const active = marker ? 'border-amber-600 bg-amber-600 text-white' : 'border-sky-600 bg-sky-600 text-white';
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-pressed={on}
+      className={`rounded border px-2.5 py-1 text-xs font-medium disabled:opacity-40 ${
+        on ? active : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+      }`}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
+}
+
+function Button({ children, onClick, disabled, primary, ...rest }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      {...rest}
       className={`rounded px-2.5 py-1 text-xs font-medium disabled:opacity-40 ${
         primary
           ? 'bg-sky-600 text-white hover:bg-sky-700 disabled:hover:bg-sky-600'

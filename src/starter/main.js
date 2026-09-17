@@ -12,8 +12,6 @@
 
 //<CONFIG>
 
-var FILEOPTICS_ENVIRONMENT = "TEST"; // TEST or PROD
-
 // The Remote eSign label and code box. Placed with RemoteESignButton and sitting
 // beside it, so this says whether the form carries them at all.
 var HAS_ESIGN_FIELDS = false;
@@ -79,7 +77,6 @@ function CustomSaveValidation() {
 //arguments, so nothing has to change to see it.
 var CURRENT_AUTH_TYPE = "";
 var IS_PERSON = false;
-var PERSON_NUMBER = "";
 var SIGNER_COUNT = 0;
 var JOINT_POPULATED = false;
 
@@ -94,8 +91,7 @@ function Main()
         return;
     }
 
-    PERSON_NUMBER = getSafeValue("IN_PERSNBR");
-    IS_PERSON = (PERSON_NUMBER.length > 0);
+    IS_PERSON = isPersonMembership();
 
     if (!MembershipTypeValidation(IS_PERSON)) {
         return;

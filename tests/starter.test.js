@@ -19,7 +19,6 @@ function loadHelpers(globals = {}) {
     'buildOrgESignerList',
     'rowHas',
     'anyRowHas',
-    'getFlowId',
     'ESIGN_SLOT_COUNT',
   ];
   const factory = new Function(
@@ -155,11 +154,24 @@ describe('row shape', () => {
 });
 
 describe('flow ids', () => {
-  it('switch on the environment', () => {
-    const prod = loadHelpers({ FILEOPTICS_ENVIRONMENT: 'PROD' });
-    expect(['PHONE', 'ESIGN', 'DIGITAL'].map(prod.getFlowId)).toEqual(['FO', 'ES', 'DS']);
-    const test = loadHelpers({ FILEOPTICS_ENVIRONMENT: 'TEST' });
-    expect(['PHONE', 'ESIGN', 'DIGITAL'].map(test.getFlowId)).toEqual(['TFO', 'TES', 'TDS']);
+  // The filler writes ENVIRONMENT, so this stubs the field read.
+  const flowsFor = (environment) =>
+    new Function(
+      '__environment',
+      `${helperScript()}
+       getSafeValue = function (n) { return n === "ENVIRONMENT" ? __environment : ""; };
+       return [getFlowId("PHONE"), getFlowId("ESIGN"), getFlowId("DIGITAL")];`
+    )(environment);
+
+  it('switch on the environment the filler wrote', () => {
+    expect(flowsFor('PROD')).toEqual(['FO', 'ES', 'DS']);
+    expect(flowsFor('TEST')).toEqual(['TFO', 'TES', 'TDS']);
+  });
+
+  it('treat anything but PROD as test, so an unfilled form stays off the live flows', () => {
+    for (const value of ['', 'STAGING']) {
+      expect(flowsFor(value)).toEqual(['TFO', 'TES', 'TDS']);
+    }
   });
 });
 
@@ -168,7 +180,6 @@ describe('flow ids', () => {
 function personESigners({ rows, values = {}, selected = {}, emails = 'e1~e2~e3' }) {
   const fields = {
     KCU_FO_DATA_LINE: { value: `a#b#c#${emails}` },
-    eSIGN_FAILED: { value: '' },
     ERRORS_FOUND: { value: 0 },
   };
   const factory = new Function(
@@ -183,7 +194,14 @@ function personESigners({ rows, values = {}, selected = {}, emails = 'e1~e2~e3' 
      getSelectedText = function (n) { return __selected[n] === undefined ? '' : __selected[n]; };
      isTestEnvironment = function () { return false; };
      setKCU_TAG = function () {};
-     return { list: preparePersonESigners(), errors: Number(__fields.ERRORS_FOUND.value) };`
+     MISSING_EMAIL_SIGNERS = [];
+     var __list = preparePersonESigners();
+     return {
+       list: __list,
+       errors: Number(__fields.ERRORS_FOUND.value),
+       missing: MISSING_EMAIL_SIGNERS,
+       message: eSignFailureMessage(),
+     };`
   );
   return factory(rows, rows.length, fields, values, selected);
 }
@@ -248,6 +266,29 @@ describe('the Person eSigner list', () => {
     });
     expect(errors).toBe(1);
     expect(list.split(',')).toHaveLength(2);
+  });
+
+  // The names used to be appended to eSIGN_FAILED a line at a time. They are
+  // collected instead, so the one strip can join them onto one line.
+  it('collects the members missing an email rather than writing them out', () => {
+    const { missing, message } = personESigners({
+      rows: named(3),
+      values: { Member1Name: '0', Member2Name: '9', Member3Name: '8' },
+      selected: { Member1Name: 'Ann', Member2Name: 'Bob', Member3Name: 'Cat' },
+    });
+    expect(missing).toEqual(['Bob', 'Cat']);
+    expect(message).toContain('2 member(s) missing an email in DNA: Bob, Cat');
+    expect(message).not.toContain('\n');
+  });
+
+  it('says only that the submit failed when nobody is missing an email', () => {
+    const { missing, message } = personESigners({
+      rows: named(2),
+      values: { Member1Name: '0', Member2Name: '1' },
+      selected: { Member1Name: 'Ann', Member2Name: 'Bob' },
+    });
+    expect(missing).toEqual([]);
+    expect(message).toBe('Error: Your form did not get submitted to FileOptics for eSign.');
   });
 });
 

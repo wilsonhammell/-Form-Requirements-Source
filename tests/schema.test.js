@@ -469,22 +469,12 @@ describe('form config', () => {
       supportServices: true,
       formType: 'combined',
       productCodes: ['M101', 'RSP'],
-      environment: 'PROD',
     };
     const doc = serializeDocument([createField({ name: 'CUSTNAME' })], { config });
     expect(doc.config).toEqual(config);
 
     const parsed = parseDocument(JSON.stringify(doc), dbIndex);
     expect(parsed.config).toEqual(config);
-  });
-
-  it('defaults the environment to Test, which fails safe', () => {
-    // A form that reaches production untouched talks to the test endpoint
-    // rather than the live one, which is the harmless way round.
-    expect(createConfig().environment).toBe('TEST');
-    expect(createConfig({ environment: 'PROD' }).environment).toBe('PROD');
-    expect(createConfig({ environment: 'staging' }).environment).toBe('TEST');
-    expect(createConfig({ environment: 'prod' }).environment).toBe('TEST');
   });
 
   it('gives a document with no config the defaults', () => {

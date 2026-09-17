@@ -76,7 +76,7 @@ Hidden fields read as faint on the page with a `· hidden` label, and carry a
 
 The fields the starter code reads. They belong on every form, whether that form
 needs them or not, because standardising them is the point. Defined in
-[`public/systemFields.json`](public/systemFields.json), 38 of them, all text.
+[`public/systemFields.json`](public/systemFields.json), 35 of them, all text.
 
 Membership is **derived from the name**, exactly as Load Attempted is. Nothing
 is stored on the field, so swapping the file reclassifies everything at once. A
@@ -99,13 +99,13 @@ laid out against the real page rather than at stored coordinates:
   when the width runs out.
 - **Signer** fields sit along the bottom, a column per signer, five across,
   since that is roughly where they land on a real form.
-- **Wide** fields, `SUBMIT_SUCCESS`, `VALIDATE_REQ`, `eSIGN_FAILED` and
-  `DNA_REQ`, take 80% of the page width, because those are shown to a person and
-  `DNA_REQ` often gets stretched further still.
+- **Wide** fields, `FORM_MESSAGE` and `DNA_REQ`, take 80% of the page width,
+  because those are shown to a person and `DNA_REQ` often gets stretched further
+  still.
 
 The **All / Standard / System / Signers / Submission** filter above the field list applies to the page
 as well, and **starts on Standard**, so a form opens showing what it is actually
-about rather than 38 pieces of infrastructure.
+about rather than 35 pieces of infrastructure.
 
 Where a system name is placed more than once, only the **first placement
 filters as System** and the rest filter as Standard, because those extra ones
@@ -335,6 +335,100 @@ cannot disagree:
 
 Config shows all of it read only. There is nothing to set.
 
+## Initials markers
+
+Where FileOptics should be configured to put an initials box, and whose initials
+belong there.
+
+FileOptics places initials in its own step, one that never touches the PDF and
+is not done in Acrobat, so until now there was nowhere to write down what the
+business wanted. A marker is that note. It carries coordinates, because where
+the box goes is most of the answer, and a person, because it is as often a
+guarantor, an overseer or a branch manager as a member.
+
+**A marker is not a field.** It lives in its own `markers` array beside `fields`
+rather than as a flag on one, which is what keeps every rule a field carries true
+of fields by construction: a name that has to match the DB list, an export value,
+a type, a generated OnBlur script. None of them need to learn a new case, and
+[`pdfExport.js`](src/core/pdfExport.js) never has to know markers exist.
+
+Nothing about a marker reaches the AcroForm, the starter code or the downstream
+filler. Tests export the same form twice, with markers and without, and assert
+the page annotations, the AcroForm field list and the document scripts are
+identical. What grows is the requirements JSON, which is embedded in the PDF, so
+the file is larger and the form inside it is not.
+
+Making them hidden fields would have been cheaper and is what the tool nearly
+did. A hidden field is still a real field: it is written to the AcroForm, the
+filler sees it when it walks the page annotations, it takes a slot in tab order,
+and it would need a name in a tool whose one job is that names are exactly
+right. It would also not survive a round trip, since an imported AcroForm is
+rebuilt from widgets and nothing about a marker could be inferred from one.
+
+### Placing one
+
+**Initials** sits in the toolbar's Draw row, set apart by a rule because it is
+the one button there that does not draw a field. Drag on the page and a marker
+appears, amber and dashed all round so it cannot be read as a field. A field
+uses a dashed border to mean read-only, which a marker has no notion of.
+
+They filter with **Signers**, since that scope already answers the question a
+marker answers, who marks this form and where. Drawing one switches to that
+scope, the same way placing a signer row does, so a marker does not vanish the
+moment it is placed.
+
+### The role is required, and reported rather than enforced
+
+Custom Save Validation requires a note the same way, but it cannot be copied
+straight across. That rule works because there is a *flag* to clear. A marker has
+no flag, it cannot be refused before it is placed, since the box is drawn first
+and labelled second, and clearing the text cannot delete it out from under
+whoever is typing.
+
+So `markerIssues` reports an unlabelled marker as an **error** in the issues
+panel, carrying its ids the way `fieldIssues` does, so clicking it filters the
+page to exactly the boxes still missing an answer. The list shows one as `who
+initials here?` with a red `!`. Export is not blocked, which matches every other
+must-fix in the tool.
+
+### Free text, on purpose
+
+Nothing constrains the role. The five entries in `SIGNING_ROLES` are FileOptics
+signing roles and cover none of the people this is actually for. The value is a
+plain string, so a suggestion list added later would read what is already stored
+rather than migrate it.
+
+### Where it comes out
+
+A marker earns a row in the requirements workbook, in reading order among the
+fields on its page, so it lines up against the same picture. It fills the
+existing columns rather than adding any:
+
+| column | marker row |
+| --- | --- |
+| Field | `Initials` |
+| Form Field | the role, coloured amber |
+| Load Validation | blank, nothing loads into an initials box |
+| Save Validation | blank, nothing saves out of one |
+| Logic | the note |
+| Field Name | blank, there is no identifier to match on |
+
+Form Field is left empty for a real field because it is the label a member reads
+beside the box and only someone looking at the form can say it. For a marker the
+role **is** that label, so the column fits rather than being borrowed. A marker
+nobody named reads `(not specified)`, since a blank cell beside `Initials` would
+look like an oversight.
+
+Two initials boxes are two rows. That is not the repeated-name case, where one
+field carries one value and there is one thing to test. Two boxes are two places
+someone initials.
+
+**And it is drawn on the page picture**, amber and dashed with the role as its
+caption. That is the part that does the real work: a row gives a reader
+coordinates, the picture is what shows them the place. The rest of the picture is
+still rendered with `AnnotationMode.DISABLE`, so the marker is the only thing laid
+over the printed form.
+
 ## Form config
 
 The right panel switches between **Config** and **Fields**. Config is form level,
@@ -349,10 +443,6 @@ one set per document, carried in the requirements JSON.
   They fill the first three rows of the workbook's FO Processing block, a ticked
   box reading Yes and a clear one No.
 - **Form type**, one of Person, Org or Combined.
-- **FileOptics environment**, Test or Production. Decides the flow id the submit
-  paths send, `FO` against `TFO` and so on. **Defaults to Test**, so a form that
-  reaches production untouched talks to the test endpoint rather than the live
-  one, which is the harmless way round.
 - **Product codes**, pasted in and stored as a list. Split on commas, and also on
   the newlines and tabs a spreadsheet column arrives with. Whitespace is trimmed,
   blanks and repeats dropped, order kept. Case is left exactly as typed, since
@@ -369,8 +459,7 @@ one set per document, carried in the requirements JSON.
   "adminQueue": false,
   "supportServices": false,
   "formType": "org",
-  "productCodes": ["M101", "RSP"],
-  "environment": "TEST"
+  "productCodes": ["M101", "RSP"]
 }
 ```
 
@@ -407,7 +496,7 @@ config and the PDF cannot disagree:
 | `FILEOPTICS_BUTTON_FIELDS` | the placed buttons, **minus Print** |
 | `LOAD_VALIDATION_FIELDS` | Load Validated, paired with the customer-facing name |
 | `SAVE_VALIDATION_FIELDS` | Save Validated, excluding the custom ones |
-| `MEMBERSHIP_TYPE`, `PRODUCT_CODES`, `FILEOPTICS_ENVIRONMENT` | the Config tab |
+| `MEMBERSHIP_TYPE`, `PRODUCT_CODES` | the Config tab |
 | `CODE_TYPES` | constant `["PROD_CODE"]` |
 
 ### The one thing an export keeps
@@ -679,7 +768,7 @@ import and passed through export untouched.
 
 ### The config only travels in the JSON
 
-`formType`, `productCodes` and `environment` are not recoverable from a PDF's
+`formType` and `productCodes` are not recoverable from a PDF's
 field data, so case 2 above loses them and case 1 does not. The values do appear
 in Main's `//<CONFIG>` block, but that block is **never read back**. Nothing in
 this tool parses JavaScript out of a PDF, and nothing should: reading it would
@@ -689,8 +778,7 @@ written twice.
 
 That makes the JSON the single copy of the config, which is why the round trip
 is pinned by tests rather than left to the embed working by inspection. A bad or
-missing config falls back to defaults, and `environment` falls back to `TEST`,
-so a damaged file cannot quietly submit to production FileOptics.
+missing config falls back to defaults.
 
 Recovering the config from a form this tool never wrote is **not supported and
 not planned**. Set the two values in the config panel instead.
@@ -699,10 +787,10 @@ not planned**. Set the two values in the config panel instead.
 
 `Export PDF` writes two files:
 
-- `<name>.fields.pdf` — a valid AcroForm, with the requirements JSON embedded
+- `<name>.pdf` — a valid AcroForm, with the requirements JSON embedded
   twice: in the document catalog under `/PdfRequirementDesigner`, and as an
   attachment named `form.fields.json` visible in Acrobat's attachment pane.
-- `<name>.fields.json` — the same JSON as a sidecar.
+- `<name>.json` — the same JSON as a sidecar.
 
 Export always rebuilds from the originally uploaded bytes, so exporting
 repeatedly cannot accumulate drift.
@@ -801,6 +889,15 @@ match what is on screen.
   "schemaVersion": 1,
   "generatedAt": "2026-09-02T00:00:00.000Z",
   "sourceFileName": "application.pdf",
+  "markers": [
+    {
+      "id": "3f91...",
+      "page": 0,
+      "rect": { "x": 430, "y": 512, "width": 40, "height": 18 },
+      "role": "Branch manager",
+      "note": "Both copies."
+    }
+  ],
   "fields": [
     {
       "id": "0b7d...",
@@ -828,6 +925,12 @@ match what is on screen.
 `page` is zero-based. `loadAttempted` is deliberately absent, it is derived from
 the DB field list at load time. A document whose `schemaVersion` is not the
 current one is rejected rather than guessed at.
+
+`markers` was added **without a version bump**, and is written on every document
+whether a form uses them or not. They are an optional array that nothing in the
+PDF depends on, so a document written before them reads with none, and an older
+build reading a newer one exports the same form with a thinner requirements
+sheet. A bump would have rejected every file already written instead.
 
 ## Field types
 
@@ -901,7 +1004,7 @@ default and Acrobat.
 
 Text fields also carry **multiline**, field flag bit 13. Without it a long value
 is clipped to one line however tall the box is, which is why `DNA_REQ` and
-`eSIGN_FAILED` default to it. A dropdown shows one line by definition, so it
+`FORM_MESSAGE` default to it. A dropdown shows one line by definition, so it
 aligns but does not wrap.
 
 Both are field level, like the font, so every placement of a name shares them.
@@ -943,7 +1046,9 @@ real form that turned `DNA_REQ`, `eSIGN_FAILED`, `SUBMIT_FAILED` and
 `VALIDATE_REQ` from red to black, `SUBMIT_SUCCESS` and `eSignLBL` from green to
 black, and moved all 63 Arial widgets onto a `/Helvetica` resource the document
 did not previously use. `VALIDATE_REQ` reads "Fields highlighted in RED are
-required", in black.
+required", in black. The four status boxes have since become one `FORM_MESSAGE`,
+but a form drawn before that still carries them, and this is why importing one
+keeps their colour.
 
 So a field that came from the source PDF keeps the `/DA` it arrived with unless
 the font was actually changed, in which case only the `Tf` operator is replaced
@@ -1036,6 +1141,23 @@ so a later option cannot clear them.
 Until that lands, radio groups export correctly and are valid in Acrobat, they
 just come back empty from the filler.
 
+### ENVIRONMENT
+
+Required change. The filler writes the `ENVIRONMENT` system field on every fill,
+`PROD` from the production filler and `TEST` from the test one. It is not a DB
+field, so the value comes from the filler's own config rather than a lookup.
+
+The starter code reads it at submit time. `PROD` sends the `FO`, `ES` and `DS`
+flow ids and uses the member emails. Anything else, blank included, sends `TFO`,
+`TES` and `TDS` and prompts for a test email address.
+
+### PRIMARY_MEMBERSHIP_TYPE
+
+The filler writes `P` for a person membership and `B` for an organization. It
+replaced `IN_PERSNBR` and `IN_ORGNBR`. The starter code reads it when the form
+opens and again when building the Remote eSign signer list. `P` is a person;
+anything else, blank included, is an organization, as a blank `IN_PERSNBR` was.
+
 ## Keyboard
 
 | Key | Action |
@@ -1048,7 +1170,18 @@ just come back empty from the filler.
 | Shift + Up / Down | Extend the selection while moving |
 | Delete / Backspace | Delete selection |
 | Ctrl/Cmd + D | Duplicate selection |
+| Ctrl/Cmd + Z | Undo |
+| Ctrl/Cmd + Shift + Z, Ctrl + Y | Redo |
 | Escape | Clear selection |
+
+Undo covers the fields and the config, not the page, the zoom or the selection.
+A drag undoes as the one move it looked like, and a run of typing in one box as
+the one name. Opening a PDF starts the stack over; importing JSON does not, so a
+sidecar loaded onto the wrong form comes straight back off.
+
+Unlike Delete, it works while the cursor is in a text box. Every box here is a
+controlled React input, so the browser's own undo has nothing of its own to put
+back and would only leave the box and the field disagreeing.
 
 ### One name, more than one font
 
@@ -1227,8 +1360,7 @@ reaches every form without changing a single hook.
 
 | global | |
 | --- | --- |
-| `IS_PERSON` | person or org membership, from `IN_PERSNBR` |
-| `PERSON_NUMBER` | the DNA person number |
+| `IS_PERSON` | person or org membership, from `PRIMARY_MEMBERSHIP_TYPE` |
 | `SIGNER_COUNT` | signers found by `PersonSetup` or `OrgSetup` |
 | `JOINT_POPULATED` | whether `PopulateJointData` ran |
 | `CURRENT_AUTH_TYPE` | the channel, during a submit |
@@ -1296,6 +1428,13 @@ an annotation type nobody thought about survives rather than being swept up.
 `/Widget` is the fields and `/Link` is navigation, neither is a comment. A
 `/Popup` is the note window and goes with its parent, or it is left pointing at
 an annotation that is no longer there.
+
+Until export they stay on the page, and a click on one opens its text, author,
+date and replies. A drag that starts on one still draws a field. Comments sit on
+top of fields and markers, and **Comments** in the toolbar hides them, both the
+click and the ink, which is how to reach a field under one. They
+are shown again whenever a PDF is opened. `tests/browser/commentEdges.js` builds a PDF
+with a comment on every edge and corner for checking where the pop-up lands.
 
 No form the business supplied carries one, so `example forms/` also holds a
 copy of K_COV with four comments added by hand, which is what the round trip
@@ -1367,6 +1506,9 @@ the table and the artwork stay in step down the page. Rows never run backwards,
 and fields on one visual line take consecutive rows rather than being stacked
 apart.
 
+Initials markers take a row each, in the same reading order, and fill the same
+columns. See [Initials markers](#initials-markers).
+
 Save Validation is written `Yes`, or `Yes*` for a Custom Save Validation. That
 star is their own convention for "depends on something, explained alongside",
 and Custom Save Validation already insists on a note, so it lands in Logic.
@@ -1385,6 +1527,11 @@ One per page, rendered by `src/core/pageImages.js` with
 `AnnotationMode.DISABLE`, so the picture is the printed form with nothing laid
 over it. Rasterising needs pdf.js and a canvas, so it happens in the browser and
 the workbook builder takes the result, which keeps it testable in node.
+
+The one exception is the initials markers, drawn on afterwards, because the
+whole point of a marker is to show a place the printed form does not. They use
+`convertToViewportRectangle` rather than arithmetic on the rect, so a page with
+a `/Rotate` puts them where pdf.js actually drew it.
 
 ## What a built form declares about itself
 
@@ -1420,6 +1567,12 @@ a value, from constants like `VALID_ID` = `1` to per-form ones like `FORM_ID` an
 are the downstream filler's job, the same as the data line, so its list has to
 cover the static ones too, such as `eSignLBL` = `Remote eSign Code:` and the
 `DNA_REQ` message, which are captions rather than data.
+
+The submit messages are the exception, and moved the other way. `SUBMIT_SUCCESS`
+and `SUBMIT_FAILED` used to carry their text as a shipped value; one shared
+`FORM_MESSAGE` cannot, since it has to say something different each time, so the
+starter code now writes both. The strings are the ones all seven example forms
+ship, so nothing a person reads has changed.
 
 **Formatting, apart from one script.** Fields are drawn and formatted in
 Acrobat, then imported here for their requirements, so whoever creates a field

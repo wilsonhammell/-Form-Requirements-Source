@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Toolbar from './components/Toolbar.jsx';
 import PdfCanvas from './components/PdfCanvas.jsx';
 import FieldList, { fieldListOrder } from './components/FieldList.jsx';
-import { fieldScope, FIELD_SCOPES } from './core/fieldTone.js';
+import { fieldScope, FIELD_SCOPES, MARKER_SCOPE } from './core/fieldTone.js';
 import PropertyPanel from './components/PropertyPanel.jsx';
+import MarkerPanel from './components/MarkerPanel.jsx';
 import BulkPanel from './components/BulkPanel.jsx';
 import FormConfigPanel from './components/FormConfigPanel.jsx';
 import { PanelTabs, ScopeBar, IssueList } from './components/SidePanel.jsx';
 import { usePdfDocument } from './hooks/usePdfDocument.js';
+import { useDocumentHistory } from './hooks/useDocumentHistory.js';
+import { typingRun } from './core/history.js';
 import { loadDbFields, buildDbIndex, buildCaseInsensitiveIndex } from './core/dbFields.js';
 import {
   signingButtons,
@@ -58,6 +61,7 @@ import {
   createConfig,
 } from './core/schema.js';
 
+import { createMarker, markerIssues, DRAW_MARKER } from './core/markers.js';
 import { importPdf, SOURCE } from './core/pdfImport.js';
 import { exportPdf } from './core/pdfExport.js';
 import { serializeJsonBytes } from './core/pdfEmbed.js';
@@ -82,8 +86,26 @@ export default function App() {
 
   const [fileName, setFileName] = useState('');
   const [originalBytes, setOriginalBytes] = useState(null);
-  const [fields, setFields] = useState([]);
+  // The three states an edit can touch, held together behind the undo stack.
+  // Only what the form is made of belongs here. Which page is open, what is selected
+  // and how far it is zoomed are where the user left them, not something Ctrl+Z
+  // should be walking backwards through.
+  const {
+    fields,
+    config,
+    markers,
+    setFields,
+    setMarkers,
+    setConfig,
+    mutate: mutateDocument,
+    reset: resetDocument,
+    undo,
+    redo,
+  } = useDocumentHistory(() => ({ fields: [], config: createConfig(), markers: [] }));
   const [selectedId, setSelectedId] = useState(null);
+  // Its own selection. A marker shares none of a field's controls, so the two
+  // are never selected at once and picking one clears the other.
+  const [selectedMarkerId, setSelectedMarkerId] = useState(null);
   // Everything selected, the last row clicked included. One field is the common
   // case and keeps the property panel; more than one gets the bulk bar.
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -92,13 +114,14 @@ export default function App() {
   const [issueFilter, setIssueFilter] = useState(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
-  const [newFieldType, setNewFieldType] = useState('text');
+  // What a drag on the page makes. A field type, or DRAW_MARKER, which is the
+  // one thing here that is not a field.
+  const [drawKind, setDrawKind] = useState('text');
   const [notices, setNotices] = useState([]);
   // Minimized rather than cleared, since an import note or an export warning is
   // worth reading again. Anything new opens it back up.
   const [noticesOpen, setNoticesOpen] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [config, setConfig] = useState(() => createConfig());
   // Opens on Config, the first tab and the form level questions answered first.
   const [panel, setPanel] = useState('config');
   const [systemFields, setSystemFields] = useState([]);
@@ -110,6 +133,9 @@ export default function App() {
   const [scopes, setScopes] = useState(() => new Set(['standard']));
   const showScope = useCallback((...names) => setScopes(new Set(names)), []);
   const toggleScope = useCallback((id) => setScopes((current) => toggled(current, id)), []);
+  // Apart from the scopes, since comments are not fields. Shown on top when on,
+  // so turning them off is how to reach a field under one.
+  const [showComments, setShowComments] = useState(true);
 
   const { doc, error: pdfError } = usePdfDocument(originalBytes);
   const pageCount = doc?.numPages ?? 0;
@@ -146,11 +172,14 @@ export default function App() {
   }, []);
 
   // The DB list is swappable, so a reload can invalidate a validation flag.
+  // Silent: the list moved, nobody edited anything, and undoing back to a flag
+  // the list no longer supports would only have it taken off again.
   useEffect(() => {
-    setFields((current) => reconcileFields(current, dbIndex));
-  }, [dbIndex]);
+    setFields((current) => reconcileFields(current, dbIndex), { silent: true });
+  }, [dbIndex, setFields]);
 
   const selected = fields.find((f) => f.id === selectedId) ?? null;
+  const selectedMarker = markers.find((m) => m.id === selectedMarkerId) ?? null;
   const selectedFields = useMemo(
     () => fields.filter((f) => selectedIds.has(f.id)),
     [fields, selectedIds]
@@ -192,8 +221,17 @@ export default function App() {
   // Plain click replaces the selection, Ctrl or Cmd adds and removes one, Shift
   // takes everything between the last row clicked and this one, in the order the
   // list shows them rather than the order the fields happen to be stored in.
+  const selectMarker = useCallback((id) => {
+    setSelectedMarkerId(id);
+    if (id) {
+      setSelectedId(null);
+      setSelectedIds(new Set());
+    }
+  }, []);
+
   const selectField = useCallback(
     (id, modifiers = {}) => {
+      setSelectedMarkerId(null);
       if (!id) {
         setSelectedId(null);
         setSelectedIds(new Set());
@@ -228,13 +266,27 @@ export default function App() {
     () => scopedFields.filter((f) => f.page === pageIndex),
     [scopedFields, pageIndex]
   );
+  // The same rule the fields follow: an issue's members win over the scope
+  // tabs, so clicking one shows exactly what it named.
+  const scopedMarkers = useMemo(() => {
+    if (issueFilter) {
+      const wanted = new Set(issueFilter.ids);
+      return markers.filter((m) => wanted.has(m.id));
+    }
+    return scopes.has(MARKER_SCOPE) ? markers : [];
+  }, [markers, scopes, issueFilter]);
+  const pageMarkers = useMemo(
+    () => scopedMarkers.filter((m) => m.page === pageIndex),
+    [scopedMarkers, pageIndex]
+  );
   const issues = useMemo(
     () => [
       ...fieldIssues(fields, dbIndex, systemIndex, isRuntimeFilledDropdown),
       // Only an imported PDF can carry these, since placing cannot produce one.
       ...specialFieldIssues(fields).map((text) => ({ text, level: 'error' })),
+      ...markerIssues(markers),
     ],
-    [fields, dbIndex, systemIndex]
+    [fields, markers, dbIndex, systemIndex]
   );
   // An issue that no longer holds should not leave the list filtered to nothing.
   useEffect(() => {
@@ -291,10 +343,15 @@ export default function App() {
         setFileName(file.name);
         // A signer name saved as a text field elsewhere comes back a dropdown,
         // the same correction system field types get.
-        setFields(reconcileSpecialTypes(result.fields));
-        setConfig(result.config);
+        resetDocument({
+          fields: reconcileSpecialTypes(result.fields),
+          config: result.config,
+          markers: result.markers,
+        });
         setSelectedId(null);
+        setSelectedMarkerId(null);
         setPageIndex(0);
+        setShowComments(true);
         const label = {
           [SOURCE.EMBEDDED]: 'Embedded requirements found',
           [SOURCE.ACROFORM]: 'Existing AcroForm found',
@@ -307,10 +364,17 @@ export default function App() {
 
   const handleImportJson = async (file) => {
     try {
-      const { fields: loaded, config: loadedConfig } = parseDocument(await file.text(), dbIndex);
-      setFields(loaded);
-      setConfig(loadedConfig);
+      const {
+        fields: loaded,
+        config: loadedConfig,
+        markers: loadedMarkers,
+      } = parseDocument(await file.text(), dbIndex);
+      // One step, not three. The import replaces the fields, the markers and the
+      // config of the PDF still open, so undo puts them all back the way the
+      // wrong sidecar found them.
+      mutateDocument(() => ({ fields: loaded, config: loadedConfig, markers: loadedMarkers }));
       setSelectedId(null);
+      setSelectedMarkerId(null);
       say([`Loaded ${loaded.length} field${loaded.length === 1 ? '' : 's'} from ${file.name}.`]);
     } catch (err) {
       const why = err instanceof SchemaError ? err.message : `${err}`;
@@ -320,43 +384,106 @@ export default function App() {
 
   const handleCreateField = (rect) => {
     const field = createField({
-      type: newFieldType,
+      type: drawKind,
       page: pageIndex,
       rect,
       // A radio option's placeholder depends on what is already placed.
-      ...(newFieldType === 'radio' ? { exportValue: nextRadioExportValue(fields) } : {}),
+      ...(drawKind === 'radio' ? { exportValue: nextRadioExportValue(fields) } : {}),
     });
     setFields((current) => [...current, field]);
     setSelectedId(field.id);
   };
 
-  const patchField = useCallback(
+  // Drawn like a field and stored nowhere near one. Nothing is named, nothing is
+  // typed, and nothing about it reaches the exported PDF.
+  const handleCreateMarker = (rect) => {
+    const marker = createMarker({ page: pageIndex, rect });
+    setMarkers((current) => [...current, marker]);
+    selectMarker(marker.id);
+    // A marker drawn while the Signers scope is off would vanish the moment it
+    // was placed, the same reason the Config placements switch scope.
+    if (!scopes.has(MARKER_SCOPE)) showScope(MARKER_SCOPE);
+  };
+
+  const patchMarker = useCallback(
     (id, patch) => {
-      setFields((current) =>
-        current.map((f) => {
-          if (f.id !== id) return f;
-          const next = { ...f, ...patch };
-          // Once a field is renamed by hand it is no longer an inferred import.
-          if (patch.name !== undefined) next.imported = false;
-          // A special field's type follows its name. A signer's name is a
-          // dropdown, the rest are text, so naming a box settles its type.
-          //
-          // A system field's type follows its name too, for the same reason
-          // import corrects one on the way in: the list is authoritative, so
-          // there is one right answer and no call for the user to make.
-          if (patch.name !== undefined) {
-            const system = systemIndex.get(patch.name.trim());
-            next.type = system?.type ?? specialFieldType(patch.name) ?? next.type;
-            if (system && system.type === 'text') {
-              next.exportValue = '';
-              next.options = [];
-            }
-          }
-          return reconcileField(next, dbIndex);
-        })
+      setMarkers(
+        (current) => current.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+        // The role and the note are typed, so a run of keystrokes in one box is
+        // one step.
+        { merge: typingRun(`marker:${id}`, patch) }
       );
     },
-    [dbIndex, systemIndex]
+    [setMarkers]
+  );
+
+  const handleChangeMarkerRect = useCallback(
+    (id, rect, gesture) => {
+      setMarkers((current) => current.map((m) => (m.id === id ? { ...m, rect } : m)), {
+        merge: gesture ? `markerRect:${gesture}` : null,
+        within: Infinity,
+      });
+    },
+    [setMarkers]
+  );
+
+  const deleteMarker = useCallback(
+    (id) => {
+      if (!id) return;
+      setMarkers((current) => current.filter((m) => m.id !== id));
+      setSelectedMarkerId((sel) => (sel === id ? null : sel));
+    },
+    [setMarkers]
+  );
+
+  const duplicateMarker = useCallback(
+    (id) => {
+      const source = markers.find((m) => m.id === id);
+      if (!source) return;
+      // Offset so the copy is visibly on top of, not hidden behind, the original.
+      const copy = createMarker({
+        ...source,
+        id: undefined,
+        rect: { ...source.rect, x: source.rect.x + 8, y: source.rect.y - 8 },
+      });
+      setMarkers((current) => [...current, copy]);
+      selectMarker(copy.id);
+    },
+    [markers, setMarkers, selectMarker]
+  );
+
+  const patchField = useCallback(
+    (id, patch) => {
+      setFields(
+        (current) =>
+          current.map((f) => {
+            if (f.id !== id) return f;
+            const next = { ...f, ...patch };
+            // Once a field is renamed by hand it is no longer an inferred import.
+            if (patch.name !== undefined) next.imported = false;
+            // A special field's type follows its name. A signer's name is a
+            // dropdown, the rest are text, so naming a box settles its type.
+            //
+            // A system field's type follows its name too, for the same reason
+            // import corrects one on the way in: the list is authoritative, so
+            // there is one right answer and no call for the user to make.
+            if (patch.name !== undefined) {
+              const system = systemIndex.get(patch.name.trim());
+              next.type = system?.type ?? specialFieldType(patch.name) ?? next.type;
+              if (system && system.type === 'text') {
+                next.exportValue = '';
+                next.options = [];
+              }
+            }
+            return reconcileField(next, dbIndex);
+          }),
+        // A name, a note or an options list is typed, so the keystrokes fold
+        // into one step per box. A checkbox or a picker is one decision and
+        // keeps a step of its own.
+        { merge: typingRun(`field:${id}`, patch) }
+      );
+    },
+    [dbIndex, systemIndex, setFields]
   );
 
   // The same patch across a selection. Each field still goes through
@@ -368,20 +495,30 @@ export default function App() {
         current.map((f) => (ids.has(f.id) ? reconcileField({ ...f, ...patch }, dbIndex) : f))
       );
     },
-    [dbIndex]
+    [dbIndex, setFields]
   );
 
-  const handleChangeRect = useCallback((id, rect) => {
-    setFields((current) => {
-      const field = current.find((f) => f.id === id);
-      const moved = current.map((f) => (f.id === id ? { ...f, rect } : f));
-      // The label and code box sit against the Remote eSign button, so dragging
-      // the button drags them too. A delta rather than a re-layout, so nudging
-      // either one by hand survives the button moving afterwards.
-      if (field?.name.trim() !== ESIGN_ANCHOR) return moved;
-      return moveEsignCluster(moved, rect.x - field.rect.x, rect.y - field.rect.y);
-    });
-  }, []);
+  // The canvas names each drag, since it arrives as a rect a mouse move rather
+  // than one at the end of it. Every rect carrying that name is the same step,
+  // with no time limit on it, so a drag undoes as the one move it looked like
+  // however long the pointer was held down.
+  const handleChangeRect = useCallback(
+    (id, rect, gesture) => {
+      setFields(
+        (current) => {
+          const field = current.find((f) => f.id === id);
+          const moved = current.map((f) => (f.id === id ? { ...f, rect } : f));
+          // The label and code box sit against the Remote eSign button, so dragging
+          // the button drags them too. A delta rather than a re-layout, so nudging
+          // either one by hand survives the button moving afterwards.
+          if (field?.name.trim() !== ESIGN_ANCHOR) return moved;
+          return moveEsignCluster(moved, rect.x - field.rect.x, rect.y - field.rect.y);
+        },
+        { merge: gesture ? `rect:${gesture}` : null, within: Infinity }
+      );
+    },
+    [setFields]
+  );
 
   const deleteField = useCallback(
     (id) => {
@@ -406,7 +543,7 @@ export default function App() {
         return left;
       });
     },
-    [systemIndex, say]
+    [systemIndex, say, setFields]
   );
 
   const duplicateField = useCallback(
@@ -426,15 +563,33 @@ export default function App() {
       setFields((current) => [...current, copy]);
       setSelectedId(copy.id);
     },
-    [fields]
+    [fields, setFields]
   );
 
   // Delete works on the selection, unless the user is typing a name.
   useEffect(() => {
     const onKeyDown = (event) => {
+      const mod = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
+      // Ahead of the text box guard below, unlike Delete. Every box in here is
+      // a controlled input, so the browser's own undo has nothing of its own to
+      // put back and would leave the box and the field disagreeing. One stack
+      // for the whole app is the answer that holds wherever the cursor is.
+      if (mod && (key === 'z' || key === 'y')) {
+        event.preventDefault();
+        if (key === 'y' || event.shiftKey) redo();
+        else undo();
+        return;
+      }
+
       const tag = event.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (event.key === 'Delete' || event.key === 'Backspace') {
+        if (selectedMarkerId) {
+          event.preventDefault();
+          deleteMarker(selectedMarkerId);
+          return;
+        }
         if (!selectedId) return;
         event.preventDefault();
         deleteField(selectedId);
@@ -461,19 +616,32 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [selectedId, deleteField, duplicateField, scopedFields, fields, selectField]);
+  }, [
+    selectedId,
+    selectedMarkerId,
+    deleteField,
+    deleteMarker,
+    duplicateField,
+    scopedFields,
+    fields,
+    selectField,
+    undo,
+    redo,
+  ]);
 
   // Its own path, so nothing here touches the PDF export.
   const handleExportRequirements = () =>
     whileBusy(
       async () => {
         const bytes = await requirementsWorkbookBytes({
-          doc: serializeDocument(fields, { sourceFileName: fileName, config }),
+          doc: serializeDocument(fields, { sourceFileName: fileName, config, markers }),
           buttons,
           systemIndex,
           buttonIndex,
           dbIndex,
-          pageImages: await renderPageImages(doc),
+          // The markers go to the pictures as well as the table. A row gives a
+          // reader coordinates, the picture is what shows them the place.
+          pageImages: await renderPageImages(doc, { markers }),
           sheetName: fileName.replace(/\.pdf$/i, '') || 'Form',
         });
         downloadBytes(
@@ -494,7 +662,10 @@ export default function App() {
           fields,
           buttons,
           systemFields,
-          meta: { sourceFileName: fileName, config },
+          // Markers ride along so the embedded JSON carries them back on the
+          // next open. Nothing in exportPdf reads them, which is the point:
+          // they never become part of the form.
+          meta: { sourceFileName: fileName, config, markers },
         });
         downloadBytes(pdfBytes, exportedPdfName(fileName), 'application/pdf');
         downloadBytes(jsonBytes, sidecarName(fileName), 'application/json');
@@ -505,7 +676,7 @@ export default function App() {
 
   const handleExportJson = () => {
     const bytes = serializeJsonBytes(
-      serializeDocument(fields, { sourceFileName: fileName, config })
+      serializeDocument(fields, { sourceFileName: fileName, config, markers })
     );
     downloadBytes(bytes, sidecarName(fileName), 'application/json');
     say([`Exported ${sidecarName(fileName)}.`]);
@@ -525,7 +696,7 @@ export default function App() {
       });
       showScope(isEsignField(name) ? 'submission' : 'signers');
     },
-    [pageBox, pageIndex, showScope]
+    [pageBox, pageIndex, showScope, setFields]
   );
 
   // Rows land stacked and out of the way, since only the artwork knows where
@@ -533,7 +704,7 @@ export default function App() {
   const addSignerRowHere = useCallback(() => {
     setFields((current) => addSignerRow(current, pageBox, pageIndex));
     showScope('signers');
-  }, [pageBox, pageIndex, showScope]);
+  }, [pageBox, pageIndex, showScope, setFields]);
 
   const toggleButton = useCallback(
     (entry, on) => {
@@ -551,7 +722,7 @@ export default function App() {
       });
       if (on) showScope('submission');
     },
-    [buttons, pageBox, pageIndex, showScope]
+    [buttons, pageBox, pageIndex, showScope, setFields]
   );
 
   // A reset rather than a lock, any field can be changed again afterwards.
@@ -569,9 +740,11 @@ export default function App() {
         pageIndex={pageIndex}
         pageCount={pageCount}
         zoom={zoom}
-        newFieldType={newFieldType}
+        drawKind={drawKind}
         hasPdf={!!doc}
         busy={busy}
+        commentsShown={showComments}
+        onToggleComments={() => setShowComments((on) => !on)}
         onOpenPdf={handleOpenPdf}
         onImportJson={handleImportJson}
         onExportPdf={handleExportPdf}
@@ -579,7 +752,7 @@ export default function App() {
         onExportRequirements={handleExportRequirements}
         onPageChange={setPageIndex}
         onZoomChange={setZoom}
-        onNewFieldType={setNewFieldType}
+        onDrawKind={setDrawKind}
         onEnforceFontStandards={handleEnforceFontStandards}
         noticesHidden={hasNotices && !noticesOpen}
         onShowNotices={() => setNoticesOpen(true)}
@@ -615,15 +788,22 @@ export default function App() {
               pageIndex={pageIndex}
               zoom={zoom}
               fields={pageFields}
+              markers={pageMarkers}
               selectedId={selectedId}
+              selectedMarkerId={selectedMarkerId}
               dbIndex={dbIndex}
               canonicalIds={canonicalIds}
               buttonIndex={buttonIndex}
-              newFieldType={newFieldType}
+              systemIndex={systemIndex}
+              showComments={showComments}
+              drawKind={drawKind}
               selectedIds={selectedIds}
               onSelect={selectField}
+              onSelectMarker={selectMarker}
               onCreateField={handleCreateField}
+              onCreateMarker={handleCreateMarker}
               onChangeRect={handleChangeRect}
+              onChangeMarkerRect={handleChangeMarkerRect}
             />
           ) : (
             <EmptyState />
@@ -634,14 +814,23 @@ export default function App() {
           <PanelTabs
             panel={panel}
             onPick={setPanel}
-            counts={{ fields: fields.length, config: config.productCodes.length || null }}
+            counts={{
+              fields: fields.length + markers.length,
+              config: config.productCodes.length || null,
+            }}
           />
 
           {panel === 'config' ? (
             <div className="min-h-0 flex-1 overflow-auto">
               <FormConfigPanel
                 config={config}
-                onChange={(patch) => setConfig((current) => createConfig({ ...current, ...patch }))}
+                onChange={(patch) =>
+                  setConfig((current) => createConfig({ ...current, ...patch }), {
+                    // The text answers are typed, so a run of keystrokes in one
+                    // box is one step. A checkbox or a picker keeps its own.
+                    merge: typingRun('config', patch),
+                  })
+                }
                 buttons={buttons}
                 isButtonOn={(id) => hasButton(fields, id)}
                 signerRows={signerRows}
@@ -665,19 +854,22 @@ export default function App() {
             onToggle={toggleScope}
             issueFilter={issueFilter}
             onClearFilter={() => setIssueFilter(null)}
-            shown={scopedFields.length}
-            total={fields.length}
+            shown={scopedFields.length + scopedMarkers.length}
+            total={fields.length + markers.length}
           />
 
           <div className="min-h-[6rem] flex-1 overflow-auto">
             <FieldList
               fields={scopedFields}
+              markers={scopedMarkers}
               selectedId={selectedId}
               selectedIds={selectedIds}
+              selectedMarkerId={selectedMarkerId}
               dbIndex={dbIndex}
               systemIndex={systemIndex}
               canonicalIds={canonicalIds}
               onSelect={selectField}
+              onSelectMarker={selectMarker}
               onGoToPage={setPageIndex}
             />
           </div>
@@ -690,7 +882,15 @@ export default function App() {
               the list is squeezed to its floor of a few rows. It already
               scrolls, so it scrolls inside the cap instead. */}
           <div className="max-h-[55%] shrink-0 overflow-auto border-t border-slate-200">
-            {selectedFields.length > 1 ? (
+            {selectedMarker ? (
+              <MarkerPanel
+                marker={selectedMarker}
+                pageCount={pageCount}
+                onChange={(patch) => patchMarker(selectedMarkerId, patch)}
+                onDelete={() => deleteMarker(selectedMarkerId)}
+                onDuplicate={() => duplicateMarker(selectedMarkerId)}
+              />
+            ) : selectedFields.length > 1 ? (
               <BulkPanel
                 fields={selectedFields}
                 dbIndex={dbIndex}

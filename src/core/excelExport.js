@@ -11,7 +11,8 @@
 import ExcelJS from 'exceljs';
 import { canonicalSystemIds } from './systemFields.js';
 import { isSubmissionButton } from './signingButtons.js';
-import { fieldScope, fieldTone, TONE_HEX, TONE_TITLE } from './fieldTone.js';
+import { fieldScope, fieldTone, MARKER_TONE, TONE_HEX, TONE_TITLE } from './fieldTone.js';
+import { MARKER_LABEL } from './markers.js';
 import {
   METADATA_ROWS,
   CHANNEL_STEPS,
@@ -133,9 +134,25 @@ export function requirementRows(
     });
   }
 
-  return readingOrder(
-    [...byName.values()].map((row) => ({ ...row, pages: [...row.pages].sort((a, b) => a - b) }))
-  );
+  // Markers join the same stream rather than getting a section of their own, so
+  // an initials box sits among the fields it sits among on the page and lines up
+  // against the same picture. Each one is its own row: two initials boxes are
+  // two places someone initials, which is not the repeated-name case.
+  const markerRows = (doc.markers ?? []).map((marker) => ({
+    marker: true,
+    role: (marker.role ?? '').trim(),
+    note: marker.note ?? '',
+    pages: [marker.page],
+    page: marker.page,
+    top: marker.rect?.y ?? 0,
+    left: marker.rect?.x ?? 0,
+    height: marker.rect?.height ?? 0,
+  }));
+
+  return readingOrder([
+    ...[...byName.values()].map((row) => ({ ...row, pages: [...row.pages].sort((a, b) => a - b) })),
+    ...markerRows,
+  ]);
 }
 
 // Down the page then across, banded by vertical centre rather than top edge.
@@ -332,12 +349,33 @@ export function buildRequirementsWorkbook({
   const key = write('Field Name colours');
   key.getCell(COL.section).font = { bold: true };
   let keyAt = COL.label;
-  for (const tone of ['standard', 'attempted', 'special']) {
+  for (const tone of ['standard', 'attempted', 'special', MARKER_TONE]) {
     const cell = key.getCell(keyAt);
     cell.value = TONE_TITLE[tone];
     cell.font = { name: 'Consolas', size: 10, color: { argb: TONE_HEX[tone] } };
     keyAt += 1;
   }
+
+  // An initials box is not a field, so the two columns that describe a field say
+  // nothing about it: nothing loads into it and nothing saves out of it. What it
+  // has is a place on the page and a person, and the person goes in Form Field
+  // because that column is the human-facing label, left empty for real fields
+  // only because the tool cannot know what is printed beside the box.
+  const writeMarkerRow = (row, index) => {
+    const written = write(
+      MARKER_LABEL,
+      // Stated rather than left blank. A blank cell beside "Initials" reads as
+      // an oversight, and the app already flags this one as an error.
+      row.role || '(not specified)',
+      '',
+      '',
+      row.note
+    );
+    const who = written.getCell(COL.label);
+    who.font = { bold: !row.role, color: { argb: TONE_HEX[MARKER_TONE] } };
+    who.note = TONE_TITLE[MARKER_TONE];
+    edgedRow(written, index % 2 ? INK.band : undefined);
+  };
 
   const writeFieldRow = (row, index) => {
     const written = write(
@@ -397,7 +435,8 @@ export function buildRequirementsWorkbook({
         // rather than landing on top of each other.
         at = Math.max(at, start + Math.round(fromTop / ROW_HEIGHT_PX));
       }
-      writeFieldRow(row, index);
+      if (row.marker) writeMarkerRow(row, index);
+      else writeFieldRow(row, index);
       index += 1;
     }
   }

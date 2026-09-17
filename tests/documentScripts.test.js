@@ -28,7 +28,7 @@ const BUTTONS = signingButtons();
 // Runs the emitted block and hands back what Main would see. This is both the
 // value check and the syntax check, since a bad block will not run.
 const CONFIG_NAMES = [
-  'FILEOPTICS_ENVIRONMENT', 'HAS_ESIGN_FIELDS', 'FILEOPTICS_BUTTON_FIELDS',
+  'HAS_ESIGN_FIELDS', 'FILEOPTICS_BUTTON_FIELDS',
   'SIGNER_ROWS', 'MAX_SIGNERS_ON_FORM', 'MAX_JOINT_LINES', 'HAS_COMBINED_JOINT',
   'JOINT_ROW_HAS_MEMBER_NUMBER', 'POPULATE_JOINT_DATA', 'MAX_DNA_SIGNERS',
   'MEMBERSHIP_TYPE', 'CODE_TYPES', 'PRODUCT_CODES', 'LOAD_VALIDATION_FIELDS',
@@ -136,13 +136,12 @@ describe('the generated config', () => {
     expect(runConfig({ fields: twice }).SAVE_VALIDATION_FIELDS).toEqual(['CUSTNAME']);
   });
 
-  it('carries the form type, environment and product codes', () => {
+  it('carries the form type and product codes', () => {
     const config = createConfig({
-      formType: 'combined', environment: 'PROD', productCodes: ['M101', 'RSP'],
+      formType: 'combined', productCodes: ['M101', 'RSP'],
     });
     expect(runConfig({ config })).toMatchObject({
       MEMBERSHIP_TYPE: 'combined',
-      FILEOPTICS_ENVIRONMENT: 'PROD',
       PRODUCT_CODES: ['M101', 'RSP'],
       CODE_TYPES: ['PROD_CODE'],
     });
@@ -179,17 +178,10 @@ describe('the generated Main', () => {
          rows: MAX_SIGNERS_ON_FORM,
          sig: rowHas(1, "signature"),
          date: rowHas(1, "signDate"),
-         anyName: anyRowHas("name"),
-         flow: getFlowId("PHONE")
+         anyName: anyRowHas("name")
        };`
     )();
-    expect(probe).toEqual({ rows: 1, sig: true, date: false, anyName: true, flow: 'TFO' });
-  });
-
-  it('switches the flow ids when the environment is Production', () => {
-    const block = buildConfigBlock({ config: createConfig({ environment: 'PROD' }) });
-    const flow = new Function(`${block}\n${helperScript()}\nreturn getFlowId("ESIGN");`)();
-    expect(flow).toBe('ES');
+    expect(probe).toEqual({ rows: 1, sig: true, date: false, anyName: true });
   });
 });
 
@@ -266,7 +258,7 @@ describe('export end to end', () => {
       originalBytes: await blankPdf(),
       fields,
       buttons: BUTTONS,
-      meta: { config: createConfig({ formType: 'org', environment: 'PROD' }) },
+      meta: { config: createConfig({ formType: 'org' }) },
     });
     expect(warnings).toEqual([]);
 
@@ -279,7 +271,6 @@ describe('export end to end', () => {
     )();
     expect(cfg).toMatchObject({
       MEMBERSHIP_TYPE: 'org',
-      FILEOPTICS_ENVIRONMENT: 'PROD',
       MAX_SIGNERS_ON_FORM: 1,
       HAS_ESIGN_FIELDS: true,
       FILEOPTICS_BUTTON_FIELDS: ['RemoteESignButton'],

@@ -207,8 +207,6 @@ export function buildConfigBlock({
 
   return `${CONFIG_OPEN}
 
-var FILEOPTICS_ENVIRONMENT = ${str(config.environment ?? 'TEST')}; // TEST or PROD
-
 // The Remote eSign label and code box. Every submission path touches them, so
 // this says whether the form carries them at all.
 var HAS_ESIGN_FIELDS = ${hasEsignFields(fields)};

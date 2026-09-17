@@ -70,7 +70,7 @@ function runDocument(scripts, tail, values) {
   return { result, alerts: doc.alerts, fields: doc.fields };
 }
 
-// A form with nothing placed on it. IN_PERSNBR is set because the default
+// A form with nothing placed on it. PRIMARY_MEMBERSHIP_TYPE is P because the default
 // config is a person membership, and Main returns early on a mismatch: without
 // it the run would stop before reaching anything worth checking.
 function generated(extra = {}) {
@@ -82,7 +82,7 @@ function generated(extra = {}) {
   return scripts;
 }
 
-const PERSON = { IN_PERSNBR: '123456' };
+const PERSON = { PRIMARY_MEMBERSHIP_TYPE: 'P' };
 
 describe('the whole document, run the way Acrobat runs it', () => {
   const HOOKS = `
@@ -160,7 +160,6 @@ describe('the whole document, run the way Acrobat runs it', () => {
       function CustomAfterLoad() {
         __seen = {
           isPerson: IS_PERSON,
-          personNumber: PERSON_NUMBER,
           signers: SIGNER_COUNT,
           joint: JOINT_POPULATED,
           membership: MEMBERSHIP_TYPE
@@ -170,10 +169,18 @@ describe('the whole document, run the way Acrobat runs it', () => {
     const { result } = runDocument(generated({ Form_Custom: custom }), '__seen', PERSON);
     expect(result).toMatchObject({
       isPerson: true,
-      personNumber: '123456',
       membership: 'person',
     });
     expect(typeof result.signers).toBe('number');
+  });
+
+  it('reads P as a person membership and anything else as an organization', () => {
+    const isPerson = (type) =>
+      runDocument(generated(), 'IS_PERSON', { PRIMARY_MEMBERSHIP_TYPE: type }).result;
+    expect(isPerson('P')).toBe(true);
+    expect(isPerson(' p ')).toBe(true);
+    expect(isPerson('B')).toBe(false);
+    expect(isPerson('')).toBe(false);
   });
 
   it('raises no Acrobat alert on the way through', () => {

@@ -13,7 +13,9 @@ import { exportPdf } from '../../src/core/pdfExport.js';
 import { importPdf, SOURCE } from '../../src/core/pdfImport.js';
 import { buildDbIndex } from '../../src/core/dbFields.js';
 import { createField } from '../../src/core/schema.js';
+import { createMarker } from '../../src/core/markers.js';
 import { signingButtons } from '../../src/core/signingButtons.js';
+import { commentEdgesPdf, COMMENT_COUNTS } from './commentEdges.js';
 
 const results = [];
 const diagnostics = [];
@@ -206,6 +208,21 @@ async function onlyScopes(...wanted) {
   await sleep(200);
 }
 
+// The undo stack listens on the window, so the event has to bubble from
+// wherever the cursor happens to be. Which box that is matters: the handler
+// takes Ctrl+Z ahead of the guard that keeps Delete out of a text field.
+function undoKey(el = document.body, { shift = false, key = 'z' } = {}) {
+  el.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      key,
+      ctrlKey: true,
+      shiftKey: shift,
+      bubbles: true,
+      cancelable: true,
+    })
+  );
+}
+
 async function run() {
   createRoot(document.getElementById('root')).render(
     <React.StrictMode>
@@ -249,6 +266,9 @@ async function run() {
   const systemList = await (await fetch('/systemFields.json')).json();
   await sleep(300);
   const aside = () => document.querySelector('#root aside');
+  // The panel opens on Config, so the scope bar and the list are a tab away.
+  clickTab('Fields');
+  await sleep(200);
   // Standard is the default, so a fresh form opens uncluttered even though all
   // the system fields are there.
   check(
@@ -456,8 +476,53 @@ async function run() {
     JSON.stringify(moved)
   );
 
+  // Undo. A drag arrives as a rect a mouse move, so the thing worth checking is
+  // that the whole gesture comes back in one press rather than a pixel of it.
+  undoKey();
+  await sleep(150);
+  check(
+    'Ctrl+Z takes back a whole drag in one step',
+    rectMatches(readRect(), before),
+    JSON.stringify(readRect())
+  );
+
+  undoKey(document.body, { shift: true });
+  await sleep(150);
+  check(
+    'Ctrl+Shift+Z puts the drag back',
+    rectMatches(readRect(), moved),
+    JSON.stringify(readRect())
+  );
+
+  // Typing arrives a letter at a time, and the cursor is in a text box while it
+  // does, which is exactly where the browser's own undo would fight this one.
+  const typedInto = document.querySelectorAll('#root aside input[type=text]')[1];
+  const startValue = typedInto.value;
+  const suffix = ' of Record';
+  for (let i = 1; i <= suffix.length; i += 1) {
+    setInputValue(typedInto, startValue + suffix.slice(0, i));
+    await sleep(8);
+  }
+  await sleep(150);
+  check(
+    'a typed run reaches the field',
+    typedInto.value === startValue + suffix,
+    typedInto.value
+  );
+
+  typedInto.focus();
+  undoKey(typedInto);
+  await sleep(150);
+  check(
+    'Ctrl+Z in a text box takes back the run, not the letter',
+    document.querySelectorAll('#root aside input[type=text]')[1].value === startValue,
+    document.querySelectorAll('#root aside input[type=text]')[1].value
+  );
+
   // Zoom must not change anything stored.
-  const zoomSelect = document.querySelector('#root header select');
+  const zoomSelect = [...document.querySelectorAll('#root header select')].find((s) =>
+    [...s.options].some((o) => o.textContent === '100%')
+  );
   zoomSelect.value = '2';
   zoomSelect.dispatchEvent(new Event('change', { bubbles: true }));
   await waitFor('zoomed canvas', () => document.querySelector('#root canvas')?.style.width === '1224px');
@@ -482,7 +547,14 @@ async function run() {
 
   // Page 2 is rotated 90. Screen x runs down the PDF page and screen y runs
   // across it, so a wide box on screen is a tall rect in user space.
-  clickButton('Next', document.querySelector('#root header'));
+  const pageSelect = document.querySelector('#root header select[aria-label=Page]');
+  check(
+    'the page dropdown lists every page',
+    [...pageSelect.options].map((o) => o.textContent).join('|') === 'Page 1 of 2|Page 2 of 2',
+    [...pageSelect.options].map((o) => o.textContent).join('|')
+  );
+  pageSelect.value = '1';
+  pageSelect.dispatchEvent(new Event('change', { bubbles: true }));
   await waitFor('rotated page', () => document.querySelector('#root canvas')?.style.width === '792px');
   await sleep(300);
   await drag([100, 100], [300, 120]);
@@ -954,27 +1026,6 @@ async function run() {
     !boxAt('eSignLBL') && !boxAt('eSign_Code')
   );
 
-  // Environment. Defaults to Test so an untouched form fails safe.
-  clickTab('Config');
-  await sleep(200);
-  const envBtn = (label) =>
-    [...document.querySelectorAll('#root aside button')].find(
-      (b) => b.textContent.trim() === label
-    );
-  check(
-    'the environment defaults to Test',
-    envBtn('Test')?.getAttribute('aria-pressed') === 'true' &&
-      envBtn('Production')?.getAttribute('aria-pressed') === 'false'
-  );
-  envBtn('Production').click();
-  await sleep(200);
-  check(
-    'and can be switched to Production',
-    envBtn('Production')?.getAttribute('aria-pressed') === 'true'
-  );
-  envBtn('Test').click();
-  await sleep(200);
-
   clickTab('Fields');
   await sleep(150);
   // Buttons only show in their own scope, so turning one on follows the change
@@ -1377,13 +1428,26 @@ async function run() {
   // The requirements workbook. Rendering the pages needs pdf.js and a canvas,
   // so this is the only place it runs for real.
   await onlyScopes('Standard');
-  const exportBtn = [...document.querySelectorAll('#root header button')].find(
+  const headerEl = document.querySelector('#root header');
+  const tops = [...headerEl.children]
+    .filter((el) => el.getBoundingClientRect().height > 0)
+    .map((el) => el.getBoundingClientRect());
+  check(
+    'the toolbar fits on one row',
+    tops.every((r) => r.top < tops[0].bottom && r.bottom > tops[0].top),
+    `${Math.round(headerEl.getBoundingClientRect().height)}px tall`
+  );
+  clickButton('Export', headerEl);
+  await sleep(100);
+  const exportBtn = [...document.querySelectorAll('#root header [role=menuitem]')].find(
     (b) => b.textContent.trim() === 'Export Requirements'
   );
   check('the requirements export is offered', !!exportBtn && !exportBtn.disabled);
   exportBtn?.click();
-  await waitFor('the requirements workbook', () => notices().includes('.requirements.xlsx'), 30000);
-  check('it reports the workbook it wrote', notices().includes('.requirements.xlsx'), notices().slice(0, 70));
+  await sleep(100);
+  check('picking it closes the menu', !document.querySelector('#root header [role=menu]'));
+  await waitFor('the requirements workbook', () => notices().includes('sample.xlsx'), 30000);
+  check('it reports the workbook it wrote', notices().includes('sample.xlsx'), notices().slice(0, 70));
 
   // Minimized rather than closed, and anything new brings it back.
   clickButton('Hide', noticesBar());
@@ -1397,7 +1461,7 @@ async function run() {
   await sleep(100);
   check(
     'which brings it back as it was',
-    notices().includes('.requirements.xlsx') && !showNotices(),
+    notices().includes('sample.xlsx') && !showNotices(),
     notices().slice(0, 70)
   );
 
@@ -1431,6 +1495,291 @@ async function run() {
       reopened.fields[1].type === 'checkbox' &&
       reopened.fields[1].loadValidated === true
   );
+
+
+  // Initials markers. Drawn like a field, stored nowhere near one, and the one
+  // thing on the page that must never end up in the exported AcroForm.
+  clickTab('Fields');
+  await onlyScopes('Signers');
+  const toolbar = document.querySelector('#root header');
+  const issueText = () =>
+    [...document.querySelectorAll('#root aside button, #root aside p')]
+      .map((n) => n.textContent)
+      .join(' ');
+
+  const fieldsBefore = document.querySelectorAll('#root main [data-field-id]').length;
+  clickButton('Initials', toolbar);
+  await sleep(120);
+  await drag([120, 120], [160, 138]);
+  check(
+    'drawing with Initials makes a marker, not a field',
+    document.querySelectorAll('#root main [data-marker-id]').length === 1 &&
+      document.querySelectorAll('#root main [data-field-id]').length === fieldsBefore,
+    `${document.querySelectorAll('#root main [data-marker-id]').length} markers`
+  );
+
+  check(
+    'it gets the marker panel rather than the field one',
+    document.querySelector('#root aside').textContent.includes('Who initials here'),
+    document.querySelector('#root aside').textContent.slice(0, 60)
+  );
+
+  check(
+    'an unnamed marker is reported as an issue',
+    issueText().includes('does not say whose initials go there'),
+    issueText().slice(0, 90)
+  );
+
+  const roleBox = [...document.querySelectorAll('#root aside input[type=text]')].find(
+    (i) => i.placeholder && i.placeholder.startsWith('Branch manager')
+  );
+  check('the role box is there to type into', !!roleBox);
+  setInputValue(roleBox, 'Branch manager');
+  await sleep(200);
+  check(
+    'naming someone clears the issue',
+    !issueText().includes('does not say whose initials go there'),
+    issueText().slice(0, 90)
+  );
+  check(
+    'and the list shows who it is for',
+    document.querySelector('#root aside').textContent.includes('Branch manager')
+  );
+
+  // The scope it filters into. Signers answers the same question a marker does.
+  await onlyScopes('Standard');
+  check(
+    'a marker is not in the Standard scope',
+    document.querySelectorAll('#root main [data-marker-id]').length === 0
+  );
+  await onlyScopes('Signers');
+  check(
+    'it comes back with Signers',
+    document.querySelectorAll('#root main [data-marker-id]').length === 1
+  );
+
+  // Exporting with one placed must leave the PDF exactly as it was without.
+  const markerFields = [
+    createField({ name: 'CUSTNAME', page: 0, rect: { x: 100, y: 680, width: 200, height: 20 } }),
+  ];
+  const plain = await exportPdf({ originalBytes: bytes, fields: markerFields, meta: {} });
+  const marked = await exportPdf({
+    originalBytes: bytes,
+    fields: markerFields,
+    meta: {
+      markers: [
+        createMarker({ page: 0, rect: { x: 430, y: 512, width: 40, height: 18 }, role: 'Guarantor' }),
+      ],
+    },
+  });
+  const backPlain = await importPdf(plain.pdfBytes, dbIndex);
+  const backMarked = await importPdf(marked.pdfBytes, dbIndex);
+  check(
+    'a marker adds no field to the exported PDF',
+    backMarked.fields.length === backPlain.fields.length,
+    `${backMarked.fields.length} vs ${backPlain.fields.length}`
+  );
+  check(
+    'and comes back on reopen from the embedded JSON',
+    backMarked.markers.length === 1 && backMarked.markers[0].role === 'Guarantor',
+    JSON.stringify(backMarked.markers)
+  );
+
+  // Delete works on it the way it works on a field.
+  document.querySelector('#root main [data-marker-id]')?.dispatchEvent(
+    new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1 })
+  );
+  await sleep(120);
+  clickButton('Delete', document.querySelector('#root aside'));
+  await sleep(150);
+  check(
+    'deleting a marker removes it',
+    document.querySelectorAll('#root main [data-marker-id]').length === 0
+  );
+
+  // Comments are only on an imported PDF, so this opens one with a comment on
+  // every edge and corner. What matters is where each pop-up lands.
+  const commentInput = document.querySelector('#root input[type=file][accept*=pdf]');
+  const commentTransfer = new DataTransfer();
+  commentTransfer.items.add(
+    new File([await commentEdgesPdf()], 'comment-edges.pdf', { type: 'application/pdf' })
+  );
+  commentInput.files = commentTransfer.files;
+  commentInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+  const commentBoxes = () => [...document.querySelectorAll('#root main [data-comment-id]')];
+  const commentPopup = () => document.querySelector('#root main [role=dialog][aria-label=Comment]');
+  const closeComment = async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await sleep(80);
+  };
+  await waitFor('comments to click', () => commentBoxes().length === COMMENT_COUNTS[0]);
+  await sleep(300);
+  check('every comment on the page can be clicked', commentBoxes().length === COMMENT_COUNTS[0]);
+
+  const clickAt = async (x, y) => {
+    const el = overlay();
+    pointer('pointerdown', el, x, y);
+    await sleep(16);
+    pointer('pointerup', el, x, y);
+    await sleep(80);
+  };
+  const clickComment = async (boxEl) => {
+    boxEl.scrollIntoView({ block: 'center', inline: 'center' });
+    await sleep(30);
+    const r = boxEl.getBoundingClientRect();
+    await clickAt(r.left + r.width / 2, r.top + r.height / 2);
+  };
+  const commentByText = async (text) => {
+    for (const boxEl of commentBoxes()) {
+      await clickComment(boxEl);
+      if (commentPopup()?.textContent.includes(text)) return boxEl;
+    }
+    return null;
+  };
+
+  // Every pop-up that leaves the page, as its opening words and how far out.
+  const popupsOffPage = async () => {
+    const off = [];
+    for (const boxEl of commentBoxes()) {
+      await clickComment(boxEl);
+      const popup = commentPopup();
+      if (!popup) {
+        off.push(`${boxEl.dataset.commentId} did not open`);
+        continue;
+      }
+      const page = document.querySelector('#root canvas').getBoundingClientRect();
+      const r = popup.getBoundingClientRect();
+      const out = Math.max(page.left - r.left, page.top - r.top, r.right - page.right, r.bottom - page.bottom);
+      if (out > 0.5) off.push(`${popup.textContent.slice(0, 30)} ${out.toFixed(1)}px`);
+    }
+    await closeComment();
+    return off;
+  };
+
+  const topLeft = await commentByText('Top left corner');
+  check(
+    'clicking a comment shows its text and author',
+    !!topLeft && !!commentPopup()?.textContent.includes('Underwriting'),
+    commentPopup()?.textContent
+  );
+  await closeComment();
+  check('Escape closes it', commentPopup() === null);
+
+  await commentByText('Bottom right corner');
+  const threadPopup = commentPopup();
+  check(
+    'replies show under the comment they answer',
+    !!threadPopup?.textContent.includes('Confirmed on the call.'),
+    threadPopup?.textContent.slice(0, 80)
+  );
+  check(
+    'a long thread scrolls inside the pop-up',
+    !!threadPopup && threadPopup.scrollHeight > threadPopup.clientHeight,
+    `${threadPopup?.scrollHeight} in ${threadPopup?.clientHeight}`
+  );
+  check(
+    'a line break in the comment is kept',
+    !!threadPopup &&
+      [...threadPopup.querySelectorAll('p')].some((p) => p.textContent.includes('page 2.\nCan we'))
+  );
+
+  // A press elsewhere on the page closes it.
+  const commentCanvas = document.querySelector('#root canvas').getBoundingClientRect();
+  await clickAt(commentCanvas.left + 300, commentCanvas.top + 300);
+  check('a click on the page closes it', commentPopup() === null);
+
+  const offAt100 = await popupsOffPage();
+  check('at 100% every pop-up stays on the page', offAt100.length === 0, offAt100.join('; '));
+
+  const commentZoom = [...document.querySelectorAll('#root header select')].find((s) =>
+    [...s.options].some((o) => o.textContent === '100%')
+  );
+  commentZoom.value = '0.5';
+  commentZoom.dispatchEvent(new Event('change', { bubbles: true }));
+  await waitFor('half size canvas', () => document.querySelector('#root canvas')?.style.width === '306px');
+  await sleep(300);
+  const offAt50 = await popupsOffPage();
+  check('at 50% every pop-up stays on the page', offAt50.length === 0, offAt50.join('; '));
+
+  commentZoom.value = '1';
+  commentZoom.dispatchEvent(new Event('change', { bubbles: true }));
+  await waitFor('full size canvas', () => document.querySelector('#root canvas')?.style.width === '612px');
+  await sleep(300);
+
+  // A drag that starts on a comment still draws, and the comment stays on top
+  // of the field it makes.
+  const tall = await commentByText('Tall box down the left side');
+  await closeComment();
+  const tallView = tall.getBoundingClientRect();
+  const pageView = overlay().getBoundingClientRect();
+  const dragFrom = [tallView.left - pageView.left + 10, tallView.top - pageView.top + 100];
+  await drag(dragFrom, [dragFrom[0] + 150, dragFrom[1] + 20]);
+  check('a drag over a comment draws a field', readRect() !== null, JSON.stringify(readRect()));
+  const drawnOnComment = readRect();
+  // Inside the new field, and still inside the comment over it.
+  const clickInsideBoth = async () => {
+    const at = overlay().getBoundingClientRect();
+    await clickAt(at.left + dragFrom[0] + 5, at.top + dragFrom[1] + 10);
+  };
+  await clickInsideBoth();
+  check(
+    'a comment over a field takes the click',
+    !!commentPopup()?.textContent.includes('Tall box down the left side'),
+    commentPopup()?.textContent ?? JSON.stringify(readRect())
+  );
+  await closeComment();
+
+  // The red left edge of the tall box, which pdf.js paints into the canvas.
+  const tallEdge = [tallView.left - pageView.left, tallView.top - pageView.top + 300];
+  const tallInk = () => {
+    const canvas = document.querySelector('#root canvas');
+    const scale = canvas.width / canvas.getBoundingClientRect().width;
+    const x = Math.round(tallEdge[0] * scale);
+    const y = Math.round(tallEdge[1] * scale);
+    const px = canvas.getContext('2d', { willReadFrequently: true }).getImageData(x - 2, y, 6, 1).data;
+    for (let i = 0; i < px.length; i += 4) if (px[i] > 150 && px[i + 1] < 110) return true;
+    return false;
+  };
+  check('a shown comment is drawn on the page', tallInk());
+
+  clickButton('Comments', document.querySelector('#root header'));
+  await waitFor('comments hidden', () => commentBoxes().length === 0 && !tallInk());
+  check('hiding comments stops them being drawn', !tallInk());
+  check('or clicked', commentBoxes().length === 0);
+  await clickInsideBoth();
+  check(
+    'the field under a hidden comment takes the click',
+    commentPopup() === null && JSON.stringify(readRect()) === JSON.stringify(drawnOnComment),
+    commentPopup()?.textContent ?? JSON.stringify(readRect())
+  );
+  clickButton('Delete', document.querySelector('#root aside'));
+  await sleep(120);
+
+  clickButton('Comments', document.querySelector('#root header'));
+  await waitFor('comments shown again', () => commentBoxes().length === COMMENT_COUNTS[0] && tallInk());
+  check(
+    'showing them again brings them back',
+    commentBoxes().length === COMMENT_COUNTS[0] && tallInk(),
+    `${commentBoxes().length} boxes`
+  );
+
+  const commentPage = document.querySelector('#root header select[aria-label=Page]');
+  commentPage.value = '1';
+  commentPage.dispatchEvent(new Event('change', { bubbles: true }));
+  await waitFor('rotated comment page', () => document.querySelector('#root canvas')?.style.width === '792px');
+  await waitFor('rotated page comments', () => commentBoxes().length === COMMENT_COUNTS[1]);
+  await sleep(300);
+  const onScreen = await commentByText('Page 2, top right on screen');
+  const onScreenView = onScreen?.getBoundingClientRect();
+  const rotatedView = document.querySelector('#root canvas').getBoundingClientRect();
+  check(
+    'a comment on a turned page is clickable where it shows',
+    !!onScreenView && onScreenView.right > rotatedView.right - 25 && onScreenView.top < rotatedView.top + 25,
+    JSON.stringify(onScreenView)
+  );
+  const offRotated = await popupsOffPage();
+  check('on a turned page every pop-up stays on the page', offRotated.length === 0, offRotated.join('; '));
 
   render();
   document.title = results.every((r) => r.ok) ? 'BROWSER CHECK OK' : 'BROWSER CHECK FAILED';
