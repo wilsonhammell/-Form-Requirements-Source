@@ -1,6 +1,6 @@
 import { isLoadAttempted } from '../core/schema.js';
 
-// Only the flags worth setting in bulk. A customer facing name and a note are
+// Only the flags worth setting in bulk. An Error Message Field Name and a note are
 // per field by nature, and Custom Save Validation needs a note each, so it can
 // be cleared from here but never set.
 export default function BulkPanel({ fields, dbIndex, onPatch, onDelete, onClear }) {

@@ -58,7 +58,7 @@ export const SIGNING_BUTTONS = [
   { identifier: 'PrintButton', caption: 'Print Form', fileOptics: false, script: 'submitPrintOnly();' },
 ];
 
-const SLOT = { gap: 8, margin: 6, bottom: 50 };
+const SLOT = { gap: 8, margin: 6, top: 50 };
 
 // Through the normaliser even though it is a literal, so a malformed edit here
 // is caught the way a malformed data file would be.
@@ -94,13 +94,18 @@ export function hasButton(fields, identifier) {
 
 // Slot by list order rather than by how many are placed, so a button lands in
 // the same spot whether it was added first or last.
+//
+// Measured down from the top edge, where the signing block reads, rather than
+// up from the bottom, which is where the signer rows go. Only a new placement
+// lands here: an imported form keeps whatever positions it arrived with.
 export function buttonSlotRect(entry, buttons, cropBox) {
-  const [x0, y0, x1] = cropBox;
+  const [x0, y0, x1, y1] = cropBox;
   const slot = Math.max(0, buttons.findIndex((b) => b.identifier === entry.identifier));
   const width = Math.min(entry.width, x1 - x0 - SLOT.margin * 2);
   return {
     x: x0 + SLOT.margin + slot * (width + SLOT.gap),
-    y: y0 + SLOT.bottom,
+    // Clamped, so a page shorter than the inset still holds the button.
+    y: Math.max(y0, y1 - SLOT.top - entry.height),
     width,
     height: entry.height,
   };

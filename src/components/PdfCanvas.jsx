@@ -293,7 +293,13 @@ export default function PdfCanvas({
       setDraft({ left: start.x, top: start.y, width: 0, height: 0 });
     }
     capture(overlayRef.current, event.pointerId, true);
-    overlayRef.current?.focus();
+    // preventScroll matters. Focusing an element scrolls it into view, and
+    // zoomed in the overlay is taller than the window, so the default would
+    // scroll the page out from under the gesture that just started. The press
+    // was measured before that scroll and every move after it measured against
+    // a box that had shifted, which came out as a rect the right shape at the
+    // top and the wrong size at the bottom.
+    overlayRef.current?.focus({ preventScroll: true });
     event.preventDefault();
   };
 

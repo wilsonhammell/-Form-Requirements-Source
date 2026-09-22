@@ -3,6 +3,10 @@ import { DRAW_MARKER } from '../core/markers.js';
 
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
 
+// The same bounds the property panel's font size box uses.
+const MIN_FONT_SIZE = 4;
+const MAX_FONT_SIZE = 72;
+
 // One button each, so adding a field type is a line here and nothing else.
 const DRAW_TYPES = [
   { type: 'text', label: 'Text' },
@@ -35,11 +39,19 @@ export default function Toolbar({
   onZoomChange,
   onDrawKind,
   onEnforceFontStandards,
+  suggestedSize,
   noticesHidden,
   onShowNotices,
 }) {
   const pdfInput = useRef(null);
   const jsonInput = useRef(null);
+  const [fontSize, setFontSize] = useState('');
+
+  // Typed, not assumed: the size a form is standardised on differs from form to
+  // form, so the button waits for one rather than picking it.
+  const size = Number(fontSize);
+  const sizeGiven =
+    fontSize.trim() !== '' && Number.isFinite(size) && size >= MIN_FONT_SIZE && size <= MAX_FONT_SIZE;
 
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 bg-white px-4 py-2">
@@ -152,9 +164,29 @@ export default function Toolbar({
         Comments
       </button>
 
-      <Button disabled={!hasPdf} onClick={onEnforceFontStandards}>
-        Enforce Font Standards
-      </Button>
+      <div className="flex items-center gap-1.5">
+        {/* Before the box rather than after it, so the pair stays a pair and
+            the row reads in the order it is used: here is the size the form is
+            printed in, type one, apply it. */}
+        {typeof suggestedSize === 'number' && (
+          <span className="text-xs text-slate-500">Suggested Size - {suggestedSize}</span>
+        )}
+        <input
+          type="number"
+          min={MIN_FONT_SIZE}
+          max={MAX_FONT_SIZE}
+          step={0.5}
+          value={fontSize}
+          disabled={!hasPdf}
+          placeholder="Size"
+          aria-label="Font size"
+          className="w-16 rounded border border-slate-300 px-2 py-1 text-xs focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-40"
+          onChange={(e) => setFontSize(e.target.value)}
+        />
+        <Button disabled={!hasPdf || !sizeGiven} onClick={() => onEnforceFontStandards(size)}>
+          Enforce Font Standards
+        </Button>
+      </div>
 
       <div className="ml-auto flex items-center gap-2">
         {noticesHidden && (

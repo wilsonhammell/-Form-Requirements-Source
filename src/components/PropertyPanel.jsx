@@ -168,17 +168,18 @@ export default function PropertyPanel({
 
       {carriesValue && (
         <div>
-          <label className={LABEL}>Customer-facing name</label>
+          <label className={LABEL}>Error Message Field Name</label>
           <input
             type="text"
             value={field.customerFacingName}
-            placeholder="What this field is labelled on the form"
+            placeholder="What the error message should call this field"
             className={INPUT}
             onChange={(e) => onChange({ customerFacingName: e.target.value })}
           />
           <p className="mt-1 text-xs text-slate-500">
-            The same DB field is labelled differently form to form, so this belongs to the
-            placement.
+            Names the field in the load validation error message, so write what a member
+            reads beside the box. The same DB field reads differently form to form, so it
+            belongs to the placement.
           </p>
         </div>
       )}
@@ -203,14 +204,14 @@ export default function PropertyPanel({
         {carriesValue && (
           <>
             {/* Load Validation is a claim about a specific label on a specific
-                form, so it needs a DB match and the customer-facing name. Save
-                Validation needs neither and stands on every field. */}
+                form, so it needs a DB match and the Error Message Field Name.
+                Save Validation needs neither and stands on every field. */}
             <Check
               label="Load Validation"
               checked={field.loadValidated}
               disabled={!canLoadValidate}
               onChange={(loadValidated) => onChange({ loadValidated })}
-              hint={attempted && !hasCustomerName ? 'needs a customer-facing name' : null}
+              hint={attempted && !hasCustomerName ? 'needs an Error Message Field Name' : null}
             />
 
             {/* The two save flags are mutually exclusive, checking one clears

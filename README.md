@@ -31,8 +31,9 @@ nothing, so the tool is built around that:
   so and offers the correct one, rather than quietly passing.
 - Only the `identifier` is ever persisted. Labels are display only.
 
-**Customer-facing name** (`customerFacingName`) is what the field is labelled on
-the form a customer reads. One DB field wears different labels on different
+**Error Message Field Name** (`customerFacingName`) is what the field is labelled
+on the form a customer reads, and is the name the load validation error message
+uses when it is missing. One DB field wears different labels on different
 forms, `CUSTNAME` might be "Name" on one and "Account Holder" on another, so it
 belongs to the placement rather than to the DB list. Load Validation requires
 it: validating that a field loads is a claim about a specific label on a
@@ -301,7 +302,9 @@ Two routes, and Config never leaves you guessing which names exist.
 only route that lets you put a field exactly where the printed form wants it.
 
 **Or place it from Config**, which drops the field where the row lays it out and
-switches the scope to Signers so it is visible:
+switches the scope to Signers so it is visible. The joint block lays out from the
+top of the page, under the signing buttons, and the signer rows up from the
+bottom, so neither block can grow into the other:
 
 - **Add signer row** drops all three parts of the next row.
 - **A part a row is missing shows as a dashed `+ Signature` button.** Delete one
@@ -1033,7 +1036,20 @@ font file, which is a licensing question, not just a code change.
 
 The standard is a default, not a lock — any field can be changed. **Enforce
 Font Standards** in the toolbar puts every field in the document back to Arial
-10 in one click.
+at the size typed in the box beside it. The size is typed rather than fixed at
+10, because the size a form is standardised on is a per form decision; the
+button does nothing until a size between 4 and 72 is in the box.
+
+**Suggested Size - X** beside that box is read off the printed page, not off the
+fields. `pageText.js` takes every text item pdf.js reports, rounds its size to
+the nearest half point, and returns the median weighted by character count. The
+weighting is the point: a PDF splits text wherever it likes, so a heading is one
+item of six characters and a paragraph is one item of four hundred. Counting
+items would let a few headings outvote the body text. Field `/DA` is deliberately
+not consulted — on a form nobody has standardised yet it is whatever Acrobat was
+set to that day, which is the question being asked, not the answer. A scan with
+no text layer gets no suggestion. Across the example forms it reads 7, 9, 10 and
+11, matching the body text of each.
 
 ### Only the font part of /DA is written
 
@@ -1169,10 +1185,24 @@ anything else, blank included, is an organization, as a blank `IN_PERSNBR` was.
 | Up / Down | Move through the field list, in the order it is drawn |
 | Shift + Up / Down | Extend the selection while moving |
 | Delete / Backspace | Delete selection |
-| Ctrl/Cmd + D | Duplicate selection |
+| Ctrl/Cmd + D | Duplicate selection, on the page it is already on |
+| Ctrl/Cmd + C | Copy selection |
+| Ctrl/Cmd + V | Paste onto the page that is open |
 | Ctrl/Cmd + Z | Undo |
 | Ctrl/Cmd + Shift + Z, Ctrl + Y | Redo |
 | Escape | Clear selection |
+
+Copy and paste use the app's own clipboard, not the system one, so copying a
+field never costs you what you had on the system clipboard. With nothing
+selected, or nothing copied, the browser's own copy and paste are left alone.
+
+**Paste is how a placement reaches another page**, which duplicate cannot do:
+there is no page control on a field, so a box wanted again further on is a copy,
+a page turn and a paste. Pasting onto the page it came from offsets the copy so
+it does not hide behind the original; pasting onto any other page keeps the
+coordinates exactly, since the same spot further on is the point. A submission
+button is never pasted, it appears at most once. Fields and markers paste in one
+undo step.
 
 Undo covers the fields and the config, not the page, the zoom or the selection.
 A drag undoes as the one move it looked like, and a run of typing in one box as
@@ -1240,8 +1270,8 @@ work on an imported form, so the list takes a multiple selection and the propert
 panel gives way to a bulk bar showing how many of the selected fields already
 carry each flag.
 
-Only the flags worth setting in bulk are there. A customer facing name and a note
-are per field by nature. Custom Save Validation needs a note each, so it can be
+Only the flags worth setting in bulk are there. An Error Message Field Name and a
+note are per field by nature. Custom Save Validation needs a note each, so it can be
 cleared from the bulk bar but never set.
 
 Bulk edits still go through `reconcileField`, so a flag that cannot stand on a

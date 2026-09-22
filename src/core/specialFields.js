@@ -274,10 +274,16 @@ export function removeSpecialField(fields, id) {
 }
 
 // Placed out of the way rather than in the right spot, since only the artwork
-// knows where that is. Joint lines start higher so they clear the signer block.
+// knows where that is.
+//
+// The two blocks are measured from opposite edges: the joint lines down from
+// the top, where the signing buttons are, and the signer rows up from the
+// bottom. One edge each is what keeps them clear of one another however many
+// rows either grows to carry.
 const LAYOUT = { height: 18, gap: 10, margin: 40, column: 8 };
-const SIGNER_TOP = 260;
-const JOINT_TOP = 420;
+const SIGNER_BLOCK = { edge: 'bottom', inset: 260 };
+// Under the buttons, which sit 50 down from the top edge and stand 18 tall.
+const JOINT_BLOCK = { edge: 'top', inset: 80 };
 
 // The band a row's parts divide up: where it starts and how wide it is.
 function rowBand(cropBox) {
@@ -285,16 +291,19 @@ function rowBand(cropBox) {
   return { left: x0 + LAYOUT.margin, usable: Math.max(60, x1 - x0 - LAYOUT.margin * 2) };
 }
 
-// Row index counts down from top, and never off the bottom of the page.
-function rowY(cropBox, top, index) {
-  const y0 = cropBox[1];
-  return Math.max(y0 + 4, y0 + top - (index - 1) * (LAYOUT.height + LAYOUT.gap));
+// Row index counts down the page from the block's first row, and never off
+// either edge.
+function rowY(cropBox, block, index) {
+  const [, y0, , y1] = cropBox;
+  const first = block.edge === 'top' ? y1 - block.inset - LAYOUT.height : y0 + block.inset;
+  const y = first - (index - 1) * (LAYOUT.height + LAYOUT.gap);
+  return Math.max(y0 + 4, Math.min(y, y1 - LAYOUT.height));
 }
 
 // Parts laid left to right, each taking its share of the band.
-function rowRects(parts, share, cropBox, top, index) {
+function rowRects(parts, share, cropBox, block, index) {
   const { left, usable } = rowBand(cropBox);
-  const y = rowY(cropBox, top, index);
+  const y = rowY(cropBox, block, index);
   let x = left;
   return parts.map((part, i) => {
     const width = usable * share[i] - LAYOUT.column;
@@ -305,17 +314,17 @@ function rowRects(parts, share, cropBox, top, index) {
 }
 
 export function signerRowRects(index, cropBox) {
-  return rowRects(SIGNER_PARTS, [0.4, 0.35, 0.25], cropBox, SIGNER_TOP, index);
+  return rowRects(SIGNER_PARTS, [0.4, 0.35, 0.25], cropBox, SIGNER_BLOCK, index);
 }
 
 export function jointRowRects(index, cropBox) {
-  return rowRects(JOINT_PARTS, [0.65, 0.35], cropBox, JOINT_TOP, index);
+  return rowRects(JOINT_PARTS, [0.65, 0.35], cropBox, JOINT_BLOCK, index);
 }
 
 // One line holding every joint name, so it takes the whole width.
 export function combinedJointRect(cropBox) {
   const { left, usable } = rowBand(cropBox);
-  return { x: left, y: rowY(cropBox, JOINT_TOP, 1), width: usable, height: LAYOUT.height };
+  return { x: left, y: rowY(cropBox, JOINT_BLOCK, 1), width: usable, height: LAYOUT.height };
 }
 
 // Where any one special field lands when it is placed from the panel rather

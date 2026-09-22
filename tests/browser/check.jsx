@@ -144,6 +144,19 @@ function readRect() {
   return { x, y, width: w, height: h };
 }
 
+// The other rows of the same readout: Type and Page.
+function readFact(term) {
+  const dl = document.querySelector('#root aside dl');
+  if (!dl) return null;
+  const kids = [...dl.children];
+  for (let i = 0; i < kids.length - 1; i += 1) {
+    if (kids[i].tagName === 'DT' && kids[i].textContent.trim() === term) {
+      return kids[i + 1].textContent.trim();
+    }
+  }
+  return null;
+}
+
 function near(a, b, tol = 0.51) {
   return Math.abs(a - b) <= tol;
 }
@@ -223,6 +236,26 @@ function undoKey(el = document.body, { shift = false, key = 'z' } = {}) {
   );
 }
 
+// The app fetches the DB list and the system field list on mount, and an import
+// that lands before the system list has arrived places none of them. The header
+// renders on the first paint, long before either resolves, so waiting on it was
+// waiting on nothing and the run failed whenever the upload won the race.
+//
+// Counting the app's own fetches is what there is to wait on: nothing in the DOM
+// says the lists are in.
+const LISTS = ['/dbFields.json', '/systemFields.json'];
+const listsLoaded = new Set();
+const realFetch = window.fetch.bind(window);
+window.fetch = async (input, init) => {
+  const response = await realFetch(input, init);
+  const url = typeof input === 'string' ? input : (input?.url ?? '');
+  const hit = LISTS.find((path) => url.endsWith(path));
+  // Recorded once the body can be read, not once the headers land, since the
+  // app is still parsing JSON at that point.
+  if (hit && response.ok) response.clone().json().then(() => listsLoaded.add(hit), () => {});
+  return response;
+};
+
 async function run() {
   createRoot(document.getElementById('root')).render(
     <React.StrictMode>
@@ -230,8 +263,10 @@ async function run() {
     </React.StrictMode>
   );
 
-  // The DB list has to load before names can be matched.
-  await waitFor('db field list', () => document.querySelector('#root header'));
+  await waitFor('app header', () => document.querySelector('#root header'));
+  // Both lists, or the form arrives without its system fields.
+  await waitFor('the DB and system field lists', () => listsLoaded.size === LISTS.length);
+  await sleep(50);
 
   const bytes = await samplePdf();
   const input = document.querySelector('#root input[type=file][accept*=pdf]');
@@ -376,7 +411,11 @@ async function run() {
     ''
   );
   check(
-    'Load Validation stays locked until the customer-facing name is filled',
+    'the box is labelled for what it feeds, the error message',
+    document.querySelector('#root aside').textContent.includes('Error Message Field Name')
+  );
+  check(
+    'Load Validation stays locked until the Error Message Field Name is filled',
     toggle('Load Validation')?.disabled === true
   );
   const customerName = [...document.querySelectorAll('#root aside input[type=text]')][1];
@@ -398,7 +437,7 @@ async function run() {
   setInputValue(document.querySelectorAll('#root aside input[type=text]')[1], '');
   await sleep(150);
   check(
-    'clearing the customer-facing name clears Load Validation',
+    'clearing the Error Message Field Name clears Load Validation',
     toggle('Load Validation')?.checked === false && toggle('Load Validation')?.disabled === true
   );
   setInputValue(document.querySelectorAll('#root aside input[type=text]')[1], 'Account Holder');
@@ -538,6 +577,16 @@ async function run() {
     rectMatches(atZoom, { x: 100, y: 672, width: 200, height: 20 }),
     JSON.stringify(atZoom)
   );
+  // Moving runs the same focus() the draw did, and a mid-gesture scroll would
+  // show up here too, so the other gesture is pinned at zoom as well.
+  await drag([400, 220], [440, 260]);
+  const movedAtZoom = readRect();
+  check(
+    'moving while zoomed moves by points, not pixels',
+    rectMatches(movedAtZoom, { x: 120, y: 652, width: 200, height: 20 }),
+    JSON.stringify(movedAtZoom)
+  );
+
   clickButton('Delete', document.querySelector('#root aside'));
   await sleep(80);
 
@@ -597,11 +646,33 @@ async function run() {
       Number(document.querySelector('#root aside input[type=number]')?.value) === 14
   );
 
-  // And one button puts every field back to the standard.
+  // The size the printed page is set in, offered beside the box. The sample is
+  // 21 characters at 18, 14 at 11 and 21 at 14, so the middle character is in a
+  // 14pt line. Read off the page text, so a form with no fields still has one.
+  check(
+    'the toolbar suggests the size the page is printed in',
+    document.querySelector('#root header').textContent.includes('Suggested Size - 14'),
+    document.querySelector('#root header').textContent.slice(0, 120)
+  );
+
+  // And one button puts every field back to the standard family, at the size
+  // asked for. The size has to be asked for: no size, no button.
+  const enforceButton = () =>
+    [...document.querySelectorAll('#root header button')].find(
+      (b) => b.textContent.trim() === 'Enforce Font Standards'
+    );
+  const enforceSize = () => document.querySelector('#root header input[type=number]');
+  check('Enforce Font Standards waits for a size', enforceButton()?.disabled === true);
+  setInputValue(enforceSize(), '3');
+  await sleep(100);
+  check('and stays out of reach for a size no field can take', enforceButton()?.disabled === true);
+
+  setInputValue(enforceSize(), '10');
+  await sleep(100);
   clickButton('Enforce Font Standards', document.querySelector('#root header'));
   await sleep(200);
   check(
-    'Enforce Font Standards resets the field to Arial 10',
+    'Enforce Font Standards resets the field to Arial at the size typed',
     document.querySelector('#root aside select')?.value === 'Helvetica' &&
       Number(document.querySelector('#root aside input[type=number]')?.value) === 10
   );
@@ -754,6 +825,70 @@ async function run() {
     'delete key removes the selected field',
     document.querySelectorAll('#root [data-field-id]').length === countBefore - 1
   );
+
+  // Copy and paste. What it does that duplicate cannot is cross pages: a field
+  // has no page control, so a paste onto an open page is the only way a box
+  // reaches page 2.
+  const onCanvas = () => document.querySelectorAll('#root [data-field-id]').length;
+  const goToPage = async (index) => {
+    const select = document.querySelector('#root header select[aria-label=Page]');
+    select.value = String(index);
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    await sleep(320);
+  };
+  const clipKey = (key) =>
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key, ctrlKey: true, bubbles: true, cancelable: true })
+    );
+
+  clickButton('Text', header);
+  await goToPage(0);
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await drag([120, 300], [260, 320]);
+  await sleep(200);
+  const copySource = readRect();
+  const onPageOne = onCanvas();
+  clipKey('c');
+  clipKey('v');
+  await sleep(240);
+  check(
+    'paste puts a copy on the page',
+    onCanvas() === onPageOne + 1,
+    `${onPageOne} -> ${onCanvas()}`
+  );
+  check(
+    'a copy pasted where it came from is offset, not hidden behind the original',
+    rectMatches(readRect(), { ...copySource, x: copySource.x + 8, y: copySource.y - 8 }),
+    JSON.stringify(readRect())
+  );
+
+  // The one that matters. Page 2 is the rotated one, and the stored rect is PDF
+  // user space either way, so the same numbers are the same place on the sheet.
+  await goToPage(1);
+  clipKey('v');
+  await sleep(260);
+  check('paste lands on the page that is open', readFact('Page') === '2 of 2', readFact('Page'));
+  check(
+    'pasting onto another page keeps the coordinates, the same spot further on',
+    rectMatches(readRect(), copySource),
+    JSON.stringify(readRect())
+  );
+
+  // One step, not two: the paste comes back off whole.
+  const onPageTwo = onCanvas();
+  undoKey();
+  await sleep(260);
+  check(
+    'undo takes the paste back off in one step',
+    onCanvas() === onPageTwo - 1,
+    `${onPageTwo} -> ${onCanvas()}`
+  );
+
+  // Back to the page the rest of the run draws on, since it never switched away
+  // from the rotated one and its drag coordinates assume that width.
+  await goToPage(1);
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(150);
 
   // Editable applies to all four types and must be reachable on each, not
   // pushed under the fold by the type specific controls. Drawn last, since
@@ -1076,7 +1211,7 @@ async function run() {
   check(
     'it carries none of the value machinery',
     !document.querySelector('#root aside').textContent.includes('Load Validation') &&
-      !document.querySelector('#root aside').textContent.includes('Customer-facing')
+      !document.querySelector('#root aside').textContent.includes('Error Message Field Name')
   );
 
   clickTab('Config');
@@ -1466,6 +1601,8 @@ async function run() {
   );
 
   clickButton('Hide', noticesBar());
+  await sleep(100);
+  setInputValue(document.querySelector('#root header input[type=number]'), '10');
   await sleep(100);
   clickButton('Enforce Font Standards', document.querySelector('#root header'));
   await sleep(100);

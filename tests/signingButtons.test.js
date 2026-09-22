@@ -185,11 +185,24 @@ describe('where they land', () => {
         expect(r.x).toBeGreaterThanOrEqual(box[0]);
         expect(r.y).toBeGreaterThanOrEqual(box[1]);
         expect(r.x + r.width).toBeLessThanOrEqual(box[2] + 0.001);
+        expect(r.y + r.height).toBeLessThanOrEqual(box[3] + 0.001);
       }
     }
   });
 
-  it('sits clear of the very bottom, where the signer fields go', () => {
-    expect(buttonSlotRect(BUTTONS[0], BUTTONS, LETTER).y).toBeGreaterThan(40);
+  it('sits at the top, clear of the bottom where the signer fields go', () => {
+    const r = buttonSlotRect(BUTTONS[0], BUTTONS, LETTER);
+    // Nearer the top edge than the bottom one, and inset from it.
+    expect(r.y + r.height).toBeLessThan(LETTER[3]);
+    expect(LETTER[3] - (r.y + r.height)).toBeLessThan(100);
+    expect(r.y).toBeGreaterThan((LETTER[3] - LETTER[1]) / 2);
+  });
+
+  it('keeps the whole row on a page shorter than the inset', () => {
+    const squat = [0, 0, 612, 40];
+    for (const entry of BUTTONS) {
+      const r = buttonSlotRect(entry, BUTTONS, squat);
+      expect(r.y).toBeGreaterThanOrEqual(squat[1]);
+    }
   });
 });

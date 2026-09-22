@@ -30,6 +30,10 @@ import {
   COMBINED_JOINT_NAME,
 } from '../src/core/specialFields.js';
 import { createField } from '../src/core/schema.js';
+import { signingButtons, buttonSlotRect } from '../src/core/signingButtons.js';
+
+// The row height the layout uses, for asserting a row stays on the page.
+const LAYOUT_HEIGHT = 18;
 
 const LETTER = [0, 0, 612, 792];
 const place = (...names) => names.map((name) => createField({ name, type: specialFieldType(name) ?? 'text' }));
@@ -343,11 +347,14 @@ describe('placing one field from the panel', () => {
       const wide = combinedJointRect(box);
       expect(wide.x).toBeGreaterThanOrEqual(box[0]);
       expect(wide.x + wide.width).toBeLessThanOrEqual(box[2] + 0.001);
+      expect(wide.y + LAYOUT_HEIGHT).toBeLessThanOrEqual(box[3] + 0.001);
       for (let i = 1; i <= MAX_JOINT_ROWS; i += 1) {
         for (const { rect } of jointRowRects(i, box)) {
           expect(rect.x).toBeGreaterThanOrEqual(box[0]);
           expect(rect.y).toBeGreaterThanOrEqual(box[1]);
           expect(rect.x + rect.width).toBeLessThanOrEqual(box[2] + 0.001);
+          // Top anchored now, so running off that edge is the new way to be wrong.
+          expect(rect.y + rect.height).toBeLessThanOrEqual(box[3] + 0.001);
         }
       }
     }
@@ -357,6 +364,17 @@ describe('placing one field from the panel', () => {
     const jointY = jointRowRects(MAX_JOINT_ROWS, LETTER)[0].rect.y;
     const signerY = signerRowRects(1, LETTER)[0].rect.y;
     expect(jointY).toBeGreaterThan(signerY);
+  });
+
+  it('puts the joint block at the top, under the signing buttons', () => {
+    const buttons = signingButtons();
+    const buttonY = buttonSlotRect(buttons[0], buttons, LETTER).y;
+    const first = jointRowRects(1, LETTER)[0].rect;
+    // Below the button row, not overlapping it.
+    expect(first.y + first.height).toBeLessThanOrEqual(buttonY);
+    // And in the top half, which is the whole point of the move.
+    expect(first.y).toBeGreaterThan((LETTER[3] - LETTER[1]) / 2);
+    expect(combinedJointRect(LETTER).y).toBe(first.y);
   });
 });
 

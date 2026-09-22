@@ -68,6 +68,7 @@ import { serializeJsonBytes } from './core/pdfEmbed.js';
 import { downloadBytes, sidecarName, exportedPdfName, requirementsName } from './core/download.js';
 import { requirementsWorkbookBytes } from './core/excelExport.js';
 import { renderPageImages } from './core/pageImages.js';
+import { suggestedFontSize } from './core/pageText.js';
 
 const DEFAULT_FONT_LABEL =
   FONT_FAMILIES.find((f) => f.value === DEFAULT_FONT.family)?.label ?? DEFAULT_FONT.family;
@@ -156,6 +157,26 @@ export default function App() {
       cancelled = true;
     };
   }, [doc, pageIndex]);
+
+  // What the printed form is set in, offered beside the font size box. Read
+  // once when the document opens, since the pages do not change under us.
+  const [suggestedSize, setSuggestedSize] = useState(null);
+  useEffect(() => {
+    if (!doc) {
+      setSuggestedSize(null);
+      return undefined;
+    }
+    let cancelled = false;
+    suggestedFontSize(doc)
+      .then((size) => {
+        if (!cancelled) setSuggestedSize(size);
+      })
+      // A form with no readable text simply gets no suggestion.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [doc]);
 
   const dbIndex = useMemo(() => buildDbIndex(dbFields), [dbFields]);
   const systemIndex = useMemo(() => buildSystemIndex(systemFields), [systemFields]);
@@ -566,6 +587,101 @@ export default function App() {
     [fields, setFields]
   );
 
+  // Ctrl+D copies a field where it stands, which cannot reach another page, and
+  // a field has no page control of its own. The clipboard is how a placement
+  // crosses pages: a paste lands on whatever page is open, so a signature box
+  // wanted again on page 4 is a copy, a page turn and a paste.
+  //
+  // The app's own clipboard rather than the system one. Copying a field never
+  // costs the user what they had on the system clipboard, and nothing can
+  // arrive here that this app did not put here.
+  const clipboard = useRef({ fields: [], markers: [] });
+
+  const copySelection = useCallback(() => {
+    if (selectedMarkerId) {
+      const marker = markers.find((m) => m.id === selectedMarkerId);
+      if (marker) clipboard.current = { fields: [], markers: [marker] };
+      return;
+    }
+
+    // With nothing selected the clipboard is left alone rather than emptied, so
+    // a stray Ctrl+C cannot lose what was copied a moment ago.
+    const ids = selectedIds.size > 0 ? selectedIds : new Set(selectedId ? [selectedId] : []);
+    const copied = fields.filter((f) => ids.has(f.id));
+    if (copied.length > 0) clipboard.current = { fields: copied, markers: [] };
+  }, [fields, markers, selectedId, selectedIds, selectedMarkerId]);
+
+  const pasteClipboard = useCallback(() => {
+    const { fields: sourceFields, markers: sourceMarkers } = clipboard.current;
+    if (sourceFields.length === 0 && sourceMarkers.length === 0) return;
+
+    // Onto the page it was copied from, offset the way a duplicate is, or the
+    // copy sits hidden behind the original. Onto any other page the coordinates
+    // are the whole point, so they are kept exactly: the same spot, further on.
+    const landing = (source) =>
+      source.page === pageIndex
+        ? { ...source.rect, x: source.rect.x + 8, y: source.rect.y - 8 }
+        : { ...source.rect };
+
+    // Built before the stack is touched, not inside the updater, since an
+    // updater can run more than once and would paste twice.
+    const skipped = [];
+    const newFields = [];
+    for (const source of sourceFields) {
+      const name = source.name.trim();
+      // The one rule a paste cannot bend. A submission button is a channel the
+      // form offers rather than a box on it, so it appears at most once.
+      if (isSubmissionButton(name, buttonIndex)) {
+        skipped.push(name);
+        continue;
+      }
+
+      newFields.push(
+        createField({
+          ...source,
+          id: undefined,
+          page: pageIndex,
+          rect: landing(source),
+          // Once pasted it is a placement this tool made, not one an import
+          // inferred, the same way a duplicate is.
+          imported: false,
+          // Two options of one radio group cannot share a value, so each copy
+          // takes the next free placeholder, the ones made here included.
+          ...(source.type === 'radio'
+            ? { exportValue: nextRadioExportValue([...fields, ...newFields]) }
+            : {}),
+        })
+      );
+    }
+
+    const newMarkers = sourceMarkers.map((source) =>
+      createMarker({ ...source, id: undefined, page: pageIndex, rect: landing(source) })
+    );
+
+    if (skipped.length > 0) {
+      say([`Not pasted: ${skipped.join(', ')}. A submission button appears at most once.`]);
+    }
+    if (newFields.length === 0 && newMarkers.length === 0) return;
+
+    // Both halves in one step, so a paste of a signer row and its initials
+    // marker comes back off with one Ctrl+Z.
+    mutateDocument((doc) => ({
+      ...doc,
+      fields: [...doc.fields, ...newFields],
+      markers: [...doc.markers, ...newMarkers],
+    }));
+
+    // What was just pasted is what is selected, so it can be dragged into place
+    // straight away.
+    if (newFields.length > 0) {
+      setSelectedMarkerId(null);
+      setSelectedId(newFields[newFields.length - 1].id);
+      setSelectedIds(new Set(newFields.map((f) => f.id)));
+    } else {
+      selectMarker(newMarkers[newMarkers.length - 1].id);
+    }
+  }, [fields, pageIndex, buttonIndex, mutateDocument, say, selectMarker]);
+
   // Delete works on the selection, unless the user is typing a name.
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -593,10 +709,21 @@ export default function App() {
         if (!selectedId) return;
         event.preventDefault();
         deleteField(selectedId);
-      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+      } else if (mod && key === 'd') {
         if (!selectedId) return;
         event.preventDefault();
         duplicateField(selectedId);
+      } else if (mod && key === 'c') {
+        // Only when there is something of ours to take. With nothing selected
+        // the browser's own copy is left to do its job.
+        if (!selectedId && !selectedMarkerId) return;
+        event.preventDefault();
+        copySelection();
+      } else if (mod && key === 'v') {
+        const held = clipboard.current;
+        if (held.fields.length === 0 && held.markers.length === 0) return;
+        event.preventDefault();
+        pasteClipboard();
       } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         // Walk the list in the order it is drawn. Shift keeps the rows passed
         // over, which is the quickest way to pick up a run of fields.
@@ -622,6 +749,8 @@ export default function App() {
     deleteField,
     deleteMarker,
     duplicateField,
+    copySelection,
+    pasteClipboard,
     scopedFields,
     fields,
     selectField,
@@ -725,11 +854,12 @@ export default function App() {
     [buttons, pageBox, pageIndex, showScope, setFields]
   );
 
-  // A reset rather than a lock, any field can be changed again afterwards.
-  const handleEnforceFontStandards = () => {
-    setFields((current) => current.map((f) => ({ ...f, font: { ...DEFAULT_FONT } })));
+  // A reset rather than a lock, any field can be changed again afterwards. The
+  // size is the one typed in the toolbar; the family is the standard family.
+  const handleEnforceFontStandards = (size) => {
+    setFields((current) => current.map((f) => ({ ...f, font: { ...DEFAULT_FONT, size } })));
     say([
-      `Set ${fields.length} field${fields.length === 1 ? '' : 's'} to ${DEFAULT_FONT_LABEL} ${DEFAULT_FONT.size}.`,
+      `Set ${fields.length} field${fields.length === 1 ? '' : 's'} to ${DEFAULT_FONT_LABEL} ${size}.`,
     ]);
   };
 
@@ -754,6 +884,7 @@ export default function App() {
         onZoomChange={setZoom}
         onDrawKind={setDrawKind}
         onEnforceFontStandards={handleEnforceFontStandards}
+        suggestedSize={suggestedSize}
         noticesHidden={hasNotices && !noticesOpen}
         onShowNotices={() => setNoticesOpen(true)}
       />
