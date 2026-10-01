@@ -7,7 +7,7 @@ import PropertyPanel from './components/PropertyPanel.jsx';
 import MarkerPanel from './components/MarkerPanel.jsx';
 import BulkPanel from './components/BulkPanel.jsx';
 import FormConfigPanel from './components/FormConfigPanel.jsx';
-import { PanelTabs, ScopeBar, IssueList } from './components/SidePanel.jsx';
+import { PanelTabs, ScopeBar, IssueList, PanelResizer, usePanelWidth } from './components/SidePanel.jsx';
 import { usePdfDocument } from './hooks/usePdfDocument.js';
 import { useDocumentHistory } from './hooks/useDocumentHistory.js';
 import { typingRun } from './core/history.js';
@@ -125,6 +125,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   // Opens on Config, the first tab and the form level questions answered first.
   const [panel, setPanel] = useState('config');
+  const [panelWidth, setPanelWidth] = usePanelWidth();
   const [systemFields, setSystemFields] = useState([]);
   // Maintained in source rather than fetched, so it is ready on first render.
   const buttons = useMemo(() => signingButtons(), []);
@@ -941,7 +942,11 @@ export default function App() {
           )}
         </main>
 
-        <aside className="flex w-[340px] shrink-0 flex-col border-l border-slate-200 bg-white">
+        <aside
+          className="relative flex shrink-0 flex-col border-l border-slate-200 bg-white"
+          style={{ width: panelWidth }}
+        >
+          <PanelResizer width={panelWidth} onResize={setPanelWidth} />
           <PanelTabs
             panel={panel}
             onPick={setPanel}

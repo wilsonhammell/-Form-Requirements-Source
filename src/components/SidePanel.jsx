@@ -1,4 +1,83 @@
+import { useEffect, useState } from 'react';
 import { FIELD_SCOPES } from '../core/fieldTone.js';
+
+// Dragged from the panel's left edge. Kept per browser so it survives a reload,
+// and storage failing just means the default width.
+const WIDTH_KEY = 'sidePanelWidth';
+const DEFAULT_WIDTH = 340;
+const MIN_WIDTH = 280;
+// The page always keeps this much room, however wide the panel is dragged.
+const MIN_CANVAS = 320;
+
+function clampWidth(width) {
+  const max = Math.max(MIN_WIDTH, window.innerWidth - MIN_CANVAS);
+  return Math.round(Math.min(max, Math.max(MIN_WIDTH, width)));
+}
+
+function loadWidth() {
+  try {
+    const saved = Number(localStorage.getItem(WIDTH_KEY));
+    if (saved) return clampWidth(saved);
+  } catch {
+    // No storage, the default it is.
+  }
+  return DEFAULT_WIDTH;
+}
+
+export function usePanelWidth() {
+  const [width, setWidth] = useState(loadWidth);
+  useEffect(() => {
+    try {
+      localStorage.setItem(WIDTH_KEY, String(width));
+    } catch {
+      // Not remembered, still applies for this session.
+    }
+  }, [width]);
+  return [width, (next) => setWidth(clampWidth(next))];
+}
+
+// Sits over the panel's left border. Double click puts the default back.
+export function PanelResizer({ width, onResize }) {
+  const [dragging, setDragging] = useState(false);
+
+  const start = (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const handle = event.currentTarget;
+    const fromX = event.clientX;
+    const move = (e) => onResize(width + fromX - e.clientX);
+    const end = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', end);
+      handle.removeEventListener('pointercancel', end);
+      document.body.style.userSelect = '';
+      setDragging(false);
+    };
+    // Otherwise a fast drag selects the panel text it passes over.
+    document.body.style.userSelect = 'none';
+    try {
+      handle.setPointerCapture(event.pointerId);
+    } catch {
+      // No capture, the drag still works while the pointer stays on the handle.
+    }
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+    setDragging(true);
+  };
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      className={`absolute inset-y-0 -left-[3px] z-10 w-[6px] cursor-col-resize touch-none ${
+        dragging ? 'bg-sky-500/50' : 'hover:bg-sky-400/40'
+      }`}
+      onPointerDown={start}
+      onDoubleClick={() => onResize(DEFAULT_WIDTH)}
+    />
+  );
+}
 
 const PANELS = [
   ['config', 'Config'],
