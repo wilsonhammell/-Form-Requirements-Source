@@ -6,6 +6,8 @@ import {
   createField,
   reconcileField,
   reconcileFields,
+  unifyNameValues,
+  adoptNameValues,
   serializeDocument,
   parseDocument,
   isLoadAttempted,
@@ -230,6 +232,49 @@ describe('notes and Custom Save Validation', () => {
       loadValidated: true,
     });
     expect(reconcileField(clean, dbIndex)).toBe(clean);
+  });
+});
+
+describe('values shared by name', () => {
+  it('brings every placement of a name into line', () => {
+    const fields = [
+      createField({ name: 'Test', note: '' }),
+      createField({ name: 'Test', saveValidated: true, note: 'Required.' }),
+      createField({ name: 'Other' }),
+    ];
+    const [a, b, other] = unifyNameValues(fields);
+    expect(a.saveValidated).toBe(true);
+    expect(a.note).toBe('Required.');
+    expect(b.saveValidated).toBe(true);
+    expect(other).toBe(fields[2]);
+  });
+
+  it('returns the same array when the placements already agree', () => {
+    const fields = [createField({ name: 'Test' }), createField({ name: 'Test' })];
+    expect(unifyNameValues(fields)).toBe(fields);
+  });
+
+  it('leaves blank names alone', () => {
+    const fields = [createField({ name: '' }), createField({ name: '', saveValidated: true })];
+    expect(unifyNameValues(fields)).toBe(fields);
+  });
+
+  it('runs on load, so an older document opens consistent', () => {
+    const doc = serializeDocument([
+      createField({ name: 'Test', saveValidated: true }),
+      createField({ name: 'Test' }),
+    ]);
+    const { fields } = parseDocument(doc, dbIndex);
+    expect(fields.every((f) => f.saveValidated)).toBe(true);
+  });
+
+  it('a box named after an existing field takes its values', () => {
+    const existing = createField({ name: 'Test', saveValidated: true, note: 'Required.' });
+    const fresh = createField({ name: 'Test' });
+    const adopted = adoptNameValues(fresh, [existing, fresh]);
+    expect(adopted.saveValidated).toBe(true);
+    expect(adopted.note).toBe('Required.');
+    expect(adoptNameValues(createField({ name: 'New' }), [existing]).saveValidated).toBe(false);
   });
 });
 

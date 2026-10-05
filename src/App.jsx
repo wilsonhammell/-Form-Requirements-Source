@@ -51,6 +51,9 @@ import {
   createField,
   reconcileField,
   reconcileFields,
+  adoptNameValues,
+  namePatch,
+  NAME_SHARED_KEYS,
   parseDocument,
   serializeDocument,
   fieldIssues,
@@ -477,10 +480,10 @@ export default function App() {
   const patchField = useCallback(
     (id, patch) => {
       setFields(
-        (current) =>
-          current.map((f) => {
+        (current) => {
+          const patched = current.map((f) => {
             if (f.id !== id) return f;
-            const next = { ...f, ...patch };
+            let next = { ...f, ...patch };
             // Once a field is renamed by hand it is no longer an inferred import.
             if (patch.name !== undefined) next.imported = false;
             // A special field's type follows its name. A signer's name is a
@@ -498,7 +501,15 @@ export default function App() {
               }
             }
             return reconcileField(next, dbIndex);
-          }),
+          });
+          // The other placements of the name follow, whatever it is called now.
+          const shared = namePatch(patch);
+          const name = patched.find((f) => f.id === id)?.name.trim();
+          if (!name || Object.keys(shared).length === 0) return patched;
+          return patched.map((f) =>
+            f.id !== id && f.name.trim() === name ? reconcileField({ ...f, ...shared }, dbIndex) : f
+          );
+        },
         // A name, a note or an options list is typed, so the keystrokes fold
         // into one step per box. A checkbox or a picker is one decision and
         // keeps a step of its own.
@@ -508,14 +519,45 @@ export default function App() {
     [dbIndex, systemIndex, setFields]
   );
 
+  // A box joins the field it is named after once the name is settled, not as it
+  // is typed, or every name passed through on the way would hand it its values.
+  const settleName = useCallback(
+    (id) => {
+      setFields((current) => {
+        const field = current.find((f) => f.id === id);
+        if (!field) return current;
+        const joined = reconcileField(adoptNameValues(field, current), dbIndex);
+        if (NAME_SHARED_KEYS.every((key) => joined[key] === field[key])) return current;
+        return current.map((f) => (f.id === id ? joined : f));
+      });
+    },
+    [dbIndex, setFields]
+  );
+
+  // Clicking another box can take the panel away before the name box blurs.
+  const lastSelected = useRef(null);
+  useEffect(() => {
+    if (lastSelected.current && lastSelected.current !== selectedId) settleName(lastSelected.current);
+    lastSelected.current = selectedId;
+  }, [selectedId, settleName]);
+
   // The same patch across a selection. Each field still goes through
   // reconcileField, so a flag that cannot stand on one of them comes straight
   // back off rather than being written and quietly ignored.
   const patchFields = useCallback(
     (ids, patch) => {
-      setFields((current) =>
-        current.map((f) => (ids.has(f.id) ? reconcileField({ ...f, ...patch }, dbIndex) : f))
-      );
+      setFields((current) => {
+        // Every placement of a selected name, not only the ones selected.
+        const names = new Set(
+          current.filter((f) => ids.has(f.id)).map((f) => f.name.trim()).filter(Boolean)
+        );
+        const shared = namePatch(patch);
+        return current.map((f) => {
+          if (ids.has(f.id)) return reconcileField({ ...f, ...patch }, dbIndex);
+          if (names.has(f.name.trim())) return reconcileField({ ...f, ...shared }, dbIndex);
+          return f;
+        });
+      });
     },
     [dbIndex, setFields]
   );
@@ -665,10 +707,11 @@ export default function App() {
     if (newFields.length === 0 && newMarkers.length === 0) return;
 
     // Both halves in one step, so a paste of a signer row and its initials
-    // marker comes back off with one Ctrl+Z.
+    // marker comes back off with one Ctrl+Z. The clipboard is a snapshot, so a
+    // copy of a name still on the form takes what that field says now.
     mutateDocument((doc) => ({
       ...doc,
-      fields: [...doc.fields, ...newFields],
+      fields: [...doc.fields, ...newFields.map((f) => adoptNameValues(f, doc.fields))],
       markers: [...doc.markers, ...newMarkers],
     }));
 
@@ -1046,6 +1089,7 @@ export default function App() {
               locked={selected ? isLastSystemPlacement(selected, fields, systemIndex) : false}
               pageCount={pageCount}
               onChange={(patch) => patchField(selectedId, patch)}
+              onNameSettled={() => settleName(selectedId)}
               onDelete={() => deleteField(selectedId)}
               onDuplicate={() => duplicateField(selectedId)}
             />

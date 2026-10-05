@@ -11,6 +11,7 @@ export default function NameCombobox({
   caseIndex,
   specialNames = [],
   onChange,
+  onSettle,
 }) {
   const [open, setOpen] = useState(false);
   // The box arrives holding a name, so filtering waits for a keystroke. Filter
@@ -80,6 +81,7 @@ export default function NameCombobox({
 
   const choose = (identifier) => {
     onChange(identifier);
+    onSettle?.();
     setFiltering(false);
     setOpen(false);
     inputRef.current?.focus();
@@ -97,6 +99,8 @@ export default function NameCombobox({
       if (open && options[highlight]) {
         event.preventDefault();
         choose(options[highlight].identifier);
+      } else {
+        onSettle?.();
       }
     } else if (event.key === 'Escape') {
       setOpen(false);
@@ -129,6 +133,7 @@ export default function NameCombobox({
         }}
         // A pick leaves focus in the box, so no focus event follows to reopen it.
         onClick={() => setOpen(true)}
+        onBlur={() => onSettle?.()}
         onKeyDown={onKeyDown}
       />
 

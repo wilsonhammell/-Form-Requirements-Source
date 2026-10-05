@@ -207,12 +207,12 @@ existing approved runtime. Both are standard library only:
 
 FILE MANIFEST (SHA-256)
 -----------------------
-  cf1474e8d4418c8a9ee0b2ab97cd7e62c3247493847e0e71af1928f427846690  assets/index-4hSYBzcv.js
-  08aabc93b0fefe70b27370bb6f117695c2165d2366edbf4dd9c221d90ba69ad3  assets/index-8y9tIBdH.css
+  e4f63397669a13949482c36d0567739c6c337e0c06fa475ca7650df42899748a  assets/index-8lnR4buw.js
+  444040722501b4e45ade23bc1d8dc4d481a6e90fc356927060b56a007251a124  assets/index-DQA6cxTA.css
   52fadd5b81b6abd1eb665bab0c3749a8ad6a293fcb6ee9d9e0309f29d4f82619  assets/pdf.worker.min-iDqQPrd3.mjs
   ad88cf9d6d8c3576873229b7314742121d6c128bc5a75a2d060755bde3fc15a0  dbFields.json
   137eabc1a1557f3ec640b8f06af17e1fa172ea0b369a4ee241f84a5e6ab43047  HOSTING.txt
-  5c5cbe3a98e32b8a916a626f090b67acea9a92faaa3d7f300ccc956225b2918a  index.html
+  20a788d1cc41ac717fddaf7a50e1839d9c05e0695aa607d13bf1728b335b8440  index.html
   ea7e3e1850cd32c138c14d14b674cbf661cf85b5365775e5f37c941a520a4b80  README.txt
   97420cd231e6f86018db9d361af368a3234b1cd148efbedae263dd0451b858a0  sbom.cyclonedx.json
   6c210091c57a6a78b736ad9d54845e09a86e7f6d06053970c829988c8024b68b  serve.mjs

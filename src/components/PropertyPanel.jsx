@@ -82,6 +82,7 @@ export default function PropertyPanel({
   locked,
   pageCount,
   onChange,
+  onNameSettled,
   onDelete,
   onDuplicate,
 }) {
@@ -163,6 +164,7 @@ export default function PropertyPanel({
           caseIndex={caseIndex}
           specialNames={specialNames}
           onChange={(name) => onChange({ name })}
+          onSettle={onNameSettled}
         />
       )}
 

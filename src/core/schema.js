@@ -296,7 +296,67 @@ export function reconcileField(field, dbIndex) {
   return Object.keys(patch).length > 0 ? { ...field, ...patch } : field;
 }
 
+// Placements sharing a name are one field, and these describe the field rather
+// than the box, so every placement carries the same values. The note and the
+// Error Message Field Name come along because the flags stand on them.
+export const NAME_SHARED_KEYS = [
+  'loadValidated',
+  'saveValidated',
+  'customSaveValidated',
+  'customerFacingName',
+  'note',
+];
+
+export function namePatch(patch) {
+  const out = {};
+  for (const key of NAME_SHARED_KEYS) if (patch[key] !== undefined) out[key] = patch[key];
+  return out;
+}
+
+// A box given a name already on the form takes that field's values, so naming
+// a new placement after an existing field is all it takes to join it.
+export function adoptNameValues(field, fields) {
+  const name = field.name.trim();
+  if (!name) return field;
+  const sibling = fields.find((f) => f.id !== field.id && f.name.trim() === name);
+  return sibling ? { ...field, ...namePatch(sibling) } : field;
+}
+
+// For documents written before these were shared. A flag on any placement
+// counts, as it always has on export, and the first note and Error Message
+// Field Name that say anything stand for the field.
+export function unifyNameValues(fields) {
+  const groups = new Map();
+  for (const f of fields) {
+    const name = f.name.trim();
+    if (!name) continue;
+    const group = groups.get(name);
+    if (!group) {
+      groups.set(name, { count: 1, values: namePatch(f) });
+      continue;
+    }
+    group.count += 1;
+    const v = group.values;
+    v.loadValidated ||= f.loadValidated;
+    v.saveValidated ||= f.saveValidated;
+    v.customSaveValidated ||= f.customSaveValidated;
+    if (!v.customerFacingName.trim()) v.customerFacingName = f.customerFacingName;
+    if (!v.note.trim()) v.note = f.note;
+  }
+
+  let changed = false;
+  const next = fields.map((f) => {
+    const group = groups.get(f.name.trim());
+    if (!group || group.count < 2) return f;
+    if (NAME_SHARED_KEYS.every((key) => f[key] === group.values[key])) return f;
+    changed = true;
+    return { ...f, ...group.values };
+  });
+  return changed ? next : fields;
+}
+
 export function reconcileFields(fields, dbIndex) {
+  fields = unifyNameValues(fields);
   let changed = false;
   const next = fields.map((f) => {
     const r = reconcileField(f, dbIndex);
