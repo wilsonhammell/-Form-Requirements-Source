@@ -12,7 +12,7 @@
 // before Main. These are definitions only, so the config Main declares is in
 // place by the time any of them is called.
 
-// FileOptics takes the Org eSigner list as a fixed width slot list in KCU tag
+// FileOptics takes the Org eSigner list as a fixed width slot list in FO tag
 // element 12, which is what caps a form at six signer rows.
 var ESIGN_SLOT_COUNT = 6;
 
@@ -609,19 +609,19 @@ function clearAllRequired() {
     }
 }
 
-function setKCU_TAG(varElement, varValue)
+function setFO_TAG(varElement, varValue)
 {
-    var kcuField = getSafeField("KCU_FO_DATA_LINE");
+    var foField = getSafeField("FO_DATA_LINE");
 
-    if (!kcuField) {
+    if (!foField) {
         return;
     }
 
-    var strMODIFY_KCU_TAG = kcuField.value;
-    var aMODIFY_KCU_TAG = strMODIFY_KCU_TAG.split("#");
+    var strMODIFY_FO_TAG = foField.value;
+    var aMODIFY_FO_TAG = strMODIFY_FO_TAG.split("#");
 
-    aMODIFY_KCU_TAG[varElement] = varValue;
-    kcuField.value = aMODIFY_KCU_TAG.join("#");
+    aMODIFY_FO_TAG[varElement] = varValue;
+    foField.value = aMODIFY_FO_TAG.join("#");
 }
 
 function validateManualSignatures(count, includeDates) {
@@ -676,8 +676,8 @@ function wipeManualSignatures() {
 }
 
 function commonSubmitTags() {
-    //setKCU_TAG(10, getSafeValue("KeyingPostProcessingDate"));
-    setKCU_TAG(11, 1);                                          //admin
+    //setFO_TAG(10, getSafeValue("KeyingPostProcessingDate"));
+    setFO_TAG(11, 1);                                          //admin
 
     var sub = getSafeField("SUBMITTED_TO_FO");
     if (sub) {
@@ -776,15 +776,15 @@ function prepareESigners() {
 
 function preparePersonESigners() {
     var eSigners = "";
-    var kcuField = getSafeField("KCU_FO_DATA_LINE");
+    var foField = getSafeField("FO_DATA_LINE");
 
-    if (!kcuField) {
+    if (!foField) {
         return "";
     }
 
-    var strKCU_TAG = kcuField.value;
-    var aKCU_TAG = strKCU_TAG.split("#");
-    var aMemberEmailAddresses = aKCU_TAG[3].split("~");
+    var strFO_TAG = foField.value;
+    var aFO_TAG = strFO_TAG.split("#");
+    var aMemberEmailAddresses = aFO_TAG[3].split("~");
 
     // One slot per row, joined at the end. Building the string by appending
     // commas needs row 1 to be a special case, which breaks as soon as row 1 is
@@ -836,7 +836,7 @@ function preparePersonESigners() {
     }
 
     if (isTestEnvironment()) {
-        setKCU_TAG(3, aMemberEmailAddresses.join("~"));
+        setFO_TAG(3, aMemberEmailAddresses.join("~"));
     }
 
     eSigners = slots.join(",");
@@ -863,7 +863,7 @@ function buildOrgESignerList(signerCtr) {
 }
 
 function prepareOrgESigners() {
-    setKCU_TAG(14, "Y");
+    setFO_TAG(14, "Y");
 
     var signerCtr = 0;
     var signerNames = "~";
@@ -904,9 +904,9 @@ function prepareOrgESigners() {
         }
     }
 
-    setKCU_TAG(1, getSafeValue("PRIMARY_MEMBER_NUMBER") + signerNumbers);
-    setKCU_TAG(2, getSafeValue("PRIMARY_FULL_LEGAL_NAME") + signerNames);
-    setKCU_TAG(3, signerEmails);
+    setFO_TAG(1, getSafeValue("PRIMARY_MEMBER_NUMBER") + signerNumbers);
+    setFO_TAG(2, getSafeValue("PRIMARY_FULL_LEGAL_NAME") + signerNames);
+    setFO_TAG(3, signerEmails);
 
     return buildOrgESignerList(signerCtr);
 }
@@ -936,7 +936,7 @@ function sendToFileOptics(flowId, successMsg) {
         return;
     }
 
-    if (typeof(FileOptics) === "function") {
+    if (typeof(FileOpticsLibro) === "function") {
         for (var i = 0; i < this.numFields; i++) {
             var fieldName = this.getNthFieldName(i);
             var f = getSafeField(fieldName);
@@ -947,7 +947,7 @@ function sendToFileOptics(flowId, successMsg) {
         }
 
         setFileOpticsButtonsState(false, true);
-        FileOptics(this, this.path);
+        FileOpticsLibro(this, this.path);
 
         // The default is what SUBMIT_SUCCESS shipped with on every example
         // form. It used to live in the field, which one shared box cannot do.
@@ -958,7 +958,7 @@ function sendToFileOptics(flowId, successMsg) {
             true
         );
     } else {
-        showFormMessage("Error: Your FileOptics.js file is missing. Open a ServiceNow ticket and assign to Service Desk", false);
+        showFormMessage("Error: Your FileOpticsLibro.js file is missing. Open a ServiceNow ticket and assign to Service Desk", false);
     }
 }
 
@@ -1013,8 +1013,8 @@ function submitRemoteESign() {
 
     commonSubmitTags();
 
-    setKCU_TAG(12, eSigners);
-    setKCU_TAG(13, getSafeValue("eSign_Code"));
+    setFO_TAG(12, eSigners);
+    setFO_TAG(13, getSafeValue("eSign_Code"));
 
     hideESignFields();
 

@@ -7,7 +7,7 @@
 import helpers from './helpers.js?raw';
 import main from './main.js?raw';
 
-// The FileOptics Org eSigner list in KCU tag element 12 is a fixed width slot
+// The FileOptics Org eSigner list in FO tag element 12 is a fixed width slot
 // list this wide, so forms built past it would silently truncate on submit. A
 // test pins this against ESIGN_SLOT_COUNT.
 export const MAX_SIGNER_ROWS = 6;

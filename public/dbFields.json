@@ -1,4 +1,5 @@
 [
+  { "identifier": "PRIMARY_MEMBER_NUMBER", "label": "Primary Member Number" },
   { "identifier": "CUSTNAME", "label": "Customer Name" },
   { "identifier": "CUSTNUM", "label": "Customer Number" },
   { "identifier": "CUSTDBA", "label": "Doing Business As" },

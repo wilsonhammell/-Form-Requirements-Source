@@ -9,7 +9,7 @@
   { "identifier": "PRIMARY_MEMBER_NUMBER", "placement": "compact" },
   { "identifier": "FORM_ID", "placement": "compact" },
   { "identifier": "PACK_TYPE", "placement": "compact" },
-  { "identifier": "KCU_FO_DATA_LINE", "placement": "compact" },
+  { "identifier": "FO_DATA_LINE", "placement": "compact" },
   { "identifier": "SUBMITTED_TO_FO", "placement": "compact" },
   { "identifier": "ERRORS_FOUND", "placement": "compact" },
   { "identifier": "NAMES_MDAS", "placement": "compact" },

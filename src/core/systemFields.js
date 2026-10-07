@@ -94,12 +94,10 @@ export const buildSystemIndex = indexByIdentifier;
 
 export const isSystemField = hasIdentifier;
 
-// True when removing or renaming this field would leave a system name with no
-// placement at all. That is the one thing the tool refuses to allow.
-export function isLastSystemPlacement(field, fields, systemIndex) {
-  const name = field.name.trim();
-  if (!isSystemField(name, systemIndex)) return false;
-  return fields.filter((f) => f.name.trim() === name).length <= 1;
+// True for the placement the starter code reads. It cannot be removed or
+// renamed, so a system name always keeps it and copies come and go around it.
+export function isFixedSystemPlacement(field, fields, systemIndex) {
+  return canonicalSystemIds(fields, systemIndex).has(field.id);
 }
 
 // They ship hidden. The message boxes sit where the example forms put them, and
@@ -175,19 +173,34 @@ export function layoutSystemFields(entries, cropBox) {
   return rects;
 }
 
-// The first placement is the one the starter code reads. The rest are copies
-// put on the form to show the value, so they read as ordinary fields.
+// The flagged placement is the one the starter code reads, the box this tool
+// placed. Any other box carrying a system name is an ordinary field that shows
+// the value, wherever it sits in the list.
 export function canonicalSystemIds(fields, systemIndex) {
-  const firstByName = new Map();
+  const byName = new Map();
   for (const field of fields) {
+    if (!field.systemPlacement) continue;
     const name = field.name.trim();
-    if (!isSystemField(name, systemIndex)) continue;
-    if (!firstByName.has(name)) firstByName.set(name, field.id);
+    if (!isSystemField(name, systemIndex) || byName.has(name)) continue;
+    byName.set(name, field.id);
   }
-  return new Set(firstByName.values());
+  return new Set(byName.values());
 }
 
-// Corrected rather than only reported. The last placement of a system name
+// At most one flagged placement per system name, and none on anything else.
+export function markSystemPlacements(fields, systemIndex) {
+  const canonical = canonicalSystemIds(fields, systemIndex);
+  let changed = false;
+  const next = fields.map((f) => {
+    const flagged = canonical.has(f.id);
+    if (!!f.systemPlacement === flagged) return f;
+    changed = true;
+    return { ...f, systemPlacement: flagged };
+  });
+  return changed ? next : fields;
+}
+
+// Corrected rather than only reported. The system placement of a system name
 // cannot be deleted or renamed and type is fixed once a field is drawn, so
 // reporting alone would leave nothing to fix it with.
 export function reconcileSystemTypes(fields, systemIndex) {
@@ -209,7 +222,10 @@ export function reconcileSystemTypes(fields, systemIndex) {
 // Returns the same array when there was nothing to add, so callers can skip a
 // re-render.
 export function ensureSystemFields(fields, systemFields, cropBox, page = 0) {
-  const present = new Set(fields.map((f) => f.name.trim()));
+  fields = markSystemPlacements(fields, buildSystemIndex(systemFields));
+  // Only a flagged placement counts. A box that merely shares the name stays
+  // an ordinary field and the system one is placed alongside it.
+  const present = new Set(fields.filter((f) => f.systemPlacement).map((f) => f.name.trim()));
   const missing = systemFields.filter((entry) => !present.has(entry.identifier));
   if (missing.length === 0) return fields;
 
@@ -224,6 +240,7 @@ export function ensureSystemFields(fields, systemFields, cropBox, page = 0) {
       hidden: true,
       editable: false,
       multiline: entry.multiline,
+      systemPlacement: true,
     })
   );
   return [...fields, ...added];

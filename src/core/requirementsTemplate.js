@@ -126,7 +126,7 @@ export const SUBMIT_FOR_PROCESSING = { title: 'Submit for Processing', steps: []
 // format, and both are stated rather than left blank because they are properties
 // of what it produces.
 export const STANDARD_REQUIREMENTS = [
-  ['Error Message', 'Developers', 'Error: Your FileOptics.js file is missing. Open a ServiceNow ticket and assign to Service Desk'],
+  ['Error Message', 'Developers', 'Error: Your FileOpticsLibro.js file is missing. Open a ServiceNow ticket and assign to Service Desk'],
   ['New Data Feed Table', 'Developers', 'Address primary/secondary - primary & secondary ID (joint mbr)'],
   ['File Size', 'Developers', 'pdf resize - reduce file size'],
   ['Add Validation Function', 'Developers'],

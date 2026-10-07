@@ -160,11 +160,15 @@ describe('how the message boxes stack', () => {
     const bytes = await source.save();
     const reopened = await importPdf(bytes, buildDbIndex(normalizeDbFields([])), LIST);
     const { pdfBytes } = await exportPdf({ originalBytes: bytes, fields: reopened.fields, systemFields: LIST });
+    // The form's own boxes carry no system flag, so the system ones are placed
+    // beside them. Each name is still one field, and all of it is lifted.
     expect(stackOf(await PDFDocument.load(pdfBytes))).toEqual([
       'FIRST',
       'SECOND',
       'THIRD',
       'FORM_MESSAGE',
+      'FORM_MESSAGE',
+      'DNA_REQ',
       'DNA_REQ',
     ]);
   });

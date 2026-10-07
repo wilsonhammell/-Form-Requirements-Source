@@ -98,6 +98,10 @@ export const OWNED_SCRIPTS = ['Helper_Functions', 'Main'];
 // on every form would be noise.
 const RETIRED = ['injectErrorFlagClearing'];
 
+// Renamed rather than missing. setKCU_TAG is setFO_TAG now, so the form loses
+// nothing.
+const RENAMED = ['setKCU_TAG'];
+
 // Main() is called at the bottom of the Main script, so a script sorting after
 // it loads too late. The typeof guard is false and the hook silently does not
 // fire.
@@ -134,6 +138,7 @@ export function replacedFunctions(scripts) {
     ...functionNames(mainScript()),
     'CustomSaveValidation',
     ...RETIRED,
+    ...RENAMED,
   ]);
 
   const found = new Set();

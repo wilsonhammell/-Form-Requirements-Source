@@ -14,7 +14,7 @@ const BUTTONS = signingButtons();
 const buttonIndex = buildButtonIndex(BUTTONS);
 const systemIndex = buildSystemIndex([
   { identifier: 'ERRORS_FOUND', type: 'text' },
-  { identifier: 'KCU_FO_DATA_LINE', type: 'text' },
+  { identifier: 'FO_DATA_LINE', type: 'text' },
 ]);
 
 const at = (x, y, page = 0) => ({ page, rect: { x, y, width: 100, height: 18 } });
@@ -50,7 +50,7 @@ describe('which fields reach the table', () => {
     const fields = [
       createField({ name: 'CUSTNAME', ...at(50, 700) }),
       createField({ name: 'Member1Name', type: 'dropdown', ...at(50, 400) }),
-      createField({ name: 'ERRORS_FOUND', ...at(50, 300) }),
+      createField({ name: 'ERRORS_FOUND', systemPlacement: true, ...at(50, 300) }),
       createField({ name: 'PhoneAuthButton', type: 'button', ...at(50, 200) }),
     ];
     const rows = requirementRows(doc(fields), { systemIndex, buttonIndex });
@@ -59,7 +59,7 @@ describe('which fields reach the table', () => {
 
   it('keeps a system name that was placed a second time to show its value', () => {
     const fields = [
-      createField({ name: 'ERRORS_FOUND', hidden: true, ...at(50, 300) }),
+      createField({ name: 'ERRORS_FOUND', hidden: true, systemPlacement: true, ...at(50, 300) }),
       createField({ name: 'ERRORS_FOUND', ...at(50, 700) }),
     ];
     const rows = requirementRows(doc(fields), { systemIndex, buttonIndex });

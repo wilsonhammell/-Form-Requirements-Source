@@ -31,19 +31,34 @@ export function buildCaseInsensitiveIndex(dbFields) {
   return map;
 }
 
+// Underscores, dashes and spaces all read as a word break, so "primary address"
+// finds PRIMARY_ADDRESS and, ranked lower, PRIMARY_LEGAL_ADDRESS.
+const words = (s) => s.toLowerCase().split(/[\s_\-.]+/).filter(Boolean);
+
+// Lower is better, -1 is no match.
+export function matchScore(identifier, label, query) {
+  const qWords = words(query);
+  if (!qWords.length) return 0;
+  const q = qWords.join(' ');
+  const id = words(identifier).join(' ');
+  const lb = words(label).join(' ');
+  if (id === q) return 0;
+  if (id.startsWith(q)) return 1;
+  if (lb.startsWith(q)) return 2;
+  if (id.includes(q)) return 3;
+  if (lb.includes(q)) return 4;
+  const all = [...words(identifier), ...words(label)];
+  if (qWords.every((w) => all.some((x) => x.startsWith(w)))) return 5;
+  const text = `${id} ${lb}`;
+  if (qWords.every((w) => text.includes(w))) return 6;
+  return -1;
+}
+
 export function searchDbFields(dbFields, query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return dbFields;
+  if (!query.trim()) return dbFields;
   const scored = [];
   for (const f of dbFields) {
-    const id = f.identifier.toLowerCase();
-    const label = f.label.toLowerCase();
-    let score = -1;
-    if (id === q) score = 0;
-    else if (id.startsWith(q)) score = 1;
-    else if (label.startsWith(q)) score = 2;
-    else if (id.includes(q)) score = 3;
-    else if (label.includes(q)) score = 4;
+    const score = matchScore(f.identifier, f.label, query);
     if (score >= 0) scored.push({ f, score });
   }
   scored.sort((a, b) => a.score - b.score || a.f.identifier.localeCompare(b.f.identifier));

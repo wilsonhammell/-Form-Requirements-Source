@@ -359,7 +359,7 @@ async function run() {
   clickButton('Submission', aside());
   await sleep(200);
 
-  // The last placement of a system name is the one thing that cannot go.
+  // The system placement of a system name is the one thing that cannot go.
   const firstRow = aside().querySelector('button[type=button] + *') ?? null;
   const rows = [...aside().querySelectorAll('button')].filter((b) =>
     b.textContent.includes('DNA_REQ')

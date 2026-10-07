@@ -197,6 +197,10 @@ export function createField(partial = {}) {
     loadValidated: !!partial.loadValidated,
     saveValidated: !!partial.saveValidated,
     customSaveValidated: !!partial.customSaveValidated,
+    // The box this tool placed for a system name, which the starter code reads.
+    // Copies never carry it, so which box is the system one does not depend on
+    // the order the fields happen to be in.
+    systemPlacement: !!partial.systemPlacement,
     // Runtime only, marks a field reconstructed from an AcroForm rather than
     // read back from embedded JSON. Never written to the document.
     imported: !!partial.imported,
@@ -401,6 +405,7 @@ export function serializeDocument(fields, meta = {}) {
       loadValidated: !!f.loadValidated,
       saveValidated: !!f.saveValidated,
       customSaveValidated: !!f.customSaveValidated,
+      systemPlacement: !!f.systemPlacement,
     })),
   };
 }

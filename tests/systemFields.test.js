@@ -3,13 +3,14 @@ import {
   normalizeSystemFields,
   buildSystemIndex,
   isSystemField,
-  isLastSystemPlacement,
+  isFixedSystemPlacement,
+  markSystemPlacements,
   layoutSystemFields,
   ensureSystemFields,
   reconcileSystemTypes,
   canonicalSystemIds,
 } from '../src/core/systemFields.js';
-import { createField, fieldIssues } from '../src/core/schema.js';
+import { createField, fieldIssues, serializeDocument, parseDocument } from '../src/core/schema.js';
 import { buildDbIndex, normalizeDbFields } from '../src/core/dbFields.js';
 
 const LIST = normalizeSystemFields([
@@ -53,25 +54,25 @@ describe('the system field list', () => {
   });
 });
 
-describe('the last placement rule', () => {
-  it('protects the only placement of a system name', () => {
-    const fields = [createField({ name: 'FORM_ID' })];
-    expect(isLastSystemPlacement(fields[0], fields, systemIndex)).toBe(true);
+describe('the fixed placement rule', () => {
+  it('protects the system placement of a system name', () => {
+    const fields = [createField({ name: 'FORM_ID', systemPlacement: true })];
+    expect(isFixedSystemPlacement(fields[0], fields, systemIndex)).toBe(true);
   });
 
-  it('leaves extra placements free', () => {
+  it('protects the system placement and leaves copies free', () => {
     // A member number wanted on the form as well as in the code: one value,
-    // several placements, and only the last one is protected.
-    const fields = [
-      createField({ name: 'PRIMARY_MEMBER_NUMBER' }),
-      createField({ name: 'PRIMARY_MEMBER_NUMBER' }),
-    ];
-    expect(fields.every((f) => isLastSystemPlacement(f, fields, systemIndex))).toBe(false);
+    // several placements, and only the one this tool placed is protected.
+    const copy = createField({ name: 'PRIMARY_MEMBER_NUMBER' });
+    const placed = createField({ name: 'PRIMARY_MEMBER_NUMBER', systemPlacement: true });
+    const fields = [copy, placed];
+    expect(isFixedSystemPlacement(placed, fields, systemIndex)).toBe(true);
+    expect(isFixedSystemPlacement(copy, fields, systemIndex)).toBe(false);
   });
 
   it('protects nothing that is not a system name', () => {
     const fields = [createField({ name: 'CUSTNAME' })];
-    expect(isLastSystemPlacement(fields[0], fields, systemIndex)).toBe(false);
+    expect(isFixedSystemPlacement(fields[0], fields, systemIndex)).toBe(false);
   });
 });
 
@@ -176,6 +177,7 @@ describe('adding the missing ones', () => {
       rect: { x: 300, y: 400, width: 90, height: 12 },
       hidden: false,
       editable: true,
+      systemPlacement: true,
     });
     const fields = ensureSystemFields([placed], LIST, LETTER);
     const kept = fields.find((f) => f.name === 'FORM_ID');
@@ -185,11 +187,20 @@ describe('adding the missing ones', () => {
 
   it('does not add a second copy of a name already placed twice', () => {
     const twice = [
-      createField({ name: 'PRIMARY_MEMBER_NUMBER' }),
+      createField({ name: 'PRIMARY_MEMBER_NUMBER', systemPlacement: true }),
       createField({ name: 'PRIMARY_MEMBER_NUMBER' }),
     ];
     const fields = ensureSystemFields(twice, LIST, LETTER);
     expect(fields.filter((f) => f.name === 'PRIMARY_MEMBER_NUMBER')).toHaveLength(2);
+  });
+
+  it('places a system one beside a box that only shares the name', () => {
+    const own = createField({ name: 'PRIMARY_MEMBER_NUMBER', hidden: false });
+    const fields = ensureSystemFields([own], LIST, LETTER);
+    const named = fields.filter((f) => f.name === 'PRIMARY_MEMBER_NUMBER');
+    expect(named).toHaveLength(2);
+    expect(named[0]).toBe(own);
+    expect(named[1].systemPlacement && named[1].hidden).toBe(true);
   });
 
   it('returns the same array when nothing is missing', () => {
@@ -245,13 +256,42 @@ describe('signer columns', () => {
 });
 
 describe('which placement counts as the system one', () => {
-  it('picks the first placement of a name', () => {
-    const first = createField({ name: 'PRIMARY_MEMBER_NUMBER' });
+  it('picks the flagged placement wherever it sits', () => {
+    // A copy ahead of it in the list, as a reordered import can leave it, does
+    // not take its place.
     const copy = createField({ name: 'PRIMARY_MEMBER_NUMBER' });
-    const ids = canonicalSystemIds([first, copy], systemIndex);
-    expect(ids.has(first.id)).toBe(true);
-    // The extra one is a copy put on the form, so it reads as ordinary.
+    const placed = createField({ name: 'PRIMARY_MEMBER_NUMBER', systemPlacement: true, hidden: true });
+    const ids = canonicalSystemIds([copy, placed], systemIndex);
+    expect(ids.has(placed.id)).toBe(true);
     expect(ids.has(copy.id)).toBe(false);
+  });
+
+  it('flags the system fields it places', () => {
+    const fields = ensureSystemFields([], LIST, LETTER);
+    expect(fields.every((f) => f.systemPlacement)).toBe(true);
+  });
+
+  it('flags exactly one placement per name, and nothing else', () => {
+    const first = createField({ name: 'PRIMARY_MEMBER_NUMBER' });
+    const second = createField({ name: 'PRIMARY_MEMBER_NUMBER', systemPlacement: true });
+    const third = createField({ name: 'PRIMARY_MEMBER_NUMBER', systemPlacement: true });
+    const stray = createField({ name: 'CUSTNAME', systemPlacement: true });
+    const marked = markSystemPlacements([first, second, third, stray], systemIndex);
+    expect(marked.map((f) => f.systemPlacement)).toEqual([false, true, false, false]);
+  });
+
+  it('keeps the flag through a save and reload', () => {
+    const copy = createField({ name: 'PRIMARY_MEMBER_NUMBER' });
+    const placed = createField({ name: 'PRIMARY_MEMBER_NUMBER', systemPlacement: true });
+    const doc = serializeDocument([copy, placed]);
+    const { fields } = parseDocument(JSON.stringify(doc), null);
+    expect(fields.map((f) => f.systemPlacement)).toEqual([false, true]);
+  });
+
+  it('treats an unflagged box with a system name as an ordinary field', () => {
+    const own = createField({ name: 'PRIMARY_MEMBER_NUMBER' });
+    expect(canonicalSystemIds([own], systemIndex).size).toBe(0);
+    expect(isFixedSystemPlacement(own, [own], systemIndex)).toBe(false);
   });
 
   it('ignores names that are not system fields', () => {
@@ -261,8 +301,8 @@ describe('which placement counts as the system one', () => {
 
   it('marks one per name, not one overall', () => {
     const fields = [
-      createField({ name: 'FORM_ID' }),
-      createField({ name: 'DNA_REQ' }),
+      createField({ name: 'FORM_ID', systemPlacement: true }),
+      createField({ name: 'DNA_REQ', systemPlacement: true }),
       createField({ name: 'DNA_REQ' }),
     ];
     expect(canonicalSystemIds(fields, systemIndex).size).toBe(2);
@@ -271,8 +311,8 @@ describe('which placement counts as the system one', () => {
 
 describe('correcting a wrong type', () => {
   it('retypes a system field the document had as something else', () => {
-    // Otherwise this is a dead end: the last placement of a system name cannot
-    // be deleted or renamed, and type is fixed once drawn, so nothing could fix
+    // Otherwise this is a dead end: the system placement of a system name
+    // cannot be deleted or renamed, and type is fixed once drawn, so nothing could fix
     // it.
     const { fields, corrected } = reconcileSystemTypes(
       [createField({ name: 'DNA_REQ', type: 'checkbox', exportValue: 'Yes' })],

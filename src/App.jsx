@@ -23,7 +23,8 @@ import {
 import {
   loadSystemFields,
   buildSystemIndex,
-  isLastSystemPlacement,
+  isFixedSystemPlacement,
+  ensureSystemFields,
   canonicalSystemIds,
 } from './core/systemFields.js';
 import {
@@ -397,7 +398,13 @@ export default function App() {
       // One step, not three. The import replaces the fields, the markers and the
       // config of the PDF still open, so undo puts them all back the way the
       // wrong sidecar found them.
-      mutateDocument(() => ({ fields: loaded, config: loadedConfig, markers: loadedMarkers }));
+      mutateDocument(() => ({
+        // A sidecar saved before the flag existed has none, so its system
+        // fields are placed the same way an import places them.
+        fields: ensureSystemFields(loaded, systemFields, pageBox),
+        config: loadedConfig,
+        markers: loadedMarkers,
+      }));
       setSelectedId(null);
       setSelectedMarkerId(null);
       say([`Loaded ${loaded.length} field${loaded.length === 1 ? '' : 's'} from ${file.name}.`]);
@@ -590,10 +597,10 @@ export default function App() {
       setFields((current) => {
         const field = current.find((f) => f.id === id);
         if (!field) return current;
-        // Every system name must keep at least one placement. Extra copies of
-        // one, put on the form to show the value, delete freely.
-        if (isLastSystemPlacement(field, current, systemIndex)) {
-          say([`"${field.name}" is a system field, its last placement cannot be removed.`]);
+        // Every system name keeps the placement this tool put there. Extra
+        // copies of one, put on the form to show the value, delete freely.
+        if (isFixedSystemPlacement(field, current, systemIndex)) {
+          say([`"${field.name}" is a system field, its system placement cannot be removed.`]);
           return current;
         }
         setSelectedId((sel) => (sel === id ? null : sel));
@@ -620,6 +627,7 @@ export default function App() {
         id: undefined,
         rect: { ...source.rect, x: source.rect.x + 8, y: source.rect.y - 8 },
         imported: false,
+        systemPlacement: false,
         // Two options of one radio group cannot share a value, so a copy gets
         // the next free placeholder rather than a duplicate.
         ...(source.type === 'radio' ? { exportValue: nextRadioExportValue(fields) } : {}),
@@ -688,6 +696,7 @@ export default function App() {
           // Once pasted it is a placement this tool made, not one an import
           // inferred, the same way a duplicate is.
           imported: false,
+          systemPlacement: false,
           // Two options of one radio group cannot share a value, so each copy
           // takes the next free placeholder, the ones made here included.
           ...(source.type === 'radio'
@@ -1086,7 +1095,7 @@ export default function App() {
               systemIndex={systemIndex}
               buttonIndex={buttonIndex}
               specialNames={specialNames}
-              locked={selected ? isLastSystemPlacement(selected, fields, systemIndex) : false}
+              locked={selected ? isFixedSystemPlacement(selected, fields, systemIndex) : false}
               pageCount={pageCount}
               onChange={(patch) => patchField(selectedId, patch)}
               onNameSettled={() => settleName(selectedId)}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { searchDbFields } from '../core/dbFields.js';
+import { matchScore, searchDbFields } from '../core/dbFields.js';
 import { isSpecialField } from '../core/specialFields.js';
 
 // Offers the DB list but never blocks a custom name. What it will not do is
@@ -29,9 +29,7 @@ export default function NameCombobox({
   // Above the DB list, and only while placing one would be legal, which is what
   // keeps rows contiguous with no rule to break.
   const specialMatches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const hit = (o) => o.name.toLowerCase().includes(q) || o.label.toLowerCase().includes(q);
-    return specialNames.filter((o) => !q || hit(o));
+    return specialNames.filter((o) => matchScore(o.name, o.label, query) >= 0);
   }, [specialNames, query]);
 
   const options = useMemo(

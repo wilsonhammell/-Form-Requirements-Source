@@ -216,7 +216,7 @@ export default function FormConfigPanel({
       </div>
 
       <div>
-        <label className={LABEL}>Product codes</label>
+        <label className={LABEL}>Product codes(doc_sys)</label>
         <textarea
           rows={5}
           spellCheck={false}

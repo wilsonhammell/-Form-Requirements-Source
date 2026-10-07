@@ -126,7 +126,7 @@ export default function PropertyPanel({
         <Banner tone="system">
           System field, read by the starter code.{' '}
           {locked
-            ? 'This is its only placement, so the name is fixed and it cannot be removed. Position, size and visibility are still yours.'
+            ? 'This is its system placement, so the name is fixed and it cannot be removed. Position, size and visibility are still yours.'
             : 'An extra placement, so this one is free to rename or remove. It shares one value with the others.'}
         </Banner>
       )}
@@ -367,7 +367,7 @@ export default function PropertyPanel({
         <button
           type="button"
           disabled={locked}
-          title={locked ? 'A system field must keep at least one placement.' : undefined}
+          title={locked ? 'A system field must keep its system placement.' : undefined}
           className="flex-1 rounded border border-red-300 px-2 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
           onClick={onDelete}
         >

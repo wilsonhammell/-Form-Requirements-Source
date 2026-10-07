@@ -179,7 +179,7 @@ describe('flow ids', () => {
 // FileOptics which member signed where. These stub the field access and run it.
 function personESigners({ rows, values = {}, selected = {}, emails = 'e1~e2~e3' }) {
   const fields = {
-    KCU_FO_DATA_LINE: { value: `a#b#c#${emails}` },
+    FO_DATA_LINE: { value: `a#b#c#${emails}` },
     ERRORS_FOUND: { value: 0 },
   };
   const factory = new Function(
@@ -193,7 +193,7 @@ function personESigners({ rows, values = {}, selected = {}, emails = 'e1~e2~e3' 
      getSafeValue = function (n) { return __values[n] === undefined ? '' : __values[n]; };
      getSelectedText = function (n) { return __selected[n] === undefined ? '' : __selected[n]; };
      isTestEnvironment = function () { return false; };
-     setKCU_TAG = function () {};
+     setFO_TAG = function () {};
      MISSING_EMAIL_SIGNERS = [];
      var __list = preparePersonESigners();
      return {

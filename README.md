@@ -108,11 +108,18 @@ The **All / Standard / System / Signers / Submission** filter above the field li
 as well, and **starts on Standard**, so a form opens showing what it is actually
 about rather than 35 pieces of infrastructure.
 
-Where a system name is placed more than once, only the **first placement
+Where a system name is placed more than once, only the **system placement
 filters as System** and the rest filter as Standard, because those extra ones
 exist to show the value on the form and behave like any other field. That is
 also what keeps a standard field from vanishing when it is renamed to a system
 name that is already on the form.
+
+The system placement is the box this tool placed, and it carries a
+`systemPlacement` flag in the JSON. Copies never get the flag, whether drawn,
+duplicated or pasted, so which box is the system one never depends on field
+order. It cannot be renamed or removed; copies can. A box carrying a system
+name without the flag is an ordinary field, and on import the system one is
+placed alongside it.
 
 Colour follows the same split, and says one thing rather than four: a system
 field is grey and recedes, an ordinary field is blue, and green means Load
@@ -126,7 +133,7 @@ inferred, which is the part worth knowing.
 The list is also authoritative about type. A document carrying a system name as
 something other than text is **corrected on the way in**, keeping its position
 and size, and the import notes say which ones changed. Only reporting it would
-be a dead end: the last placement of a system name cannot be deleted or renamed,
+be a dead end: the system placement of a system name cannot be deleted or renamed,
 and type is fixed once a field is drawn, so nothing would be left to fix it
 with.
 
@@ -446,7 +453,7 @@ one set per document, carried in the requirements JSON.
   They fill the first three rows of the workbook's FO Processing block, a ticked
   box reading Yes and a clear one No.
 - **Form type**, one of Person, Org or Combined.
-- **Product codes**, pasted in and stored as a list. Split on commas, and also on
+- **Product codes(doc_sys)**, pasted in and stored as a list. Split on commas, and also on
   the newlines and tabs a spreadsheet column arrives with. Whitespace is trimmed,
   blanks and repeats dropped, order kept. Case is left exactly as typed, since
   something downstream matches on these and this tool does not get to decide.
@@ -598,7 +605,7 @@ within a row is fine and is not a gap; dropping the last part of a row deletes
 the row.
 
 Rows cap at **6**, which is `ESIGN_SLOT_COUNT`: the FileOptics Org eSigner list
-in KCU tag element 12 is a fixed width slot list that wide. A test asserts the
+in FO tag element 12 is a fixed width slot list that wide. A test asserts the
 designer's cap and that constant are the same number, because if they drift,
 forms get built that silently truncate on submit.
 
@@ -1105,8 +1112,7 @@ export merges a single-widget field into one dictionary the way Acrobat does, so
 
 A radio group cannot be merged. One field genuinely owns several widgets, so its
 name and type only exist on the parent. The same is true of any name placed more
-than once. Filling those needs three changes, none of them made yet, by
-decision, not oversight:
+than once. Filling those needs three changes, not made yet:
 
 1. Resolve `/FT` up the `/Parent` chain, the way the name already is. Read
    widget-only, it comes back `None` for a radio group and every branch is
@@ -1157,11 +1163,23 @@ so a later option cannot clear them.
 Until that lands, radio groups export correctly and are valid in Acrobat, they
 just come back empty from the filler.
 
+### Long text
+
+Not made yet. Text draws at the size in the field's `/DA`, so a long value is
+cut off. [`filler/fit_text.py`](filler/fit_text.py) steps the size down in half
+points until the value fits, never above the designed size and never below 6.
+Auto size and comb fields are left alone. One call in the `/Tx` branch, after
+`/V` is set:
+
+```python
+fit_text_to_widget(field, value, writer)
+```
+
 ### ENVIRONMENT
 
-Required change. The filler writes the `ENVIRONMENT` system field on every fill,
-`PROD` from the production filler and `TEST` from the test one. It is not a DB
-field, so the value comes from the filler's own config rather than a lookup.
+The filler writes the `ENVIRONMENT` system field on every fill, `PROD` from the
+production filler and `TEST` from the test one. It is not a DB field, so the
+value comes from the filler's own config rather than a lookup.
 
 The starter code reads it at submit time. `PROD` sends the `FO`, `ES` and `DS`
 flow ids and uses the member emails. Anything else, blank included, sends `TFO`,
@@ -1329,7 +1347,7 @@ than in a document script. Three of the eight example forms are that shape, and
 they are also the three with no signer rows and no eSign pair.
 
 It is a **print button under the old name**. Its two chained actions validate,
-set `SUBMITTED_TO_FO` and the admin KCU tag, lock every field, hide the button
+set `SUBMITTED_TO_FO` and the admin FO tag, lock every field, hide the button
 and print, which is `submitPrintOnly` step for step. So `PrintButton` covers it
 and those forms convert without a new channel.
 
@@ -1439,7 +1457,7 @@ Five of the eight example forms carry such code:
 | none, it is a shared utility | `formatToDDMMMYYYY` |
 
 The two on the trust form are the tell: both are driven by the same four consent
-fields, one appending a token to the KCU form ID and the other showing a page.
+fields, one appending a token to the FO form ID and the other showing a page.
 They are two views of one idea, an optional sub-document gated by a field, so
 declaring that once as data would generate both.
 
@@ -1504,7 +1522,7 @@ reading Yes and a clear one No.
 Only the fields a person interacts with, which is the Standard and Signers
 groups. System fields are plumbing and the submission buttons drive the signing
 sections instead, which is why neither appears in the documents this is modelled
-on. Only the first placement of a system name counts as plumbing: a second box
+on. Only the system placement of a system name counts as plumbing: a second box
 carrying that name was put on the form to show the value, so it earns a row like
 any other field.
 
@@ -1594,8 +1612,8 @@ line rather than every name.
 **Initial field values, apart from two.** The real form ships 15 fields carrying
 a value, from constants like `VALID_ID` = `1` to per-form ones like `FORM_ID` and
 `PACK_TYPE`. Only `FORM_ID` and `FORM_NAME` are set here, from Config. The rest
-are the downstream filler's job, the same as the data line, so its list has to
-cover the static ones too, such as `eSignLBL` = `Remote eSign Code:` and the
+are the downstream filler's job, the same as the data line, and its list covers
+the static ones too, such as `eSignLBL` = `Remote eSign Code:` and the
 `DNA_REQ` message, which are captions rather than data.
 
 The submit messages are the exception, and moved the other way. `SUBMIT_SUCCESS`
@@ -1626,5 +1644,5 @@ text, and comb/maxlength. Tab order is set in Acrobat and survives export: page
 `/Annots` order is preserved for every field that already existed, and new ones
 are appended.
 
-Also the downstream filler changes radio groups need. They are specified and
-verified above, but deliberately not made yet.
+Also the downstream filler changes for radio groups and long text. Both are
+specified and verified above, not made yet.
