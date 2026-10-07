@@ -795,12 +795,10 @@ not planned**. Set the two values in the config panel instead.
 
 ## Export
 
-`Export PDF` writes two files:
-
-- `<name>.pdf` — a valid AcroForm, with the requirements JSON embedded
-  twice: in the document catalog under `/PdfRequirementDesigner`, and as an
-  attachment named `form.fields.json` visible in Acrobat's attachment pane.
-- `<name>.json` — the same JSON as a sidecar.
+`Export PDF` writes `<name>.pdf`, a valid AcroForm, with the requirements JSON
+embedded twice: in the document catalog under `/PdfRequirementDesigner`, and as
+an attachment named `form.fields.json` visible in Acrobat's attachment pane.
+`Export JSON` writes the same JSON on its own.
 
 Export always rebuilds from the originally uploaded bytes, so exporting
 repeatedly cannot accumulate drift.

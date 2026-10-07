@@ -839,7 +839,7 @@ export default function App() {
   const handleExportPdf = () =>
     whileBusy(
       async () => {
-        const { pdfBytes, jsonBytes, warnings } = await exportPdf({
+        const { pdfBytes, warnings } = await exportPdf({
           originalBytes,
           fields,
           buttons,
@@ -849,9 +849,9 @@ export default function App() {
           // they never become part of the form.
           meta: { sourceFileName: fileName, config, markers },
         });
+        // The JSON is already inside the PDF. Export JSON is there for a copy.
         downloadBytes(pdfBytes, exportedPdfName(fileName), 'application/pdf');
-        downloadBytes(jsonBytes, sidecarName(fileName), 'application/json');
-        say([`Exported ${exportedPdfName(fileName)} and ${sidecarName(fileName)}.`, ...warnings]);
+        say([`Exported ${exportedPdfName(fileName)}.`, ...warnings]);
       },
       (err) => `Export failed: ${err.message}`
     );
