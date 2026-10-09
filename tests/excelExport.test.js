@@ -234,10 +234,10 @@ describe('the signing sections', () => {
     }
   });
 
-  it('leaves Submit for Processing a bare heading, since no form has that button', async () => {
+  it('leaves Submit for Processing a bare heading when the form does not offer it', async () => {
     const { column } = await read(
       await requirementsWorkbookBytes({
-        doc: doc(withButtons(BUTTONS.map((b) => b.identifier))),
+        doc: doc(withButtons(['PhoneAuthButton'])),
         buttons: BUTTONS,
         systemIndex,
         buttonIndex,
@@ -245,6 +245,20 @@ describe('the signing sections', () => {
     );
     expect(column(6).map(([, v]) => v)).toContain('Submit for Processing');
     expect(column(7).map(([, v]) => v)).not.toContain('Submit for Processing Button on Form');
+  });
+
+  it('expands Submit for Processing when the button is placed', async () => {
+    const { column } = await read(
+      await requirementsWorkbookBytes({
+        doc: doc(withButtons(['SubmitForProcessingButton'])),
+        buttons: BUTTONS,
+        systemIndex,
+        buttonIndex,
+      })
+    );
+    const labels = column(7).map(([, v]) => v);
+    expect(labels).toContain('Submit for Processing Button on Form');
+    expect(labels).not.toContain('Phone Auth Button on Form');
   });
 
   it('expands every channel on a form that offers them all', async () => {

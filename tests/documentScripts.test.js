@@ -294,6 +294,7 @@ describe('export end to end', () => {
     expect(scripts.get('DigitalSignatureButton')).toBe('submitDigitalSignature();');
     expect(scripts.get('RemoteESignButton')).toBe('submitRemoteESign();');
     expect(scripts.get('PrintButton')).toBe('submitPrintOnly();');
+    expect(scripts.get('SubmitForProcessingButton')).toBe('submitForProcessing();');
   });
 
   it('does not accumulate scripts across repeated exports', async () => {

@@ -916,10 +916,12 @@ function getFlowId(authType) {
         if (authType === "PHONE") return "FO";
         if (authType === "ESIGN") return "ES";
         if (authType === "DIGITAL") return "DS";
+        if (authType === "SUBMIT") return "FO";
     } else {
         if (authType === "PHONE") return "TFO";
         if (authType === "ESIGN") return "TES";
         if (authType === "DIGITAL") return "TDS";
+        if (authType === "SUBMIT") return "TFO";
     }
 
     return "";
@@ -1063,6 +1065,30 @@ function submitDigitalSignature() {
     commonSubmitTags();
 
     sendToFileOptics(getFlowId("DIGITAL"), "");
+}
+
+// K_DCR's channel: a form nobody signs, sent straight to the FO flow, which is
+// the one Phone Auth uses (TFO in its test copy, FO in production). It checks
+// whatever signature rows are placed the way Phone Auth does, which on a form
+// with none is nothing.
+function submitForProcessing() {
+    CURRENT_AUTH_TYPE = "SUBMIT";
+
+    hideESignFields();
+
+    runBaseSaveValidationOnly();
+    validateManualSignatures(MAX_SIGNERS_ON_FORM, true);
+
+    if (!showValidationResult()) {
+        return;
+    }
+
+    if (typeof CustomBeforeSubmit === "function") {
+        CustomBeforeSubmit();
+    }
+
+    commonSubmitTags();
+    sendToFileOptics(getFlowId("SUBMIT"), "");
 }
 
 

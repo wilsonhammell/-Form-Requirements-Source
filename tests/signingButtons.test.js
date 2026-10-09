@@ -58,12 +58,13 @@ describe('the button list', () => {
 });
 
 describe('the shipped list', () => {
-  it('carries the four signing channels', () => {
+  it('carries the five submission channels', () => {
     expect(signingButtons().map((b) => b.identifier)).toEqual([
       'PhoneAuthButton',
       'DigitalSignatureButton',
       'RemoteESignButton',
       'PrintButton',
+      'SubmitForProcessingButton',
     ]);
   });
 
@@ -73,6 +74,7 @@ describe('the shipped list', () => {
       'In-Branch eSign',
       'Remote eSign',
       'Print Form',
+      'Submit for Processing',
     ]);
   });
 
@@ -103,6 +105,7 @@ describe('the shipped list', () => {
       'submitDigitalSignature();',
       'submitRemoteESign();',
       'submitPrintOnly();',
+      'submitForProcessing();',
     ]);
   });
 
@@ -113,8 +116,25 @@ describe('the shipped list', () => {
       'PhoneAuthButton',
       'DigitalSignatureButton',
       'RemoteESignButton',
+      'SubmitForProcessingButton',
     ]);
     expect(signingButtons().find((b) => b.identifier === 'PrintButton').fileOptics).toBe(false);
+  });
+
+  it('makes Submit for Processing wide enough for its caption, as K_DCR had it', () => {
+    expect(signingButtons().find((b) => b.identifier === 'SubmitForProcessingButton').width).toBe(112);
+  });
+
+  it('lays the shipped buttons out without overlap, wide one included', () => {
+    const shipped = signingButtons();
+    const rects = shipped
+      .map((b) => buttonSlotRect(b, shipped, LETTER))
+      .sort((a, b) => a.x - b.x);
+    for (let i = 1; i < rects.length; i += 1) {
+      expect(rects[i].x).toBeGreaterThanOrEqual(rects[i - 1].x + rects[i - 1].width);
+    }
+    const last = rects[rects.length - 1];
+    expect(last.x + last.width).toBeLessThanOrEqual(LETTER[2]);
   });
 });
 

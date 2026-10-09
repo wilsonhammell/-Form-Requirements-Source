@@ -139,8 +139,11 @@ with.
 
 ## Submission buttons
 
-The signing channels a form offers: Phone Auth, In-Branch eSign, Remote eSign
-and Print Form.
+The signing channels a form offers: Phone Auth, In-Branch eSign, Remote eSign,
+Print Form and Submit for Processing.
+
+Submit for Processing is for a form nobody signs (K_DCR). It goes to the FO
+flow, `FO` or `TFO` like Phone Auth, and is 112 points wide to fit its caption.
 
 Defined in [`src/core/signingButtons.js`](src/core/signingButtons.js), in source
 rather than in a data file. `dbFields.json` and `systemFields.json` are swapped
@@ -164,7 +167,7 @@ separate flag to fall out of step with the buttons themselves. They are turned
 on and off from the Config tab, and the rule is the mirror of a system field's:
 **at most one** placement of each name, where a system name needs at least one.
 
-A form can offer none of them or all four. They start hidden, shown by the
+A form can offer none of them or all five. They start hidden, shown by the
 starter code at run time, and their size is fixed by the list, so they move but
 do not resize. Each keeps its own slot, so adding a third does not shuffle the
 two already placed. Turning one on switches the field scope to Submission, since
@@ -567,7 +570,7 @@ any number of times leaves exactly two entries, which a test pins.
 
 Each button carries its entry point on `/A`, the mouse-up action:
 `submitPhoneAuth();`, `submitDigitalSignature();`, `submitRemoteESign();`,
-`submitPrintOnly();`. Written on every export, so a change here reaches every
+`submitPrintOnly();`, `submitForProcessing();`. Written on every export, so a change here reaches every
 form exported afterwards.
 
 It is Acrobat's JavaScript, ES3 era, so no `let`, `const` or arrow functions. A
@@ -621,8 +624,8 @@ walk `this.numFields`, `runBaseSaveValidationOnly` walks `SAVE_VALIDATION_FIELDS
 by name, and `LoadValidation` walks name and label pairs. Mixed row shapes cost
 them nothing.
 
-**Phone Auth is the only path that wants a hand signature**, and it is the only
-one where nobody signs electronically. The others go the other way:
+**Phone Auth is the path that wants a hand signature**, and it is the only
+one where a member signs and nobody signs electronically. The others go the other way:
 
 | path | manual signature |
 | --- | --- |
@@ -630,6 +633,7 @@ one where nobody signs electronically. The others go the other way:
 | Remote eSign | `wipeManualSignatures()`, cleared |
 | Digital Signature | `wipeManualSignatures()`, cleared |
 | Print | `SaveValidation()` only, not checked |
+| Submit for Processing | checked on any placed row, as Phone Auth; none on K_DCR |
 
 So the member signs by hand and staff authorises the identity by phone, and the
 electronic paths clear the signature because the e-signature replaces it.

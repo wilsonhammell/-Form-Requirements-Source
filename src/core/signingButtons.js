@@ -56,6 +56,15 @@ export const SIGNING_BUTTONS = [
     script: 'submitRemoteESign();',
   },
   { identifier: 'PrintButton', caption: 'Print Form', fileOptics: false, script: 'submitPrintOnly();' },
+  // The channel for a form nobody signs, K_DCR's. Wider than the rest, as
+  // K_DCR's was, so the caption fits at size 10.
+  {
+    identifier: 'SubmitForProcessingButton',
+    caption: 'Submit for Processing',
+    width: 112,
+    fileOptics: true,
+    script: 'submitForProcessing();',
+  },
 ];
 
 const SLOT = { gap: 8, margin: 6, top: 50 };
@@ -101,9 +110,14 @@ export function hasButton(fields, identifier) {
 export function buttonSlotRect(entry, buttons, cropBox) {
   const [x0, y0, x1, y1] = cropBox;
   const slot = Math.max(0, buttons.findIndex((b) => b.identifier === entry.identifier));
-  const width = Math.min(entry.width, x1 - x0 - SLOT.margin * 2);
+  const usable = x1 - x0 - SLOT.margin * 2;
+  const width = Math.min(entry.width, usable);
+  // Summed rather than slot times width, since the buttons are not all one width.
+  const offset = buttons
+    .slice(0, slot)
+    .reduce((sum, b) => sum + Math.min(b.width, usable) + SLOT.gap, 0);
   return {
-    x: x0 + SLOT.margin + slot * (width + SLOT.gap),
+    x: x0 + SLOT.margin + offset,
     // Clamped, so a page shorter than the inset still holds the button.
     y: Math.max(y0, y1 - SLOT.top - entry.height),
     width,

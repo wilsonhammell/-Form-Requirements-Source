@@ -17,7 +17,6 @@ import {
   METADATA_ROWS,
   CHANNEL_STEPS,
   CHANNEL_ORDER,
-  SUBMIT_FOR_PROCESSING,
   STANDARD_REQUIREMENTS,
   SIGNING_ROLES,
   POST_PRODUCTION,
@@ -322,8 +321,6 @@ export function buildRequirementsWorkbook({
     // considered rather than missed. The trust form does this.
     if (offered.has(identifier)) writeSteps(channel.steps);
   }
-  subHeading(write(SUBMIT_FOR_PROCESSING.title));
-  writeSteps(SUBMIT_FOR_PROCESSING.steps);
 
   blank();
   heading('Standard Requirements');

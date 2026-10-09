@@ -160,17 +160,18 @@ describe('flow ids', () => {
       '__environment',
       `${helperScript()}
        getSafeValue = function (n) { return n === "ENVIRONMENT" ? __environment : ""; };
-       return [getFlowId("PHONE"), getFlowId("ESIGN"), getFlowId("DIGITAL")];`
+       return [getFlowId("PHONE"), getFlowId("ESIGN"), getFlowId("DIGITAL"), getFlowId("SUBMIT")];`
     )(environment);
 
   it('switch on the environment the filler wrote', () => {
-    expect(flowsFor('PROD')).toEqual(['FO', 'ES', 'DS']);
-    expect(flowsFor('TEST')).toEqual(['TFO', 'TES', 'TDS']);
+    // Submit for Processing goes to the Phone Auth flow, as K_DCR does.
+    expect(flowsFor('PROD')).toEqual(['FO', 'ES', 'DS', 'FO']);
+    expect(flowsFor('TEST')).toEqual(['TFO', 'TES', 'TDS', 'TFO']);
   });
 
   it('treat anything but PROD as test, so an unfilled form stays off the live flows', () => {
     for (const value of ['', 'STAGING']) {
-      expect(flowsFor(value)).toEqual(['TFO', 'TES', 'TDS']);
+      expect(flowsFor(value)).toEqual(['TFO', 'TES', 'TDS', 'TFO']);
     }
   });
 });

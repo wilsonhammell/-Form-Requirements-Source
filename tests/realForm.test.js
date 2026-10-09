@@ -17,6 +17,8 @@ import { PDFDocument, PDFName, PDFDict, PDFArray } from 'pdf-lib';
 import { exportPdf } from '../src/core/pdfExport.js';
 import { importPdf, inherited } from '../src/core/pdfImport.js';
 import { buildDbIndex, normalizeDbFields } from '../src/core/dbFields.js';
+import { readDocumentScripts } from '../src/core/pdfScripts.js';
+import { OWNED_SCRIPTS } from '../src/starter/buildScripts.js';
 
 // The forms are real production documents and are kept out of the repository,
 // so a fresh clone has none. Overridable so the empty case can be exercised.
@@ -117,11 +119,14 @@ describeForm('%s', (file) => {
   let before;
   let after;
   let imported;
+  let hasOwnedScripts;
 
   beforeAll(async () => {
     const originalBytes = fs.readFileSync(path.join(DIR, file));
     const source = await PDFDocument.load(originalBytes, { ignoreEncryption: true });
     before = snapshot(source);
+    const scripts = readDocumentScripts(source);
+    hasOwnedScripts = OWNED_SCRIPTS.some((name) => scripts.has(name));
 
     const dbIndex = buildDbIndex(
       normalizeDbFields(
@@ -173,6 +178,12 @@ describeForm('%s', (file) => {
     // version of the same flow needs guesswork, and a detector that guesses
     // wrong is worse than one that states the plain fact.
     const note = (imported.notes ?? []).find((n) => n.includes('replaced on export'));
+    // K_DCR predates Helper_Functions and Main, so there is nothing of its own
+    // for export to replace.
+    if (!hasOwnedScripts) {
+      expect(note).toBeUndefined();
+      return;
+    }
     expect(note).toBeDefined();
     expect(note).toContain('CustomSaveValidation');
 

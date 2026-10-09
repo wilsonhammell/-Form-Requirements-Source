@@ -257,8 +257,8 @@ describe('the generated text', () => {
     }
   });
 
-  it('calls beforeSubmit on all four channels', () => {
-    expect(helpers.split('CustomBeforeSubmit();').length - 1).toBe(4);
+  it('calls beforeSubmit on all five channels', () => {
+    expect(helpers.split('CustomBeforeSubmit();').length - 1).toBe(5);
   });
 
 });

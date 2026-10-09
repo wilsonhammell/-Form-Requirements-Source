@@ -105,6 +105,27 @@ export const CHANNEL_STEPS = {
       ['Button functions to Print the form'],
     ],
   },
+  // From the Internal Transfer Authorization sheet, the one example that
+  // filled this section in.
+  SubmitForProcessingButton: {
+    title: 'Submit for Processing',
+    steps: [
+      ['Submit for Processing Button on Form'],
+      ['__Save Validations', 'Validated all Save Validations'],
+      ['Signature Save Validation'],
+      ['__Fileoptics'],
+      ['Form landed in Post Processing if applicable'],
+      ['Form landed in Admin Q if applicable'],
+      ['Form landed in Support Services Q if applicable'],
+      ['Form Processed Successfully', 'landed in submitted to FO Q'],
+      ['Signing Authorization Buttons Hidden'],
+      ['All form fields complete', 'no details were lost or dropped'],
+      ['Red required items disappear'],
+      ['Unused signing dates removed'],
+      ['View FO completed form under member browse'],
+      ['Form saved to TRO'],
+    ],
+  },
 };
 
 // Every channel heading appears, in this order, expanded or not. A form that
@@ -115,12 +136,8 @@ export const CHANNEL_ORDER = [
   'DigitalSignatureButton',
   'RemoteESignButton',
   'PrintButton',
+  'SubmitForProcessingButton',
 ];
-
-// No form has a Submit for Processing button, so there is nothing to check and
-// nothing to expand. The heading is kept because every one of the example
-// documents carries it, and two of the three leave it exactly like this.
-export const SUBMIT_FOR_PROCESSING = { title: 'Submit for Processing', steps: [] };
 
 // [label, value, note]. Two of these this tool does know, the font and the date
 // format, and both are stated rather than left blank because they are properties
