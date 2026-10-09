@@ -854,6 +854,10 @@ visibility, border and background). Others live on the field and are shared
 any read-only placement makes the whole field read-only, and the first
 placement wins on font.
 
+Type cannot disagree. A name already held by another type is refused when the
+name box settles, the same as Acrobat, and a file that arrives that way is an
+issue. Export keeps the first type and skips the rest.
+
 Reopening a form keeps every placement, and placements are moved rather than
 rebuilt where possible, so per-placement settings this build does not model
 survive a round trip.

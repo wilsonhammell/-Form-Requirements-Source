@@ -80,6 +80,7 @@ export default function PropertyPanel({
   buttonIndex,
   specialNames = [],
   locked,
+  nameTakenBy,
   pageCount,
   onChange,
   onNameSettled,
@@ -163,6 +164,8 @@ export default function PropertyPanel({
           dbIndex={dbIndex}
           caseIndex={caseIndex}
           specialNames={specialNames}
+          takenBy={nameTakenBy}
+          type={field.type}
           onChange={(name) => onChange({ name })}
           onSettle={onNameSettled}
         />

@@ -53,6 +53,7 @@ import {
   reconcileField,
   reconcileFields,
   adoptNameValues,
+  nameTakenByType,
   namePatch,
   NAME_SHARED_KEYS,
   parseDocument,
@@ -484,8 +485,19 @@ export default function App() {
     [markers, setMarkers, selectMarker]
   );
 
+  // The field as it stood before its name was first typed over, so a name the
+  // settle refuses can be put back along with the type it carried. Taken here
+  // rather than in the updater, which may not have run by the time it settles.
+  const beforeRename = useRef(new Map());
+  // A refusal is decided in the updater, so the notice waits for the render.
+  const refusedName = useRef(null);
+
   const patchField = useCallback(
     (id, patch) => {
+      if (patch.name !== undefined && !beforeRename.current.has(id)) {
+        const original = fields.find((f) => f.id === id);
+        if (original) beforeRename.current.set(id, original);
+      }
       setFields(
         (current) => {
           const patched = current.map((f) => {
@@ -523,13 +535,37 @@ export default function App() {
         { merge: typingRun(`field:${id}`, patch) }
       );
     },
-    [dbIndex, systemIndex, setFields]
+    [fields, dbIndex, systemIndex, setFields]
   );
 
   // A box joins the field it is named after once the name is settled, not as it
   // is typed, or every name passed through on the way would hand it its values.
   const settleName = useCallback(
     (id) => {
+      const before = beforeRename.current.get(id);
+      beforeRename.current.delete(id);
+      // Same as Acrobat, a name held by another type is refused. Only a rename
+      // made here is put back, so a file that arrived this way is never emptied
+      // by clicking into its name box. Written over the typed name rather than
+      // stacked on it, so undo cannot bring the refused name back.
+      setFields(
+        (current) => {
+          const field = current.find((f) => f.id === id);
+          const taken = field && before ? nameTakenByType(field, current) : null;
+          if (!taken) return current;
+          refusedName.current = `"${field.name.trim()}" is already a ${taken} field, one name cannot be both ${taken} and ${field.type}.`;
+          const restored = {
+            ...field,
+            name: before.name,
+            type: before.type,
+            exportValue: before.exportValue,
+            options: before.options,
+            imported: before.imported,
+          };
+          return current.map((f) => (f.id === id ? reconcileField(restored, dbIndex) : f));
+        },
+        { silent: true }
+      );
       setFields((current) => {
         const field = current.find((f) => f.id === id);
         if (!field) return current;
@@ -540,6 +576,12 @@ export default function App() {
     },
     [dbIndex, setFields]
   );
+
+  useEffect(() => {
+    if (!refusedName.current) return;
+    say(refusedName.current);
+    refusedName.current = null;
+  }, [fields, say]);
 
   // Clicking another box can take the panel away before the name box blurs.
   const lastSelected = useRef(null);
@@ -1096,6 +1138,7 @@ export default function App() {
               buttonIndex={buttonIndex}
               specialNames={specialNames}
               locked={selected ? isFixedSystemPlacement(selected, fields, systemIndex) : false}
+              nameTakenBy={selected ? nameTakenByType(selected, fields) : null}
               pageCount={pageCount}
               onChange={(patch) => patchField(selectedId, patch)}
               onNameSettled={() => settleName(selectedId)}

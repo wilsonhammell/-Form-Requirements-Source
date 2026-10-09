@@ -326,6 +326,18 @@ export function adoptNameValues(field, fields) {
   return sibling ? { ...field, ...namePatch(sibling) } : field;
 }
 
+// A name is one PDF field and a PDF field has one type, so a name already held
+// by another type is not free. Returns that type, or null. Exact match, the same
+// as the PDF, so Other and other are two fields.
+export function nameTakenByType(field, fields) {
+  const name = field.name.trim();
+  if (!name) return null;
+  const other = fields.find(
+    (f) => f.id !== field.id && f.name.trim() === name && f.type !== field.type
+  );
+  return other ? other.type : null;
+}
+
 // For documents written before these were shared. A flag on any placement
 // counts, as it always has on export, and the first note and Error Message
 // Field Name that say anything stand for the field.
@@ -480,6 +492,24 @@ export function fieldIssues(
         ids: [f.id],
       });
     }
+  }
+
+  // The editor refuses this, so it only arrives in a file. Export keeps the
+  // first type and skips the rest.
+  const typesByName = new Map();
+  for (const f of fields) {
+    const name = f.name.trim();
+    if (!name) continue;
+    if (!typesByName.has(name)) typesByName.set(name, new Set());
+    typesByName.get(name).add(f.type);
+  }
+  for (const [name, types] of typesByName) {
+    if (types.size < 2) continue;
+    issues.push({
+      level: 'error',
+      text: `"${name}" is used by more than one type (${[...types].join(', ')}), one name cannot be both.`,
+      ids: fields.filter((f) => f.name.trim() === name).map((f) => f.id),
+    });
   }
 
   count(

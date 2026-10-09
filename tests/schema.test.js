@@ -8,6 +8,7 @@ import {
   reconcileFields,
   unifyNameValues,
   adoptNameValues,
+  nameTakenByType,
   serializeDocument,
   parseDocument,
   isLoadAttempted,
@@ -275,6 +276,35 @@ describe('values shared by name', () => {
     expect(adopted.saveValidated).toBe(true);
     expect(adopted.note).toBe('Required.');
     expect(adoptNameValues(createField({ name: 'New' }), [existing]).saveValidated).toBe(false);
+  });
+});
+
+describe('one type per name', () => {
+  const radio = createField({ name: 'Other', type: 'radio', exportValue: 'Other' });
+
+  it('says which type already holds the name', () => {
+    const text = createField({ name: 'Other', type: 'text' });
+    expect(nameTakenByType(text, [radio, text])).toBe('radio');
+  });
+
+  it('leaves another placement of the same type free to join', () => {
+    const option = createField({ name: 'Other', type: 'radio', exportValue: 'Yes' });
+    expect(nameTakenByType(option, [radio, option])).toBeNull();
+  });
+
+  it('matches exactly, the way the PDF does', () => {
+    const text = createField({ name: 'other', type: 'text' });
+    expect(nameTakenByType(text, [radio, text])).toBeNull();
+  });
+
+  it('is an error naming every placement of a name that arrived with two types', () => {
+    const text = createField({ name: 'Other', type: 'text' });
+    const unrelated = createField({ name: 'CUSTNAME', type: 'text' });
+    const issue = fieldIssues([radio, text, unrelated], dbIndex).find((i) =>
+      i.text.includes('more than one type')
+    );
+    expect(issue.level).toBe('error');
+    expect(issue.ids.sort()).toEqual([radio.id, text.id].sort());
   });
 });
 

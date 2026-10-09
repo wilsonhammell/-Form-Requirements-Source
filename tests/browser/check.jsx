@@ -815,6 +815,48 @@ async function run() {
     !listText.includes('COVERAGE#0')
   );
 
+  // One name is one PDF field with one type, so a text box cannot take the
+  // group's name. Settling it by selecting something else puts the name back.
+  clickButton('Text', header);
+  const onCanvasCount = () => document.querySelectorAll('#root [data-field-id]').length;
+  const beforeClash = onCanvasCount();
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await drag([620, 400], [700, 416]);
+  await sleep(120);
+  setInputValue(document.querySelector('#root aside input[type=text]'), 'COVERAGE');
+  await sleep(120);
+  check(
+    'the name box says when another type already holds the name',
+    document.querySelector('#root aside').textContent.includes('Already a radio field'),
+    ''
+  );
+  const optionRow = [...document.querySelectorAll('#root aside button')].find((b) =>
+    b.textContent.startsWith('Choice3')
+  );
+  optionRow?.click();
+  await sleep(200);
+  const afterClash = document.querySelector('#root aside').textContent;
+  check(
+    'a name another type holds is refused on settle',
+    !afterClash.includes('COVERAGEtext') && afterClash.includes('radio group, 3 options'),
+    ''
+  );
+  check(
+    'the refusal is reported',
+    notices().includes('"COVERAGE" is already a radio field'),
+    notices()
+  );
+  undoKey();
+  await sleep(200);
+  check(
+    'undo does not bring the refused name back',
+    !document.querySelector('#root aside').textContent.includes('COVERAGEtext'),
+    ''
+  );
+  undoKey();
+  await sleep(200);
+  check('the clash box undoes away', onCanvasCount() === beforeClash, `${beforeClash} -> ${onCanvasCount()}`);
+
   clickButton('Text', header);
 
   // Keyboard delete on the selection.

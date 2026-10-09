@@ -60,15 +60,15 @@ export default function FieldList({
   // placements can sit on different pages.
   const placement = useMemo(() => {
     const indexById = new Map();
-    const countByName = new Map();
+    const countByKey = new Map();
     for (const field of fields) {
-      const name = field.name.trim();
-      if (!name) continue;
-      const n = countByName.get(name) ?? 0;
+      const key = groupKey(field);
+      if (!key) continue;
+      const n = countByKey.get(key) ?? 0;
       indexById.set(field.id, n);
-      countByName.set(name, n + 1);
+      countByKey.set(key, n + 1);
     }
-    return { indexById, countByName };
+    return { indexById, countByKey };
   }, [fields]);
 
   if (fields.length === 0 && markers.length === 0) {
@@ -109,7 +109,7 @@ export default function FieldList({
             {groupByName(pageFields).map((group) => {
               const isRadioGroup = group.name && group.fields[0].type === 'radio';
               if (!isRadioGroup) {
-                const repeated = group.name && placement.countByName.get(group.name) > 1;
+                const repeated = group.name && placement.countByKey.get(group.key) > 1;
                 return group.fields.map((field) => (
                   <li key={field.id} ref={field.id === selectedId ? selectedRef : null}>
                     <FieldRow
@@ -121,14 +121,14 @@ export default function FieldList({
               }
 
               return (
-                <li key={group.name}>
+                <li key={group.key}>
                   <div className="flex items-baseline gap-2 px-3 pb-0.5 pt-1.5">
                     <span className="truncate font-mono text-xs font-semibold text-slate-700">
                       {group.name}
                     </span>
                     <span className="text-[10px] text-slate-400">
-                      radio group, {placement.countByName.get(group.name)} option
-                      {placement.countByName.get(group.name) === 1 ? '' : 's'}
+                      radio group, {placement.countByKey.get(group.key)} option
+                      {placement.countByKey.get(group.key) === 1 ? '' : 's'}
                     </span>
                   </div>
                   <ul className="ml-3 border-l border-slate-200">
@@ -197,19 +197,27 @@ function MarkerRow({ marker, selected, onSelect, onGoToPage }) {
   );
 }
 
+// Name and type together, so a text box sharing a radio group's name never
+// lists as one of its options. Fields of one name and two types are an issue
+// of their own.
+function groupKey(field) {
+  const name = field.name.trim();
+  return name ? `${field.type}:${name}` : '';
+}
+
 // Placements of one name show together even when something else was drawn
 // between them.
 function groupByName(pageFields) {
   const groups = new Map();
   const loose = [];
   for (const field of pageFields) {
-    const name = field.name.trim();
-    if (!name) {
-      loose.push({ name: '', fields: [field] });
+    const key = groupKey(field);
+    if (!key) {
+      loose.push({ key: '', name: '', fields: [field] });
       continue;
     }
-    if (!groups.has(name)) groups.set(name, { name, fields: [] });
-    groups.get(name).fields.push(field);
+    if (!groups.has(key)) groups.set(key, { key, name: field.name.trim(), fields: [] });
+    groups.get(key).fields.push(field);
   }
   return [...groups.values(), ...loose];
 }

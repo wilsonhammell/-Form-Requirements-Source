@@ -10,6 +10,8 @@ export default function NameCombobox({
   dbIndex,
   caseIndex,
   specialNames = [],
+  takenBy,
+  type,
   onChange,
   onSettle,
 }) {
@@ -162,6 +164,12 @@ export default function NameCombobox({
         >
           Case differs from {nearMiss.identifier}, matching is exact. Use it?
         </button>
+      )}
+
+      {takenBy && (
+        <p className="mt-1 text-xs text-red-700">
+          Already a {takenBy} field, one name cannot be both {takenBy} and {type}.
+        </p>
       )}
 
       {open && options.length > 0 && (
