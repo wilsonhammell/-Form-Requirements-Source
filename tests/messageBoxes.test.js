@@ -177,10 +177,11 @@ describe('how the message boxes stack', () => {
 describe('where a message box goes', () => {
   const rects = layoutSystemFields(LIST, LETTER);
 
-  it('puts the strip on the centre line, at the width the forms use', () => {
+  it('sits the strip on top of DNA_REQ, at the width the forms use', () => {
     const box = rects.get('FORM_MESSAGE');
+    const page = rects.get('DNA_REQ');
     expect(box.width).toBeCloseTo(586, 0);
-    expect(box.y + box.height / 2).toBeCloseTo(396, 5);
+    expect(box.y).toBeCloseTo(page.y + page.height, 5);
     expect(box.x).toBeCloseTo((612 - box.width) / 2, 5);
   });
 

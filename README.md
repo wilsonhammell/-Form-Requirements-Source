@@ -104,7 +104,7 @@ laid out against the real page rather than at stored coordinates:
   because those are shown to a person and `DNA_REQ` often gets stretched further
   still.
 
-The **All / Standard / System / Signers / Submission** filter above the field list applies to the page
+The **All / Standard / Signers / Submission / System** filter above the field list applies to the page
 as well, and **starts on Standard**, so a form opens showing what it is actually
 about rather than 35 pieces of infrastructure.
 
@@ -1254,7 +1254,7 @@ instead, and falls back to order for a placement the designer has since moved.
 
 ### Choosing what is on screen
 
-The four groups, Standard, System, Signers and Submission, are **independent
+The four groups, Standard, Signers, Submission and System, are **independent
 toggles rather than tabs**. Every field is in exactly one, so any subset is a
 legible view and All is simply all four on. That is what makes "the fields this
 form is about, with the signer rows, without the system plumbing" reachable,

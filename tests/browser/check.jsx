@@ -211,7 +211,7 @@ function clickButton(text, scope = document) {
 // The groups are independent toggles, so "show exactly these" means turning
 // everything on and the rest back off. Clicking one name alone would only flip
 // it, which is what the old exclusive tabs did.
-const ALL_SCOPES = ['Standard', 'System', 'Signers', 'Submission'];
+const ALL_SCOPES = ['Standard', 'Signers', 'Submission', 'System'];
 async function onlyScopes(...wanted) {
   const pane = document.querySelector('#root aside');
   clickButton('All', pane);

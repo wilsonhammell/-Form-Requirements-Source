@@ -22,7 +22,7 @@ export function fieldTone(field, { system = false, attempted = false } = {}) {
 //
 // Order matters. The eSign label and code box are special fields but belong to
 // the Remote eSign button, so submission claims them first.
-export const FIELD_SCOPES = ['standard', 'system', 'signers', 'submission'];
+export const FIELD_SCOPES = ['standard', 'signers', 'submission', 'system'];
 
 // Markers have no fieldScope, not being fields, but they answer the question the
 // Signers scope answers, who marks this form and where, so they show with it

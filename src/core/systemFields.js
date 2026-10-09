@@ -58,8 +58,8 @@ function messageBoxRect(box, [x0, y0, x1, y1]) {
     const height = Math.max(0, y1 - y0 - MESSAGE_MARGIN.top - MESSAGE_MARGIN.bottom);
     return { x, y: y0 + MESSAGE_MARGIN.bottom, width, height };
   }
-  const centre = y0 + (y1 - y0) / 2;
-  return { x, y: centre - box.height / 2, width, height: box.height };
+  // Sits on top of DNA_REQ, its bottom edge on that box's top edge.
+  return { x, y: y1 - MESSAGE_MARGIN.top, width, height: box.height };
 }
 
 // The system fields whose value comes from Config rather than the filler, and
