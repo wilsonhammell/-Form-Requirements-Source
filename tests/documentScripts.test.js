@@ -606,27 +606,36 @@ describe('per field scripts', () => {
     }
   });
 
-  it('leaves Format and Keystroke alone, they are not ours', async () => {
+  it('leaves a Custom format alone and clears one the model says is None', async () => {
     const base = await PDFDocument.load(await blankPdf());
     const form = base.getForm();
     const text = form.createTextField('Date1');
     text.addToPage(base.getPage(0), { x: 10, y: 10, width: 100, height: 20 });
     const aa = base.context.obj({});
-    aa.set(PDFName.of('F'), base.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText('AFDate_FormatEx("dd-mmm-yyyy");') }));
+    aa.set(PDFName.of('F'), base.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText('event.value = event.value.toUpperCase();') }));
     text.acroField.getWidgets()[0].dict.set(PDFName.of('AA'), aa);
+    const originalBytes = await base.save();
 
-    const { pdfBytes } = await exportPdf({
-      originalBytes: await base.save(),
-      fields: [createField({ name: 'Date1', rect: { x: 10, y: 10, width: 100, height: 20 } })],
-      buttons: BUTTONS,
-    });
-    const out = await PDFDocument.load(pdfBytes);
-    const dict = out.getForm().getField('Date1').acroField.dict;
-    const after = out.context.lookupMaybe(dict.get(PDFName.of('AA')), PDFDict);
-    const format = out.context.lookupMaybe(after.get(PDFName.of('F')), PDFDict);
-    expect(out.context.lookup(format.get(PDFName.of('JS'))).decodeText()).toContain('AFDate_FormatEx');
+    const exported = async (format) => {
+      const { pdfBytes } = await exportPdf({
+        originalBytes,
+        fields: [createField({ name: 'Date1', rect: { x: 10, y: 10, width: 100, height: 20 }, format })],
+        buttons: BUTTONS,
+      });
+      const out = await PDFDocument.load(pdfBytes);
+      const dict = out.getForm().getField('Date1').acroField.dict;
+      return { out, after: out.context.lookupMaybe(dict.get(PDFName.of('AA')), PDFDict) };
+    };
+
+    const custom = await exported({ category: 'custom' });
+    const script = custom.out.context.lookupMaybe(custom.after.get(PDFName.of('F')), PDFDict);
+    expect(custom.out.context.lookup(script.get(PDFName.of('JS'))).decodeText()).toContain('toUpperCase');
     // And ours went in beside it.
-    expect(after.get(PDFName.of('Bl'))).toBeDefined();
+    expect(custom.after.get(PDFName.of('Bl'))).toBeDefined();
+
+    const none = await exported({ category: 'none' });
+    expect(none.after.get(PDFName.of('F'))).toBeUndefined();
+    expect(none.after.get(PDFName.of('Bl'))).toBeDefined();
   });
 });
 

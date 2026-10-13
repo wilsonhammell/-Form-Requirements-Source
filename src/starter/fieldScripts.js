@@ -6,8 +6,8 @@
 //
 // Output is Acrobat's JavaScript, ES3 era. Nothing here is executed.
 //
-// Formatting stops here. Fields drawn in Acrobat are formatted in Acrobat, so
-// the only Keystroke written is on a field Acrobat never saw.
+// Formats are not written here, see core/fieldFormat.js. The one Keystroke here
+// is eSign_Code's, which filters what is typed rather than formatting it.
 
 import { SIGNER_PARTS, SIGNER_PREFIX, ESIGN_PARTS } from '../core/specialFields.js';
 
@@ -57,9 +57,9 @@ export function signerNameOnBlur(index, row) {
   return hidden.length === 0 ? head : `${head} else {${hidden.join('')}\n}`;
 }
 
-// The only formatting script the tool writes, since eSign_Code is placed here
-// rather than drawn in Acrobat, so there was no earlier step where a person
-// could have set it.
+// eSign_Code is placed here rather than drawn in Acrobat, so there was no
+// earlier step where a person could have set this. It outranks a format, and
+// the panel offers none on this field.
 //
 // The star matters. On a backspace, and on the final firing where willCommit is
 // true, event.change is empty, and an empty string has to pass or a character

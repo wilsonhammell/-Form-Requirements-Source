@@ -19,6 +19,7 @@ import { importPdf, inherited } from '../src/core/pdfImport.js';
 import { buildDbIndex, normalizeDbFields } from '../src/core/dbFields.js';
 import { readDocumentScripts } from '../src/core/pdfScripts.js';
 import { OWNED_SCRIPTS } from '../src/starter/buildScripts.js';
+import { DATE_PATTERN, isPlainText } from '../src/core/fieldFormat.js';
 
 // The forms are real production documents and are kept out of the repository,
 // so a fresh clone has none. Overridable so the empty case can be exercised.
@@ -35,24 +36,31 @@ const describeForm = files.length > 0 ? describe.each(files) : describe.skip.eac
 
 const decode = (obj) => (obj && obj.decodeText ? obj.decodeText() : null);
 
+function actionsOf(ctx, dict) {
+  const aa = ctx.lookupMaybe(dict.get(PDFName.of('AA')), PDFDict);
+  const actions = {};
+  if (aa) {
+    for (const key of aa.keys()) {
+      const action = ctx.lookupMaybe(aa.get(key), PDFDict);
+      const js = action && ctx.lookup(action.get(PDFName.of('JS')));
+      actions[key.toString()] = js ? decode(js) : '(non-js)';
+    }
+  }
+  return actions;
+}
+
 // One row per widget, keyed by field name. Sorted, so the comparison is by set.
 function snapshot(doc) {
   const ctx = doc.context;
   const out = new Map();
 
   for (const field of doc.getForm().getFields()) {
+    // Format and Keystroke are field triggers, and Acrobat keeps them on the
+    // field. Reading only the widget missed the ones export used to drop.
+    const fieldActions = actionsOf(ctx, field.acroField.dict);
     const rows = field.acroField.getWidgets().map((widget) => {
       const dict = widget.dict;
-
-      const aa = ctx.lookupMaybe(dict.get(PDFName.of('AA')), PDFDict);
-      const actions = {};
-      if (aa) {
-        for (const key of aa.keys()) {
-          const action = ctx.lookupMaybe(aa.get(key), PDFDict);
-          const js = action && ctx.lookup(action.get(PDFName.of('JS')));
-          actions[key.toString()] = js ? decode(js) : '(non-js)';
-        }
-      }
+      const actions = { ...actionsOf(ctx, dict), ...fieldActions };
 
       const ap = ctx.lookupMaybe(dict.get(PDFName.of('AP')), PDFDict);
       // /N holds the on-states for a checkbox or radio, a stream otherwise.
@@ -69,8 +77,10 @@ function snapshot(doc) {
         defaultAppearance: decode(inherited(ctx, dict, 'DA')),
         maxLen: String(inherited(ctx, dict, 'MaxLen') ?? ''),
         value: decode(inherited(ctx, dict, 'V')),
-        format: actions['/F'] ?? null,
-        keystroke: actions['/K'] ?? null,
+        // A blank one, left behind when a script is cleared in Acrobat, reads
+        // as None and export drops it, which changes nothing.
+        format: actions['/F']?.trim() ? actions['/F'] : null,
+        keystroke: actions['/K']?.trim() ? actions['/K'] : null,
         onStates:
           normal instanceof PDFDict
             ? normal.keys().map((k) => k.toString()).sort().join(',')
@@ -227,12 +237,32 @@ describeForm('%s', (file) => {
     for (const name of wanted) expect(note).toContain(name);
   });
 
-  it('keeps Format and Keystroke as Acrobat wrote them', () => {
-    // Formatting is set in Acrobat by whoever draws the field. The one exception
-    // is eSign_Code, which this tool places and so also formats.
+  it('keeps Format and Keystroke as Acrobat wrote them, apart from a date in another pattern', () => {
+    // Import reads each pair into the format and export writes it back, in
+    // Acrobat's own words, so a pair comes back exactly as it went in. A date
+    // is the exception, there being one pattern, and so is eSign_Code, which
+    // this tool places and so also scripts.
+    const datePattern = (rows) =>
+      rows.map((r) => /^AFDate_FormatEx\("([^"]*)"\)/.exec(r.format ?? '')?.[1]).find(Boolean);
     const changed = [];
+    const normalized = [];
+    const cleared = [];
     for (const [name, rows] of before) {
       const other = after.get(name) ?? [];
+      if (isPlainText(name)) {
+        if (rows.some((r) => r.format || r.keystroke)) cleared.push(name);
+        for (const r of other) expect([r.format, r.keystroke]).toEqual([null, null]);
+        continue;
+      }
+      const was = datePattern(rows);
+      if (was && was !== DATE_PATTERN) {
+        normalized.push(name);
+        for (const r of other) {
+          expect(r.format).toBe(`AFDate_FormatEx("${DATE_PATTERN}");`);
+          expect(r.keystroke).toBe(`AFDate_KeystrokeEx("${DATE_PATTERN}");`);
+        }
+        continue;
+      }
       for (const key of ['format', 'keystroke']) {
         const mine = rows.map((r) => r[key]).sort();
         const theirs = other.map((r) => r[key]).sort();
@@ -240,6 +270,15 @@ describeForm('%s', (file) => {
       }
     }
     expect([...new Set(changed)]).toEqual(before.has('eSign_Code') ? ['eSign_Code'] : []);
+    // And import said which ones it changed.
+    if (normalized.length > 0) {
+      const note = (imported.notes ?? []).find((n) => n.includes('date field'));
+      for (const name of normalized) expect(note).toContain(name);
+    }
+    if (cleared.length > 0) {
+      const note = (imported.notes ?? []).find((n) => n.includes('plain text'));
+      for (const name of cleared) expect(note).toContain(name);
+    }
   });
 
   it('exports after one field is renamed and another deleted', async () => {

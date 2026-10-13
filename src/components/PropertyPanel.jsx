@@ -1,8 +1,10 @@
 import NameCombobox from './NameCombobox.jsx';
 import OptionsEditor from './OptionsEditor.jsx';
+import FormatEditor from './FormatEditor.jsx';
 import { isSystemField } from '../core/systemFields.js';
 import { parseSpecialName } from '../core/specialFields.js';
 import { isSubmissionButton } from '../core/signingButtons.js';
+import { isPlainText } from '../core/fieldFormat.js';
 import {
   isLoadAttempted,
   FONT_FAMILIES,
@@ -339,6 +341,12 @@ export default function PropertyPanel({
             </div>
           )}
         </div>
+      )}
+
+      {/* eSign_Code carries a Keystroke of its own, which a format would
+          replace, and the codes are plain text. */}
+      {field.type === 'text' && specialPart?.family !== 'esign' && !isPlainText(field.name) && (
+        <FormatEditor format={field.format} onChange={(format) => onChange({ format })} />
       )}
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded bg-slate-50 p-2 text-xs">

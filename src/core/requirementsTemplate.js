@@ -8,6 +8,8 @@
 // A step is [label, note]. The label goes in the Form Field column and the note,
 // where there is one, in Logic, matching how the existing sheets read.
 
+import { DATE_PATTERN } from './fieldFormat.js';
+
 // Rows 2 to 11 of every sheet. Every one is filled from Config, named here by
 // the entry it reads, so nothing in this block is guessed. A filled in guess
 // would be taken for a checked fact.
@@ -153,7 +155,7 @@ export const STANDARD_REQUIREMENTS = [
   ['Update Data Line with Details', 'BAs', 'Confirm data Line Doc has updated Tag, Cabinet and Folder'],
   ['Document View', '', 'form loads at 100%'],
   ['Document Font', 'Arial Size 10'],
-  ['Date Format', 'dd-mmm-yyyy', '*All dates on forms should reflect this format'],
+  ['Date Format', DATE_PATTERN, '*All dates on forms should reflect this format'],
   ['Form Generation', '', 'Membership or Account Level'],
   ['Product Load Validations', 'Link to Product Listing'],
   ['Organization Not Applicable Message', '(applicable for Person only forms)'],

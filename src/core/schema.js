@@ -4,16 +4,18 @@
 // Load Attempted is derived, never stored. loadValidated clears itself as soon
 // as the name stops matching the DB list. saveValidated stands on any field.
 //
-// Depends only on markers.js, which depends on nothing, so nothing that depends
-// on this module can be reached from it.
+// Depends only on markers.js and fieldFormat.js, which depend on nothing, so
+// nothing that depends on this module can be reached from it.
 
 import { serializeMarkers, parseMarkers } from './markers.js';
+import { normalizeFormat, sameFormat, isPlainText } from './fieldFormat.js';
 
 // Markers were added without a bump. They are an optional array, so a document
 // written before them reads with none, and nothing about them reaches the PDF:
 // an older build dropping them exports the same form with a thinner
 // requirements sheet, where a bump would have rejected every file already
-// written.
+// written. The format came the same way, and a field written before it is read
+// off the PDF instead, see predatesFormat.
 export const SCHEMA_VERSION = 1;
 
 // A button carries no value, so it takes none of the machinery the other four
@@ -184,6 +186,9 @@ export function createField(partial = {}) {
     // Field level, like the font, so every placement of a name shares them.
     alignment: ALIGNMENT_QUADDING[partial.alignment] !== undefined ? partial.alignment : 'left',
     multiline: !!partial.multiline,
+    // Acrobat's Format tab, text only. Field level, and kept in step across
+    // placements, since a field has one Format and one Keystroke script.
+    format: type === 'text' ? normalizeFormat(partial.format) : normalizeFormat(null),
     exportValue:
       typeof partial.exportValue === 'string'
         ? partial.exportValue
@@ -297,6 +302,12 @@ export function reconcileField(field, dbIndex) {
     patch.customSaveValidated = false;
   }
 
+  // Naming a box can change its type, and only text is formatted. Codes are
+  // read as typed, so they are never formatted either.
+  if ((field.type !== 'text' || isPlainText(field.name)) && field.format?.category !== 'none') {
+    patch.format = normalizeFormat(null);
+  }
+
   return Object.keys(patch).length > 0 ? { ...field, ...patch } : field;
 }
 
@@ -309,7 +320,15 @@ export const NAME_SHARED_KEYS = [
   'customSaveValidated',
   'customerFacingName',
   'note',
+  'format',
 ];
+
+// The format is an object, so it compares by value.
+export function sameNameValues(a, b) {
+  return NAME_SHARED_KEYS.every((key) =>
+    key === 'format' ? sameFormat(a.format, b.format) : a[key] === b[key]
+  );
+}
 
 export function namePatch(patch) {
   const out = {};
@@ -358,13 +377,14 @@ export function unifyNameValues(fields) {
     v.customSaveValidated ||= f.customSaveValidated;
     if (!v.customerFacingName.trim()) v.customerFacingName = f.customerFacingName;
     if (!v.note.trim()) v.note = f.note;
+    if (v.format.category === 'none') v.format = f.format;
   }
 
   let changed = false;
   const next = fields.map((f) => {
     const group = groups.get(f.name.trim());
     if (!group || group.count < 2) return f;
-    if (NAME_SHARED_KEYS.every((key) => f[key] === group.values[key])) return f;
+    if (sameNameValues(f, group.values)) return f;
     changed = true;
     return { ...f, ...group.values };
   });
@@ -410,6 +430,7 @@ export function serializeDocument(fields, meta = {}) {
       hidden: !!f.hidden,
       alignment: f.alignment ?? 'left',
       multiline: !!f.multiline,
+      format: normalizeFormat(f.format),
       exportValue: f.exportValue ?? '',
       options: (f.options ?? []).map((o) => ({ value: o.value, label: o.label })),
       note: f.note ?? '',
@@ -455,6 +476,12 @@ export function parseDocument(raw, dbIndex) {
     config: createConfig(data.config),
     fields: reconcileFields(fields, dbIndex),
     markers: parseMarkers(data.markers),
+    // Written before the format was, so None here means unknown rather than
+    // none. Whoever has the PDF reads these off it, or export would strip every
+    // format the form carries.
+    predatesFormat: new Set(
+      fields.filter((f, i) => data.fields[i]?.format === undefined).map((f) => f.id)
+    ),
   };
 }
 

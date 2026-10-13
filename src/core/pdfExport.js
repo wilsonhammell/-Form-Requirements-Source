@@ -1,9 +1,9 @@
 // Writing the field model back out as a real AcroForm.
 //
-// The tool owns ten things on a field. Name, type, rect, page, read-only,
-// visibility, font, alignment, wrapping and the requirements JSON. Everything
-// else already in the PDF is left alone, so an imported form keeps its
-// appearance streams, tab order and anything this build does not model.
+// The tool owns eleven things on a field. Name, type, rect, page, read-only,
+// visibility, font, alignment, wrapping, format and the requirements JSON.
+// Everything else already in the PDF is left alone, so an imported form keeps
+// its appearance streams, tab order and anything this build does not model.
 //
 // Always starts from the original uploaded bytes, never from a document a
 // previous export mutated, so repeated exports cannot accumulate drift.
@@ -42,6 +42,7 @@ import { stripComments } from './pdfComments.js';
 import { installDocumentScripts, readDocumentScripts } from './pdfScripts.js';
 import { buildDocumentScripts, findCustomSaveValidation } from '../starter/buildScripts.js';
 import { fieldScripts } from '../starter/fieldScripts.js';
+import { formatScripts } from './fieldFormat.js';
 import { deriveSignerRows } from './specialFields.js';
 import { normalizeRotation } from './coords.js';
 
@@ -119,12 +120,13 @@ export async function exportPdf({
   // Per field scripts, written before the merge so a merged field keeps the
   // widget's own entry. Regenerated every export like everything else, so a
   // field that is no longer scripted loses the one it had.
-  applyFieldScripts(
-    form,
+  const scripts = buildFieldScripts(
     groups,
     new Set(systemFields.map((f) => String(f?.identifier ?? f).trim())),
     deriveSignerRows(fields)
   );
+  applyFormats(form, groups, scripts);
+  applyFieldScripts(form, groups, scripts);
 
   const doc = serializeDocument(fields, meta);
 
@@ -198,12 +200,14 @@ const SCRIPTABLE_TYPES = ['text', 'checkbox', 'dropdown'];
 //
 // This replaces the load time pass the old forms ran, which was only safe once
 // and flattened the dropdown scripts whenever it ran again.
-function applyFieldScripts(form, groups, systemNames, signerRows) {
+function buildFieldScripts(groups, systemNames, signerRows) {
   const scriptable = [...groups.entries()]
     .filter(([name, group]) => SCRIPTABLE_TYPES.includes(group.type) && !systemNames.has(name))
     .map(([name]) => name);
-  const scripts = fieldScripts({ fieldNames: scriptable, signerRows });
+  return fieldScripts({ fieldNames: scriptable, signerRows });
+}
 
+function applyFieldScripts(form, groups, scripts) {
   for (const field of form.getFields()) {
     const name = field.getName();
     if (!groups.has(name)) continue;
@@ -233,25 +237,48 @@ function fillConfigValues(form, groups, config, warnings) {
   }
 }
 
-const ACTION_KEYS = { OnBlur: 'Bl', Keystroke: 'K' };
-// The ones cleared when there is nothing to write. Keystroke is not one, since
-// eSign_Code is the only field this tool generates one for and a Keystroke on
-// any other was set in Acrobat by whoever drew it. Format is never touched at
-// all, for the same reason.
-const OWNED_ACTIONS = ['OnBlur'];
-
+// OnBlur is always ours, so nothing to write clears it. A Keystroke is written
+// here only for eSign_Code, and is otherwise the format's, see applyFormats.
 function setFieldActions(dict, scripts) {
+  writeActions(dict, {
+    Bl: scripts?.OnBlur ?? null,
+    ...(scripts?.Keystroke ? { K: scripts.Keystroke } : {}),
+  });
+}
+
+// Format and Keystroke belong to the field, the dictionary carrying /T, which
+// is where Acrobat keeps them. A widget's own copy is cleared so the two cannot
+// disagree.
+//
+// Custom is a pair this tool cannot describe and is left as it was. A field
+// whose Keystroke the tool generates keeps that one, and has no format.
+function applyFormats(form, groups, scripts) {
+  for (const field of form.getFields()) {
+    const name = field.getName();
+    const group = groups.get(name);
+    if (group?.type !== 'text' || scripts.get(name)?.Keystroke) continue;
+    const wanted = formatScripts(group.format);
+    if (wanted === undefined) continue;
+
+    const dict = field.acroField.dict;
+    for (const widget of field.acroField.getWidgets()) {
+      if (widget.dict !== dict) writeActions(widget.dict, { F: null, K: null });
+    }
+    writeActions(dict, { F: wanted?.Format ?? null, K: wanted?.Keystroke ?? null });
+  }
+}
+
+// Each entry is a script to write or null to remove. Every other entry in /AA
+// is left alone, and an /AA left empty goes.
+function writeActions(dict, entries) {
   const context = dict.context;
   let additional = dict.lookupMaybe(PDFName.of('AA'), PDFDict);
 
-  for (const [name, key] of Object.entries(ACTION_KEYS)) {
-    const source = scripts?.[name] ?? null;
-
+  for (const [key, source] of Object.entries(entries)) {
     if (!source) {
-      if (additional && OWNED_ACTIONS.includes(name)) additional.delete(PDFName.of(key));
+      additional?.delete(PDFName.of(key));
       continue;
     }
-
     if (!additional) {
       additional = context.obj({});
       dict.set(PDFName.of('AA'), additional);
@@ -294,6 +321,8 @@ function groupByName(fields, pageCount, buttonIndex, warnings) {
         script: buttonIndex.get(name)?.script ?? '',
         alignment: f.alignment,
         multiline: !!f.multiline,
+        // Kept in step across placements, so the first speaks for them all.
+        format: f.format,
         rects: [],
       };
       groups.set(name, group);
@@ -419,6 +448,10 @@ function mergeSingleWidgetFields(pdfDoc, managedNames) {
     for (const [key, value] of field.entries()) {
       const keyName = key.asString();
       if (keyName === '/Kids' || keyName === '/Parent') continue;
+      if (keyName === '/AA') {
+        mergeActions(context, widget, value);
+        continue;
+      }
       if (widget.get(key) !== undefined) continue;
       widget.set(key, value);
     }
@@ -428,6 +461,22 @@ function mergeSingleWidgetFields(pdfDoc, managedNames) {
     // needs repointing.
     fieldsArray.set(i, widgetRef);
     context.delete(fieldRef);
+  }
+}
+
+// Both carry an /AA. The field's holds Format and Keystroke and the widget's
+// holds OnBlur, so keeping only the widget's, as with any other key, dropped the
+// formatting of every single widget field Acrobat had stored split.
+function mergeActions(context, widget, fieldActions) {
+  const from = context.lookupMaybe(fieldActions, PDFDict);
+  const into = widget.lookupMaybe(PDFName.of('AA'), PDFDict);
+  if (!into) {
+    widget.set(PDFName.of('AA'), fieldActions);
+    return;
+  }
+  if (!from) return;
+  for (const [key, value] of from.entries()) {
+    if (into.get(key) === undefined) into.set(key, value);
   }
 }
 

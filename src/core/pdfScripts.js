@@ -21,7 +21,8 @@ const JAVASCRIPT = PDFName.of('JavaScript');
 const KIDS = PDFName.of('Kids');
 const LIMITS = PDFName.of('Limits');
 
-function decode(obj) {
+// Exported because a field's Format and Keystroke are stored the same way.
+export function decodeScript(obj) {
   if (obj instanceof PDFString || obj instanceof PDFHexString) return obj.decodeText();
   // Acrobat writes a long script as a compressed stream rather than a string,
   // which is how both example forms store theirs. Reading only strings would
@@ -54,7 +55,7 @@ function collect(context, node, out = []) {
   const names = context.lookupMaybe(node.get(NAMES), PDFArray);
   if (names) {
     for (let i = 0; i + 1 < names.size(); i += 2) {
-      out.push({ name: decode(context.lookup(names.get(i))), value: names.get(i + 1) });
+      out.push({ name: decodeScript(context.lookup(names.get(i))), value: names.get(i + 1) });
     }
   }
 
@@ -110,7 +111,7 @@ export function readDocumentScripts(pdfDoc) {
   const out = new Map();
   for (const { name, value } of collect(context, tree)) {
     const action = context.lookupMaybe(value, PDFDict);
-    out.set(name, action ? decode(context.lookup(action.get(PDFName.of('JS')))) : '');
+    out.set(name, action ? decodeScript(context.lookup(action.get(PDFName.of('JS')))) : '');
   }
   return out;
 }

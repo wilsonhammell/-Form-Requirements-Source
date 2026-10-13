@@ -701,9 +701,8 @@ Written to `/AA /Bl` on **every widget**, since OnBlur is an annotation entry, s
 a name placed twice carries it on both. That matches the existing forms, where
 one name shows up as `Annot1` and `Annot2`.
 
-Only the `Bl` entry is ours. `Format` and `Keystroke`, which this build does not
-write, are left exactly as they were, so the date formatting on an imported form
-survives.
+Only the `Bl` entry is written here. `Format` and `Keystroke` belong to the
+field's format, see [Format](#format).
 
 They are regenerated on every export like everything else, so a field that is no
 longer scripted **loses** the one it had. Checked against the real form: all 78
@@ -930,6 +929,7 @@ match what is on screen.
       "hidden": false,
       "alignment": "left",
       "multiline": false,
+      "format": { "category": "none" },
       "loadValidated": true,
       "saveValidated": false,
       "customSaveValidated": false
@@ -1028,10 +1028,39 @@ That is how Acrobat models them, and matching Acrobat is the point.
 
 Neither is a format script. They are plain field entries read whenever the
 appearance is generated, so they work the same whether Acrobat regenerates them
-or anything else does. Acrobat's Format tab, the one that makes a field numeric
-or currency, is JavaScript in `/AA` and is deliberately not modelled: a filler
-that writes a value directly never fires those events, and not modelling `/AA`
-means an imported form's existing scripts survive export untouched.
+or anything else does.
+
+## Format
+
+Text fields carry Acrobat's Format tab, cut down to **None**, **Number**,
+**Percentage** and **Date**.
+
+- **Date** has one pattern, `dd-mmm-yyyy`, the one the requirements sheet
+  states, so it cannot be set to the wrong one. Acrobat shows its calendar on a
+  field formatted this way.
+- **Number** keeps Decimal Places and Negative Number Style as Acrobat has
+  them. Separator Style is `1,234.56` or `1234.56`, and Currency Symbol is None
+  or Dollar, written in front.
+- **Percentage** has Decimal Places and Separator Style, the same as Number.
+  Acrobat multiplies by 100, so `0.15` shows as `15.00%`.
+
+Export writes exactly what Acrobat writes for the same choice, such as
+`AFDate_FormatEx("dd-mmm-yyyy");` with the matching Keystroke, on the field
+rather than its widgets, which is where Acrobat keeps them. A form already
+formatted that way round trips unchanged.
+
+Import reads the pair back. A date in any other pattern becomes `dd-mmm-yyyy`
+and the import notes name each one. Anything else this tool could not have
+written, a percentage, a special format, a separator or currency left out above,
+or a script of someone's own, reads as **Custom** and is left exactly as it was
+until another choice is picked. None removes both scripts.
+
+The format is field level and kept in step across every placement of a name.
+`eSign_Code` has none, its Keystroke being the tool's own, and `PROD_CODE` has
+none, being plain text.
+
+JSON written before the format existed has no `format` key, so for those fields
+it is read off the PDF instead. Reading None would have export strip it.
 
 ## Font
 
@@ -1321,7 +1350,8 @@ signing channel at all.
 `tests/realForm.test.js` round trips **every PDF in `example forms/`** and
 asserts, one property at a time, that nothing changed: types, field and annotation flags,
 values, options, on-states, rects, MaxLen, border and appearance dicts, the
-default appearance, and the Format and Keystroke scripts. The synthetic fixtures
+default appearance, and the Format and Keystroke scripts, apart from a date in
+another pattern, which comes back as `dd-mmm-yyyy`. The synthetic fixtures
 cover each behaviour in isolation; this one asks whether a form the business
 actually uses survives, which is how the `/DA` colour loss was found.
 
@@ -1387,7 +1417,7 @@ with `typeof`**: a bare reference to a name nothing declared is a
 `ReferenceError`, and `typeof` is the only operator that tolerates one.
 
 No editor is needed. The code is written in Acrobat, the same place the fields
-are drawn and formatted, and this tool never touches it.
+are drawn, and this tool never touches it.
 
 ### The script has to sort before Main
 
@@ -1628,24 +1658,12 @@ and `SUBMIT_FAILED` used to carry their text as a shipped value; one shared
 starter code now writes both. The strings are the ones all seven example forms
 ship, so nothing a person reads has changed.
 
-**Formatting, apart from one script.** Fields are drawn and formatted in
-Acrobat, then imported here for their requirements, so whoever creates a field
-owns its formatting. Export never writes a Format entry and only ever writes a
-Keystroke on `eSign_Code`, the one field the tool places that Acrobat never saw.
-A Format or Keystroke found on any other field was set by the person who drew it
-and is carried through untouched, which a round trip test pins.
-
-Both example forms agree: across 95 field level actions, `eSign_Code:Keystroke`
-is the only Format or Keystroke entry either one carries. The date pictures on
-`Date1` and friends sit on fields drawn in Acrobat, and `Member{i}SignDate`,
-which this tool does place, carries none.
-
 **Custom Save Validation authoring.** The block is bespoke per form and written
 by hand in Acrobat. Export reads it out of the PDF and re-emits it byte for byte
 so it survives, but the tool does not and will not offer a way to write one.
 
 Suggested or automatic placement, fill preview, Excel import, tab
-order UI, field format scripts beyond the above, calculations, list boxes, rich
+order UI, format categories beyond None, Number, Percentage and Date, calculations, list boxes, rich
 text, and comb/maxlength. Tab order is set in Acrobat and survives export: page
 `/Annots` order is preserved for every field that already existed, and new ones
 are appended.

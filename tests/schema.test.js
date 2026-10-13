@@ -260,6 +260,34 @@ describe('values shared by name', () => {
     expect(unifyNameValues(fields)).toBe(fields);
   });
 
+  it('shares the format, since a field has one Format and one Keystroke', () => {
+    const number = { category: 'number', decimals: 0 };
+    const fields = [
+      createField({ name: 'AMOUNT' }),
+      createField({ name: 'AMOUNT', format: number }),
+    ];
+    const [a, b] = unifyNameValues(fields);
+    expect(a.format).toMatchObject(number);
+    expect(b.format).toMatchObject(number);
+    // Equal by value is agreement, whatever object each one holds.
+    const agreed = [createField({ name: 'X', format: number }), createField({ name: 'X', format: number })];
+    expect(unifyNameValues(agreed)).toBe(agreed);
+  });
+
+  it('formats text only, so a box renamed into another type loses it', () => {
+    const field = { ...createField({ name: 'Member1Name', format: { category: 'date' } }), type: 'dropdown' };
+    expect(reconcileField(field, dbIndex).format).toEqual({ category: 'none' });
+    expect(createField({ type: 'checkbox', format: { category: 'date' } }).format).toEqual({ category: 'none' });
+  });
+
+  it('writes the format to the JSON and reads it back', () => {
+    const doc = serializeDocument([createField({ name: 'DOB', format: { category: 'date' } })]);
+    expect(doc.fields[0].format).toEqual({ category: 'date' });
+    const { fields, predatesFormat } = parseDocument(doc, dbIndex);
+    expect(fields[0].format).toEqual({ category: 'date' });
+    expect(predatesFormat.size).toBe(0);
+  });
+
   it('runs on load, so an older document opens consistent', () => {
     const doc = serializeDocument([
       createField({ name: 'Test', saveValidated: true }),

@@ -17,6 +17,9 @@ import { importPdf, SOURCE } from '../src/core/pdfImport.js';
 import { createField, SCHEMA_VERSION } from '../src/core/schema.js';
 import { buildDbIndex, normalizeDbFields } from '../src/core/dbFields.js';
 import { extractRequirements, CATALOG_KEY } from '../src/core/pdfEmbed.js';
+import { formatsFromPdf } from '../src/core/pdfImport.js';
+import { parseDocument } from '../src/core/schema.js';
+import { esignCodeKeystroke } from '../src/starter/fieldScripts.js';
 
 const DB = normalizeDbFields([
   { identifier: 'CUSTNAME', label: 'Customer Name' },
@@ -1642,5 +1645,152 @@ describe('an on-state stays on the widget it was drawn for', () => {
       originalBytes: first.pdfBytes, fields: moved, buttons: [],
     });
     expect(await byRect(third.pdfBytes, 'Q')).toEqual({ 200: '/No', 400: '/Yes' });
+  });
+});
+
+describe('formats', () => {
+  const js = (doc, src) => doc.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText(src) });
+  const script = (doc, dict, key) => {
+    const aa = doc.context.lookupMaybe(dict.get(PDFName.of('AA')), PDFDict);
+    const action = aa && doc.context.lookupMaybe(aa.get(PDFName.of(key)), PDFDict);
+    return action ? doc.context.lookup(action.get(PDFName.of('JS'))).decodeText() : null;
+  };
+
+  // pdf-lib draws a field the way Acrobat stores some of the real ones, a
+  // field with one widget kid, and Acrobat puts Format and Keystroke on the
+  // field rather than the kid.
+  async function splitDateField(pattern) {
+    const base = await PDFDocument.create();
+    const page = base.addPage([612, 792]);
+    const field = base.getForm().createTextField('DOB');
+    field.addToPage(page, { x: 50, y: 500, width: 120, height: 18 });
+    field.acroField.dict.set(
+      PDFName.of('AA'),
+      base.context.obj({
+        F: js(base, `AFDate_FormatEx("${pattern}");`),
+        K: js(base, `AFDate_KeystrokeEx("${pattern}");`),
+      })
+    );
+    return base.save();
+  }
+
+  it('keeps the pair Acrobat stored on the field when the field and its widget merge', async () => {
+    // Export used to keep only the widget's /AA, which carries the OnBlur, and
+    // so dropped the formatting of seven fields on four of the example forms.
+    const originalBytes = await splitDateField('dd-mmm-yyyy');
+    const imported = await importPdf(originalBytes, dbIndex);
+    expect(imported.fields[0].format).toEqual({ category: 'date' });
+
+    const { pdfBytes } = await exportPdf({ originalBytes, fields: imported.fields });
+    const out = await PDFDocument.load(pdfBytes);
+    const dict = out.getForm().getField('DOB').acroField.dict;
+    expect(script(out, dict, 'F')).toBe('AFDate_FormatEx("dd-mmm-yyyy");');
+    expect(script(out, dict, 'K')).toBe('AFDate_KeystrokeEx("dd-mmm-yyyy");');
+    expect(script(out, dict, 'Bl')).toContain('required = false');
+  });
+
+  it('brings a date in another pattern into line, and says so', async () => {
+    const originalBytes = await splitDateField('mm/dd/yyyy');
+    const imported = await importPdf(originalBytes, dbIndex);
+    expect(imported.notes).toContain('Set 1 date field to dd-mmm-yyyy: DOB (was mm/dd/yyyy).');
+
+    const { pdfBytes } = await exportPdf({ originalBytes, fields: imported.fields });
+    const out = await PDFDocument.load(pdfBytes);
+    expect(script(out, out.getForm().getField('DOB').acroField.dict, 'F')).toBe(
+      'AFDate_FormatEx("dd-mmm-yyyy");'
+    );
+  });
+
+  it('writes a format picked here once, on the field, for every placement', async () => {
+    const originalBytes = await buildFlatForm();
+    const format = { category: 'number', decimals: 2, currency: 'dollar', parentheses: true };
+    const { pdfBytes } = await exportPdf({
+      originalBytes,
+      fields: [
+        createField({ name: 'POLICYNUM', page: 0, rect: { x: 50, y: 500, width: 120, height: 18 }, format }),
+        createField({ name: 'POLICYNUM', page: 2, rect: { x: 50, y: 300, width: 120, height: 18 }, format }),
+      ],
+    });
+
+    const out = await PDFDocument.load(pdfBytes);
+    const field = out.getForm().getField('POLICYNUM');
+    expect(script(out, field.acroField.dict, 'F')).toBe('AFNumber_Format(2, 0, 2, 0, "$", true);');
+    expect(script(out, field.acroField.dict, 'K')).toBe('AFNumber_Keystroke(2, 0, 2, 0, "$", true);');
+    for (const widget of field.acroField.getWidgets()) {
+      expect(script(out, widget.dict, 'F')).toBeNull();
+      expect(script(out, widget.dict, 'Bl')).toContain('required = false');
+    }
+
+    // And the JSON says the same, so it comes back without reading the scripts.
+    const back = await importPdf(pdfBytes, dbIndex);
+    expect(back.source).toBe(SOURCE.EMBEDDED);
+    const placements = back.fields.filter((f) => f.name === 'POLICYNUM');
+    expect(placements).toHaveLength(2);
+    for (const f of placements) expect(f.format).toMatchObject({ ...format, separator: 'comma' });
+  });
+
+  it('reads the format off the PDF for JSON written before there was one', async () => {
+    // Otherwise every field would read as None and export would strip what the
+    // form carries.
+    const originalBytes = await splitDateField('dd-mmm-yyyy');
+    const pdfDoc = await PDFDocument.load(originalBytes);
+    const old = {
+      schemaVersion: SCHEMA_VERSION,
+      fields: [{ id: 'a', name: 'DOB', type: 'text', page: 0, rect: { x: 50, y: 500, width: 120, height: 18 } }],
+    };
+    const parsed = parseDocument(old, dbIndex);
+    expect([...parsed.predatesFormat]).toEqual(['a']);
+    const { fields } = formatsFromPdf(parsed.fields, pdfDoc, parsed.predatesFormat);
+    expect(fields[0].format).toEqual({ category: 'date' });
+
+    // One written since is taken at its word.
+    const current = parseDocument(
+      { ...old, fields: [{ ...old.fields[0], format: { category: 'none' } }] },
+      dbIndex
+    );
+    expect(current.predatesFormat.size).toBe(0);
+  });
+
+  it('keeps the code field plain text', async () => {
+    const base = await PDFDocument.create();
+    const page = base.addPage([612, 792]);
+    const field = base.getForm().createTextField('PROD_CODE');
+    field.addToPage(page, { x: 50, y: 500, width: 120, height: 18 });
+    field.acroField.dict.set(
+      PDFName.of('AA'),
+      base.context.obj({
+        F: js(base, 'AFDate_FormatEx("mm/dd/yyyy");'),
+        K: js(base, 'AFDate_KeystrokeEx("mm/dd/yyyy");'),
+      })
+    );
+    const originalBytes = await base.save();
+    const imported = await importPdf(originalBytes, dbIndex);
+    expect(imported.fields.find((f) => f.name === 'PROD_CODE').format).toEqual({ category: 'none' });
+    expect(imported.notes).toContain('Removed the format on PROD_CODE, plain text only.');
+
+    const { pdfBytes } = await exportPdf({ originalBytes, fields: imported.fields });
+    const out = await PDFDocument.load(pdfBytes);
+    const dict = out.getForm().getField('PROD_CODE').acroField.dict;
+    expect(script(out, dict, 'F')).toBeNull();
+    expect(script(out, dict, 'K')).toBeNull();
+  });
+
+  it('never puts a format over the eSign_Code keystroke', async () => {
+    const originalBytes = await buildFlatForm();
+    const { pdfBytes } = await exportPdf({
+      originalBytes,
+      fields: [
+        createField({
+          name: 'eSign_Code',
+          page: 0,
+          rect: { x: 50, y: 500, width: 86, height: 14 },
+          format: { category: 'number' },
+        }),
+      ],
+    });
+    const out = await PDFDocument.load(pdfBytes);
+    const dict = out.getForm().getField('eSign_Code').acroField.dict;
+    expect(script(out, dict, 'K')).toBe(esignCodeKeystroke());
+    expect(script(out, dict, 'F')).toBeNull();
   });
 });

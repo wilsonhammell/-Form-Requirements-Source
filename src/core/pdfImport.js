@@ -27,7 +27,8 @@ import { extractRequirements } from './pdfEmbed.js';
 import { fontFromDa } from './defaultAppearance.js';
 import { completeEsignPair } from './specialFields.js';
 import { buildButtonIndex } from './signingButtons.js';
-import { readDocumentScripts } from './pdfScripts.js';
+import { readDocumentScripts, decodeScript } from './pdfScripts.js';
+import { readFormatScripts, DATE_PATTERN, CUSTOM, isPlainText } from './fieldFormat.js';
 import { declaredValidation, declaredValidationNotes } from './declaredValidation.js';
 import {
   replacedFunctions,
@@ -134,7 +135,9 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
 
   const embedded = extractRequirements(pdfDoc);
   if (embedded) {
-    const { fields, config, markers } = parseDocument(embedded, dbIndex);
+    const { fields: parsed, config, markers, predatesFormat } = parseDocument(embedded, dbIndex);
+    const { fields, notes: formatNotes } = formatsFromPdf(parsed, pdfDoc, predatesFormat);
+    systemNotes.push(...formatNotes);
     return {
       pdfDoc,
       fields: withSystem(fields),
@@ -151,15 +154,16 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
     };
   }
 
-  const { fields, notes } = reconstructFromAcroForm(pdfDoc, buildButtonIndex(buttons));
-  if (fields.length > 0) {
+  const { fields: rebuilt, notes } = reconstructFromAcroForm(pdfDoc, buildButtonIndex(buttons));
+  if (rebuilt.length > 0) {
+    const { fields, notes: formatNotes } = formatsFromPdf(rebuilt, pdfDoc);
     return {
       pdfDoc,
       fields: withSystem(reconcileFields(fields, dbIndex)),
       config: withFieldValues(createConfig(), pdfDoc),
       markers: [],
       source: SOURCE.ACROFORM,
-      notes: [...notes, ...systemNotes],
+      notes: [...notes, ...formatNotes, ...systemNotes],
     };
   }
 
@@ -190,6 +194,74 @@ function withFieldValues(config, pdfDoc) {
     }
   }
   return filled;
+}
+
+// Text fields take the format the PDF carries, all of them or only the ids in
+// only. Exported for a JSON sidecar loaded over an open PDF, which needs the
+// same reading for the same reason.
+//
+// A date in any other pattern becomes the one there is. That is the rule the
+// picker enforces, and import saying so is how a form drawn before it gets
+// brought into line.
+export function formatsFromPdf(fields, pdfDoc, only = null) {
+  const formats = readFieldFormats(pdfDoc);
+  const changed = new Map();
+  const cleared = new Set();
+  const next = fields.map((f) => {
+    if (f.type !== 'text' || (only && !only.has(f.id))) return f;
+    const name = f.name.trim();
+    // Not found means not read, and None would have export strip whatever
+    // the field carries, so it is left as it is.
+    const read = formats.get(name) ?? { format: { category: CUSTOM } };
+    if (isPlainText(name)) {
+      if (formats.get(name) && read.format.category !== 'none') cleared.add(name);
+      return { ...f, format: { category: 'none' } };
+    }
+    if (read.was) changed.set(name, read.was);
+    return { ...f, format: read.format };
+  });
+  const notes = [];
+  if (changed.size > 0) {
+    notes.push(
+      `Set ${changed.size} date field${changed.size === 1 ? '' : 's'} to ${DATE_PATTERN}: ${[...changed]
+        .map(([name, was]) => `${name} (was ${was})`)
+        .join(', ')}.`
+    );
+  }
+  if (cleared.size > 0) {
+    notes.push(`Removed the format on ${[...cleared].join(', ')}, plain text only.`);
+  }
+  return { fields: next, notes };
+}
+
+// Acrobat keeps Format and Keystroke on the field rather than its widgets, so
+// the field's pair is read first, and a widget's only when the field has none.
+function readFieldFormats(pdfDoc) {
+  const out = new Map();
+  // getForm would add an AcroForm to a PDF that has none.
+  if (!pdfDoc.catalog.getAcroForm()) return out;
+  const context = pdfDoc.context;
+  const pair = (dict) => {
+    const aa = context.lookup(dict.get(PDFName.of('AA')));
+    if (!aa?.get) return null;
+    const script = (key) => {
+      const action = context.lookup(aa.get(PDFName.of(key)));
+      return action?.get ? decodeScript(context.lookup(action.get(PDFName.of('JS')))) : '';
+    };
+    const found = [script('F'), script('K')];
+    return found.some((s) => s.trim()) ? found : null;
+  };
+  try {
+    for (const field of pdfDoc.getForm().getFields()) {
+      if (!(field instanceof PDFTextField)) continue;
+      const dicts = [field.acroField.dict, ...field.acroField.getWidgets().map((w) => w.dict)];
+      const found = dicts.map(pair).find(Boolean) ?? ['', ''];
+      out.set(field.getName(), readFormatScripts(...found));
+    }
+  } catch {
+    // Read as nothing, which formatsFromPdf leaves alone.
+  }
+  return out;
 }
 
 // Pages rather than form.getFields(), because the page a widget sits on is part

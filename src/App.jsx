@@ -55,7 +55,7 @@ import {
   adoptNameValues,
   nameTakenByType,
   namePatch,
-  NAME_SHARED_KEYS,
+  sameNameValues,
   parseDocument,
   serializeDocument,
   fieldIssues,
@@ -67,7 +67,7 @@ import {
 } from './core/schema.js';
 
 import { createMarker, markerIssues, DRAW_MARKER } from './core/markers.js';
-import { importPdf, SOURCE } from './core/pdfImport.js';
+import { importPdf, loadPdfBytes, formatsFromPdf, SOURCE } from './core/pdfImport.js';
 import { exportPdf } from './core/pdfExport.js';
 import { serializeJsonBytes } from './core/pdfEmbed.js';
 import { downloadBytes, sidecarName, exportedPdfName, requirementsName } from './core/download.js';
@@ -392,10 +392,17 @@ export default function App() {
   const handleImportJson = async (file) => {
     try {
       const {
-        fields: loaded,
+        fields: parsed,
         config: loadedConfig,
         markers: loadedMarkers,
+        predatesFormat,
       } = parseDocument(await file.text(), dbIndex);
+      // A sidecar saved before the format existed says nothing about it, so the
+      // open PDF does, the same as opening a PDF with older embedded JSON.
+      const { fields: loaded, notes: formatNotes } =
+        predatesFormat.size > 0 && originalBytes
+          ? formatsFromPdf(parsed, await loadPdfBytes(originalBytes), predatesFormat)
+          : { fields: parsed, notes: [] };
       // One step, not three. The import replaces the fields, the markers and the
       // config of the PDF still open, so undo puts them all back the way the
       // wrong sidecar found them.
@@ -408,7 +415,9 @@ export default function App() {
       }));
       setSelectedId(null);
       setSelectedMarkerId(null);
-      say([`Loaded ${loaded.length} field${loaded.length === 1 ? '' : 's'} from ${file.name}.`]);
+      say([
+        [`Loaded ${loaded.length} field${loaded.length === 1 ? '' : 's'} from ${file.name}.`, ...formatNotes].join(' '),
+      ]);
     } catch (err) {
       const why = err instanceof SchemaError ? err.message : `${err}`;
       say([`Could not import ${file.name}: ${why}`]);
@@ -570,7 +579,7 @@ export default function App() {
         const field = current.find((f) => f.id === id);
         if (!field) return current;
         const joined = reconcileField(adoptNameValues(field, current), dbIndex);
-        if (NAME_SHARED_KEYS.every((key) => joined[key] === field[key])) return current;
+        if (sameNameValues(joined, field)) return current;
         return current.map((f) => (f.id === id ? joined : f));
       });
     },
