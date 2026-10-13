@@ -20,7 +20,7 @@ const SPECIAL_NOTE = {
   signer: (part) =>
     `Signer row ${part.index}. Its name says which row and which part, so rows stay numbered 1 up with no gaps. Deleting the last part of a row renumbers the rows after it.`,
   joint: () =>
-    'Joint member row, filled from DNA by the starter code. The numbered rows and the combined line are filled independently, so a form can carry either or both.',
+    'Joint member row, filled by the starter code. The numbered rows and the combined line are filled independently, so a form can carry either or both.',
   combinedJoint: () =>
     'Every joint name on one line, joined by commas. Independent of the numbered rows, so a form can carry both.',
   esign: () =>
@@ -138,7 +138,7 @@ export default function PropertyPanel({
         <Banner tone="special">
           {SPECIAL_NOTE[specialPart.family](specialPart)}
           {specialPart.type === 'dropdown' &&
-            ' Its options are built at run time from DNA, so it has none here.'}
+            ' Its options are built at run time, so it has none here.'}
         </Banner>
       )}
 

@@ -318,7 +318,7 @@ function LoadValidation(isPerson, requiredFields) {
             dnaReqField.display = display.visible;
             dnaReqField.readonly = true;
 
-            var header = "The following DNA data is missing and is required:\n";
+            var header = "The following required information is missing:\n";
             dnaReqField.value = header + msgs.join("\n");
         }
 
@@ -750,7 +750,7 @@ function eSignFailureMessage() {
         return base;
     }
 
-    return base + " " + MISSING_EMAIL_SIGNERS.length + " member(s) missing an email in DNA: " +
+    return base + " " + MISSING_EMAIL_SIGNERS.length + " member(s) missing an email address: " +
         MISSING_EMAIL_SIGNERS.join(", ");
 }
 

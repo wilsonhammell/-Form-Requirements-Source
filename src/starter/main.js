@@ -98,7 +98,7 @@ function Main()
     }
 
     if (!ProductValidation(CODE_TYPES, PRODUCT_CODES)) {
-        showDnaValidationError("Incorrect account selected in DNA. Please select a valid product.");
+        showDnaValidationError("Incorrect account selected. Please select a valid product.");
         lockFormForDnaValidationFailure();
         return;
     }

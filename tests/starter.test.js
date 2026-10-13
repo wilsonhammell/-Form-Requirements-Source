@@ -278,7 +278,7 @@ describe('the Person eSigner list', () => {
       selected: { Member1Name: 'Ann', Member2Name: 'Bob', Member3Name: 'Cat' },
     });
     expect(missing).toEqual(['Bob', 'Cat']);
-    expect(message).toContain('2 member(s) missing an email in DNA: Bob, Cat');
+    expect(message).toContain('2 member(s) missing an email address: Bob, Cat');
     expect(message).not.toContain('\n');
   });
 
