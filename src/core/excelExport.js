@@ -324,7 +324,12 @@ export function buildRequirementsWorkbook({
 
   blank();
   heading('Standard Requirements');
-  for (const [label, value, note] of STANDARD_REQUIREMENTS) edgedRow(write(label, value ?? '', '', '', note ?? ''));
+  // The product row names the codes from Config, falling back to the link.
+  const codes = (config.productCodes ?? []).join(', ');
+  for (const [label, value, note] of STANDARD_REQUIREMENTS) {
+    const shown = label === 'Product Load Validations' && codes ? codes : value;
+    edgedRow(write(label, shown ?? '', '', '', note ?? ''));
+  }
 
   blank();
   heading('Signing Requirements');
