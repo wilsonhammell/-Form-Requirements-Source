@@ -43,9 +43,13 @@ const BAND_WIDTH_PX =
 const ACCESS = { true: 'Editable', false: 'Read Only' };
 
 // A checkbox answers its row either way rather than leaving it blank. Text is
-// trimmed, since the boxes keep what was typed.
+// trimmed, since the boxes keep what was typed. A list reads as one line.
 const metadataValue = (value) =>
-  typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value ?? '').trim();
+  typeof value === 'boolean'
+    ? (value ? 'Yes' : 'No')
+    : Array.isArray(value)
+      ? value.join(', ')
+      : String(value ?? '').trim();
 
 // Light tints of the Office accents, which is what the originals use.
 const INK = {
@@ -324,12 +328,7 @@ export function buildRequirementsWorkbook({
 
   blank();
   heading('Standard Requirements');
-  // The product row names the codes from Config, falling back to the link.
-  const codes = (config.productCodes ?? []).join(', ');
-  for (const [label, value, note] of STANDARD_REQUIREMENTS) {
-    const shown = label === 'Product Load Validations' && codes ? codes : value;
-    edgedRow(write(label, shown ?? '', '', '', note ?? ''));
-  }
+  for (const [label, value, note] of STANDARD_REQUIREMENTS) edgedRow(write(label, value ?? '', '', '', note ?? ''));
 
   blank();
   heading('Signing Requirements');

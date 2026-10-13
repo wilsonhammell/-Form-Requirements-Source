@@ -22,6 +22,7 @@ export const METADATA_ROWS = [
   { label: 'FO Form Description', from: 'formDescription' },
   { label: 'Form Name', from: 'formName' },
   { label: 'Form Menu Group(s)', from: 'formMenuGroups' },
+  { label: 'Product Codes', from: 'productCodes' },
   { label: 'Membership Type', from: 'formType', note: 'Person, Organization or Combined' },
 ];
 

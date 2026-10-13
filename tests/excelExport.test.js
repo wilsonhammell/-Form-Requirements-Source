@@ -344,12 +344,12 @@ describe('the metadata block', () => {
     expect(valueOf('Support Services Q Req’d')).toBe('Yes');
   });
 
-  it('lists the product codes on the product row', async () => {
-    const withCodes = await rowsOf({ productCodes: ['100', '205'] });
-    expect(withCodes.sheet.getRow(withCodes.rowOf('Product Load Validations')).getCell(7).value).toBe('100, 205');
-
-    const without = await rowsOf();
-    expect(without.sheet.getRow(without.rowOf('Product Load Validations')).getCell(7).value).toBe('Link to Product Listing');
+  it('lists the product codes above the membership type', async () => {
+    const { sheet, rowOf } = await rowsOf({ productCodes: ['100', '205'] });
+    expect(sheet.getRow(rowOf('Product Codes')).getCell(7).value).toBe('100, 205');
+    expect(rowOf('Membership Type')).toBe(rowOf('Product Codes') + 1);
+    // The standard row stays the link.
+    expect(sheet.getRow(rowOf('Product Load Validations')).getCell(7).value).toBe('Link to Product Listing');
   });
 
   it('runs FO Form ID, FO Form Description then Form Name', async () => {
