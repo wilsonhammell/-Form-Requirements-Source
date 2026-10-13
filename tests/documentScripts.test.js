@@ -740,6 +740,22 @@ describe('code the form has and the starter does not', () => {
     ).toEqual([]);
   });
 
+  it('ignores a function declared inside a carried one, which goes across with it', () => {
+    const source = [
+      'function CustomSaveValidation() {\n    function checkRow(i) { flagError("A" + i); }\n    checkRow(1);\n}',
+      'function CustomBeforeSubmit() {\n    function stamp() {}\n    stamp();\n}',
+    ].join('\n');
+    expect(replacedFunctions(form(source))).toEqual([]);
+  });
+
+  it('still names one declared inside a copy export does not keep', () => {
+    const scripts = new Map([
+      ['Main', 'function CustomAfterLoad() {\n    kept();\n}'],
+      ['Helper_Functions', 'function CustomAfterLoad() {\n    function lost() {}\n}'],
+    ]);
+    expect(replacedFunctions(scripts)).toEqual(['lost']);
+  });
+
   it('ignores a pass that was dropped on purpose', () => {
     // injectErrorFlagClearing set every field's OnBlur at load time. Those are
     // generated at export now, so every form still carries it and warning about

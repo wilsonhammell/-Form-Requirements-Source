@@ -171,9 +171,20 @@ export function replacedFunctions(scripts) {
     ...RENAMED,
   ]);
 
+  // A function declared inside a carried body goes across with it, so those
+  // bodies are taken out before looking. Only the copy export actually keeps,
+  // since a second one elsewhere is still lost.
+  const carried = { ...findFormHooks(sources), CustomSaveValidation: findCustomSaveValidation(sources) };
+
   const found = new Set();
   for (const name of OWNED_SCRIPTS) {
-    for (const fn of functionNames(sources.get(name))) {
+    let source = String(sources.get(name) ?? '');
+    for (const [fn, body] of Object.entries(carried)) {
+      if (body && extractFunctionBody(source, fn) === body) {
+        source = source.replace(body.replace(/\n$/, ''), '');
+      }
+    }
+    for (const fn of functionNames(source)) {
       if (!ours.has(fn)) found.add(fn);
     }
   }
