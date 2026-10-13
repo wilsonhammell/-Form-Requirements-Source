@@ -106,6 +106,18 @@ describe('the whole document, run the way Acrobat runs it', () => {
     expect(result).toEqual(['afterValidation', 'afterLoad']);
   });
 
+  it('fires hooks carried into Main from an older form', () => {
+    const main = buildMainScript({
+      hooks: {
+        CustomAfterValidation: '    __ran.push("afterValidation");\n',
+        CustomAfterLoad: '    __ran.push("afterLoad");\n',
+      },
+    });
+    const scripts = generated({ Main: main, A_Setup: 'var __ran = [];' });
+    const { result } = runDocument(scripts, '__ran', PERSON);
+    expect(result).toEqual(['afterValidation', 'afterLoad']);
+  });
+
   it('fires neither when the script sorts after Main', () => {
     // The whole point of the naming rule. Same code, later name, silently dead:
     // no error, nothing logged, the hook simply never runs.

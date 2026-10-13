@@ -22,15 +22,15 @@ export const PRODUCT_CODE_FIELD = 'PROD_CODE';
 // DNA supplies the primary plus SIGNER1 to SIGNER5. The loops read i < this.
 export const MAX_DNA_SIGNERS = 6;
 
-// The one thing an export must not throw away, being bespoke per form and
-// written by hand.
+// The body of a no argument function, for the parts of these scripts that are
+// bespoke per form and written by hand.
 //
 // Braces are counted rather than matched, skipping strings and comments so one
 // inside either does not end the body early. Unbalanced returns empty, since
 // truncated at the wrong place is worse than nothing.
-export function extractCustomSaveValidation(source) {
+export function extractFunctionBody(source, name) {
   const text = String(source ?? '');
-  const match = /function\s+CustomSaveValidation\s*\(\s*\)\s*\{/.exec(text);
+  const match = new RegExp(`function\\s+${name}\\s*\\(\\s*\\)\\s*\\{`).exec(text);
   if (!match) return '';
 
   const start = match.index + match[0].length;
@@ -71,6 +71,10 @@ export function extractCustomSaveValidation(source) {
   return '';
 }
 
+export function extractCustomSaveValidation(source) {
+  return extractFunctionBody(source, 'CustomSaveValidation');
+}
+
 // A Map from readDocumentScripts, or a plain object from a test fixture.
 const asScriptMap = (scripts) =>
   scripts instanceof Map ? scripts : new Map(Object.entries(scripts ?? {}));
@@ -92,6 +96,31 @@ export function findCustomSaveValidation(scripts) {
 
 // The two this tool writes. Anything else in the name tree is left alone.
 export const OWNED_SCRIPTS = ['Helper_Functions', 'Main'];
+
+// The optional hooks the starter code calls, see the top of helpers.js.
+export const FORM_HOOKS = ['CustomAfterValidation', 'CustomAfterLoad', 'CustomBeforeSubmit'];
+
+// Hooks written inside Helper_Functions or Main, carried across the way
+// CustomSaveValidation is. Only those two are read: one in a form's own script
+// survives export already, and a copy in Main would load after it and win, so
+// later edits to the original would do nothing.
+//
+// Empty ones are left out for the same reason. Main is preferred, being where
+// this tool writes them.
+export function findFormHooks(scripts) {
+  const sources = asScriptMap(scripts);
+  const hooks = {};
+  for (const name of FORM_HOOKS) {
+    for (const script of ['Main', 'Helper_Functions']) {
+      const body = extractFunctionBody(sources.get(script), name);
+      if (body) {
+        hooks[name] = body;
+        break;
+      }
+    }
+  }
+  return hooks;
+}
 
 // Retired rather than missing. injectErrorFlagClearing set every field's OnBlur
 // at load time, and those scripts are generated at export now, so reporting it
@@ -130,13 +159,14 @@ function functionNames(source) {
 // would sit there uncalled. Knowing is for deciding what general rule the
 // function is an instance of, and building that.
 //
-// CustomSaveValidation is excluded, being carried across by name.
+// CustomSaveValidation and the hooks are excluded, being carried across by name.
 export function replacedFunctions(scripts) {
   const sources = asScriptMap(scripts);
   const ours = new Set([
     ...functionNames(helperScript()),
     ...functionNames(mainScript()),
     'CustomSaveValidation',
+    ...FORM_HOOKS,
     ...RETIRED,
     ...RENAMED,
   ]);
@@ -180,6 +210,7 @@ export function buildConfigBlock({
   config = {},
   buttons = [],
   customSaveValidation = '',
+  hooks = {},
 } = {}) {
   const signerRows = deriveSignerRows(fields);
   const jointRows = deriveJointRows(fields);
@@ -209,6 +240,12 @@ export function buildConfigBlock({
   const saveValidation = distinct(fields, (f) => f.saveValidated, (f, name) => str(name));
 
   const codes = (config.productCodes ?? []).map((c) => str(c));
+
+  // Only the ones the form had. The call sites check typeof, so an absent hook
+  // is simply not run.
+  const carriedHooks = FORM_HOOKS.filter((name) => hooks[name]).map(
+    (name) => `\nfunction ${name}() {\n${hooks[name]}}\n`
+  );
 
   return `${CONFIG_OPEN}
 
@@ -254,7 +291,7 @@ var SAVE_VALIDATION_FIELDS = ${list(saveValidation)};
 // these two scripts is regenerated, this is the one part carried across.
 function CustomSaveValidation() {
 ${customSaveValidation}}
-
+${carriedHooks.length ? `\n// The form's own hooks, carried across the same way.\n${carriedHooks.join('')}` : ''}
 ${CONFIG_CLOSE}`;
 }
 
@@ -274,8 +311,9 @@ export function buildMainScript(state) {
 // the run order, and Helper_Functions sorts before Main, which is what makes
 // the helpers defined by the time Main calls them.
 //
-// state.customSaveValidation is read out of the PDF being exported, so the
-// bespoke block survives while everything around it is replaced.
+// state.customSaveValidation and state.hooks are read out of the PDF being
+// exported, so the bespoke blocks survive while everything around them is
+// replaced.
 export function buildDocumentScripts(state) {
   return [
     { name: 'Helper_Functions', source: helperScript() },

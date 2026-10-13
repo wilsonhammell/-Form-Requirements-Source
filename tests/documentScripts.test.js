@@ -12,6 +12,7 @@ import {
   buildDocumentScripts,
   extractCustomSaveValidation,
   findCustomSaveValidation,
+  findFormHooks,
   replacedFunctions,
   OWNED_SCRIPTS,
 } from '../src/starter/buildScripts.js';
@@ -490,6 +491,78 @@ describe('where the bespoke block lives', () => {
   });
 });
 
+describe('carrying the form hooks across', () => {
+  const exportWith = async (scripts) => {
+    const doc = await PDFDocument.load(await blankPdf());
+    installDocumentScripts(doc, scripts);
+    const { pdfBytes } = await exportPdf({
+      originalBytes: await doc.save(), fields: [], buttons: BUTTONS,
+    });
+    return readDocumentScripts(await PDFDocument.load(pdfBytes));
+  };
+
+  it('moves all three from Helper_Functions into Main', async () => {
+    const scripts = await exportWith([
+      {
+        name: 'Helper_Functions',
+        source: [
+          'function CustomAfterValidation() {\n    a();\n}',
+          'function CustomAfterLoad() {\n    if (x) { b(); }\n}',
+          'function CustomBeforeSubmit() {\n    c();\n}',
+        ].join('\n'),
+      },
+    ]);
+    const main = scripts.get('Main');
+    expect(main).toContain('function CustomAfterValidation() {\n    a();\n}');
+    expect(main).toContain('function CustomAfterLoad() {\n    if (x) { b(); }\n}');
+    expect(main).toContain('function CustomBeforeSubmit() {\n    c();\n}');
+    expect(scripts.get('Helper_Functions')).not.toContain('a();');
+  });
+
+  it('prefers Main, where this tool writes them', () => {
+    const hooks = findFormHooks(
+      new Map([
+        ['Main', 'function CustomAfterLoad() {\n    fresh();\n}'],
+        ['Helper_Functions', 'function CustomAfterLoad() {\n    stale();\n}'],
+      ])
+    );
+    expect(hooks).toEqual({ CustomAfterLoad: '    fresh();\n' });
+  });
+
+  it('leaves one in a form script alone, rather than copying it into Main', async () => {
+    // A copy in Main would load after the original and win, so later edits to
+    // the original would do nothing.
+    const scripts = await exportWith([
+      { name: 'Form_Custom', source: 'function CustomAfterLoad() {\n    mine();\n}' },
+    ]);
+    expect(scripts.get('Main')).not.toContain('CustomAfterLoad() {');
+    expect(scripts.get('Form_Custom')).toContain('mine();');
+  });
+
+  it('emits nothing for a form without them, or with an empty one', async () => {
+    const scripts = await exportWith([
+      { name: 'Main', source: 'function CustomAfterLoad() {\n}' },
+    ]);
+    for (const name of ['CustomAfterValidation', 'CustomAfterLoad', 'CustomBeforeSubmit']) {
+      expect(scripts.get('Main')).not.toContain(`function ${name}`);
+    }
+  });
+
+  it('does not drift across repeated exports', async () => {
+    const doc = await PDFDocument.load(await blankPdf());
+    installDocumentScripts(doc, [
+      { name: 'Main', source: 'function CustomBeforeSubmit() {\n    c();\n}' },
+    ]);
+    let bytes = await doc.save();
+    for (let i = 0; i < 3; i += 1) {
+      bytes = (await exportPdf({ originalBytes: bytes, fields: [], buttons: BUTTONS })).pdfBytes;
+    }
+    const main = readDocumentScripts(await PDFDocument.load(bytes)).get('Main');
+    expect(main.match(/function CustomBeforeSubmit/g)).toHaveLength(1);
+    expect(main.match(/c\(\);/g)).toHaveLength(1);
+  });
+});
+
 // Per field scripts, written on export. This replaces the load time pass the
 // old forms ran, which could only run once safely.
 async function exportedOnBlur(fields, systemFields = []) {
@@ -659,6 +732,12 @@ describe('code the form has and the starter does not', () => {
 
   it('ignores CustomSaveValidation, which is carried across by name', () => {
     expect(replacedFunctions(form('function CustomSaveValidation() { var a = 1; }'))).toEqual([]);
+  });
+
+  it('ignores the form hooks, which are carried across by name', () => {
+    expect(
+      replacedFunctions(form('function CustomAfterLoad() { var a = 1; }\nfunction CustomBeforeSubmit() {}'))
+    ).toEqual([]);
   });
 
   it('ignores a pass that was dropped on purpose', () => {

@@ -99,7 +99,7 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
   const documentScripts = readDocumentScripts(pdfDoc);
   if (OWNED_SCRIPTS.some((name) => documentScripts.has(name))) {
     systemNotes.push(
-      'Helper_Functions and Main are replaced on export. Anything in them this tool does not generate is lost, apart from CustomSaveValidation, which is carried across. Code of your own belongs in its own document script, which is never touched, run from CustomAfterValidation, CustomAfterLoad or CustomBeforeSubmit.'
+      'Helper_Functions and Main are replaced on export. Anything in them this tool does not generate is lost, apart from CustomSaveValidation, CustomAfterValidation, CustomAfterLoad and CustomBeforeSubmit, which are carried across. Code of your own belongs in its own document script, which is never touched, run from CustomAfterValidation, CustomAfterLoad or CustomBeforeSubmit.'
     );
   }
 

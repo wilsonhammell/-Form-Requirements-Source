@@ -18,16 +18,17 @@ var ESIGN_SLOT_COUNT = 6;
 
 // Hooks a form defines for itself.
 //
-// A form's bespoke code lives in its own document-level script. Export replaces
-// Helper_Functions and Main and nothing else, so that script survives untouched
-// and all the generated code has to do is call these if they exist. Nothing
-// here knows what they do.
+// A form's bespoke code lives in its own document-level script, or in Main.
+// Export replaces Helper_Functions and Main and nothing else, but carries these
+// across when it finds them in either, so all the generated code has to do is
+// call them if they exist. Nothing here knows what they do.
 //
 // Written as plain functions, the same shape as CustomSaveValidation. The one
 // difference is that CustomSaveValidation is emitted into Main, empty when the
-// form has none, so it can be called bare. These are never emitted, so every
-// call site guards with typeof: a bare reference to a name nothing declared is
-// a ReferenceError, and typeof is the only operator that tolerates one.
+// form has none, so it can be called bare. These are emitted only when the form
+// has them, so every call site guards with typeof: a bare reference to a name
+// nothing declared is a ReferenceError, and typeof is the only operator that
+// tolerates one.
 //
 //   CustomAfterValidation()   in Main, once every load check has passed
 //   CustomAfterLoad()         last thing Main does

@@ -40,7 +40,11 @@ import { embedRequirements } from './pdfEmbed.js';
 import { daMatchesFont, replaceDaFont } from './defaultAppearance.js';
 import { stripComments } from './pdfComments.js';
 import { installDocumentScripts, readDocumentScripts } from './pdfScripts.js';
-import { buildDocumentScripts, findCustomSaveValidation } from '../starter/buildScripts.js';
+import {
+  buildDocumentScripts,
+  findCustomSaveValidation,
+  findFormHooks,
+} from '../starter/buildScripts.js';
 import { fieldScripts } from '../starter/fieldScripts.js';
 import { formatScripts } from './fieldFormat.js';
 import { deriveSignerRows } from './specialFields.js';
@@ -150,13 +154,16 @@ export async function exportPdf({
 
   // Written last, so the config reflects everything that was placed.
   //
-  // Every line of script is replaced except one. CustomSaveValidation is
-  // bespoke per form, so it is read back out of the document being exported and
-  // carried across. Older forms keep it in Helper_Functions rather than Main.
-  const customSaveValidation = findCustomSaveValidation(readDocumentScripts(pdfDoc));
+  // Every line of script is replaced except the bespoke functions.
+  // CustomSaveValidation and the form hooks are written per form, so they are
+  // read back out of the document being exported and carried across. Older
+  // forms keep them in Helper_Functions rather than Main.
+  const existingScripts = readDocumentScripts(pdfDoc);
+  const customSaveValidation = findCustomSaveValidation(existingScripts);
+  const hooks = findFormHooks(existingScripts);
   installDocumentScripts(
     pdfDoc,
-    buildDocumentScripts({ fields, config: doc.config, buttons, customSaveValidation })
+    buildDocumentScripts({ fields, config: doc.config, buttons, customSaveValidation, hooks })
   );
 
   const jsonBytes = await embedRequirements(pdfDoc, doc);
