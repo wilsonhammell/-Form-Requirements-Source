@@ -32,6 +32,7 @@ export default function Toolbar({
   onToggleComments,
   onOpenPdf,
   onImportJson,
+  onImportFormTable,
   onExportPdf,
   onExportJson,
   onExportRequirements,
@@ -45,6 +46,7 @@ export default function Toolbar({
 }) {
   const pdfInput = useRef(null);
   const jsonInput = useRef(null);
+  const tableInput = useRef(null);
   const [fontSize, setFontSize] = useState('');
 
   // Typed, not assumed: the size a form is standardised on differs from form to
@@ -77,6 +79,17 @@ export default function Toolbar({
           const file = e.target.files?.[0];
           e.target.value = '';
           if (file) onImportJson(file);
+        }}
+      />
+      <input
+        ref={tableInput}
+        type="file"
+        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) onImportFormTable(file);
         }}
       />
 
@@ -203,6 +216,7 @@ export default function Toolbar({
           items={[
             { label: 'Open PDF', onClick: () => pdfInput.current?.click() },
             { label: 'Import JSON', disabled: !hasPdf, onClick: () => jsonInput.current?.click() },
+            { label: 'Fill from Form Table', disabled: !hasPdf, onClick: () => tableInput.current?.click() },
           ]}
         />
         <Menu

@@ -7,6 +7,7 @@ import PropertyPanel from './components/PropertyPanel.jsx';
 import MarkerPanel from './components/MarkerPanel.jsx';
 import BulkPanel from './components/BulkPanel.jsx';
 import FormConfigPanel from './components/FormConfigPanel.jsx';
+import FormTablePicker from './components/FormTablePicker.jsx';
 import { PanelTabs, ScopeBar, IssueList, PanelResizer, usePanelWidth } from './components/SidePanel.jsx';
 import { usePdfDocument } from './hooks/usePdfDocument.js';
 import { useDocumentHistory } from './hooks/useDocumentHistory.js';
@@ -72,6 +73,7 @@ import { exportPdf } from './core/pdfExport.js';
 import { serializeJsonBytes } from './core/pdfEmbed.js';
 import { downloadBytes, sidecarName, exportedPdfName, requirementsName } from './core/download.js';
 import { requirementsWorkbookBytes } from './core/excelExport.js';
+import { readFormTable, prefillFromRow } from './core/formTable.js';
 import { renderPageImages } from './core/pageImages.js';
 import { suggestedFontSize } from './core/pageText.js';
 
@@ -422,6 +424,36 @@ export default function App() {
       const why = err instanceof SchemaError ? err.message : `${err}`;
       say([`Could not import ${file.name}: ${why}`]);
     }
+  };
+
+  const [formTable, setFormTable] = useState(null);
+
+  const handleImportFormTable = async (file) => {
+    try {
+      const sheets = await readFormTable(await file.arrayBuffer());
+      if (sheets.length === 0) {
+        say([`No sheet in ${file.name} has a NEW FORM NAME column.`]);
+        return;
+      }
+      setFormTable({ fileName: file.name, sheets });
+    } catch (err) {
+      say([`Could not read ${file.name}: ${err.message ?? err}`]);
+    }
+  };
+
+  // One step, so undo puts the config and the buttons back together.
+  const handlePickFormRow = (sheet, row) => {
+    setFormTable(null);
+    const { config: patch, buttons: wanted, notes } = prefillFromRow(row, sheet.titles);
+    mutateDocument((current) => {
+      let next = current.fields;
+      for (const entry of buttons) {
+        if (entry.identifier in wanted) next = withButton(next, entry, wanted[entry.identifier]);
+      }
+      return { ...current, fields: next, config: createConfig({ ...current.config, ...patch }) };
+    });
+    setPanel('config');
+    say([`Filled from ${sheet.name} row ${row.row}, ${row.values.formName}.`, ...notes]);
   };
 
   const handleCreateField = (rect) => {
@@ -939,23 +971,28 @@ export default function App() {
     showScope('signers');
   }, [pageBox, pageIndex, showScope, setFields]);
 
+  const withButton = useCallback(
+    (current, entry, on) => {
+      const next = on
+        ? addButton(current, entry, buttons, pageBox, pageIndex)
+        : removeButton(current, entry.identifier);
+      // The label and code box are part of the Remote eSign channel, so they
+      // come and go with its button.
+      if (entry.identifier !== ESIGN_ANCHOR) return next;
+      const button = next.find((f) => f.name.trim() === ESIGN_ANCHOR);
+      return on && button
+        ? addEsignFields(next, button.rect, button.page)
+        : removeEsignFields(next);
+    },
+    [buttons, pageBox, pageIndex]
+  );
+
   const toggleButton = useCallback(
     (entry, on) => {
-      setFields((current) => {
-        const next = on
-          ? addButton(current, entry, buttons, pageBox, pageIndex)
-          : removeButton(current, entry.identifier);
-        // The label and code box are part of the Remote eSign channel, so they
-        // come and go with its button.
-        if (entry.identifier !== ESIGN_ANCHOR) return next;
-        const button = next.find((f) => f.name.trim() === ESIGN_ANCHOR);
-        return on && button
-          ? addEsignFields(next, button.rect, button.page)
-          : removeEsignFields(next);
-      });
+      setFields((current) => withButton(current, entry, on));
       if (on) showScope('submission');
     },
-    [buttons, pageBox, pageIndex, showScope, setFields]
+    [withButton, showScope, setFields]
   );
 
   // A reset rather than a lock, any field can be changed again afterwards. The
@@ -981,6 +1018,7 @@ export default function App() {
         onToggleComments={() => setShowComments((on) => !on)}
         onOpenPdf={handleOpenPdf}
         onImportJson={handleImportJson}
+        onImportFormTable={handleImportFormTable}
         onExportPdf={handleExportPdf}
         onExportJson={handleExportJson}
         onExportRequirements={handleExportRequirements}
@@ -992,6 +1030,15 @@ export default function App() {
         noticesHidden={hasNotices && !noticesOpen}
         onShowNotices={() => setNoticesOpen(true)}
       />
+
+      {formTable && (
+        <FormTablePicker
+          fileName={formTable.fileName}
+          sheets={formTable.sheets}
+          onPick={handlePickFormRow}
+          onClose={() => setFormTable(null)}
+        />
+      )}
 
       {hasNotices && noticesOpen && (
         <div
