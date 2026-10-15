@@ -7,6 +7,8 @@
   { "identifier": "ERROR_CODE", "placement": "compact" },
   { "identifier": "FORM_NAME", "placement": "compact" },
   { "identifier": "PRIMARY_MEMBER_NUMBER", "placement": "compact" },
+  { "identifier": "IN_ACCTNBR", "placement": "compact" },
+  { "identifier": "IN_PERSNBR", "placement": "compact" },
   { "identifier": "FORM_ID", "placement": "compact" },
   { "identifier": "PACK_TYPE", "placement": "compact" },
   { "identifier": "FO_DATA_LINE", "placement": "compact" },

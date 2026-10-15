@@ -274,6 +274,11 @@ function ProductValidation(codeTypes, productCodes) {
         return true;
     }
 
+    // An account number of 0 counts as product M, on top of whatever PROD_CODE holds.
+    if (getSafeValue("IN_ACCTNBR") === "0" && productCodes.indexOf("M") !== -1) {
+        return true;
+    }
+
     for (i = 0; i < codeTypes.length; i++) {
         var fieldName = String(codeTypes[i]).replace(/^\s+|\s+$/g, "");
 

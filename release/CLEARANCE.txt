@@ -207,17 +207,17 @@ existing approved runtime. Both are standard library only:
 
 FILE MANIFEST (SHA-256)
 -----------------------
+  9be4199e7511da9a8fa65d9163224341d34729760483311e4db21b1644d44003  assets/index-AKWS1Efn.js
   9b141ec335e29f8d144b62a68a85ac0d809837e79597e1b8a5dda11a60a5b6ad  assets/index-CWWNHpn0.css
-  6d495893f87ab8eebb05caa668c24c6241e1cc5977c4b1d2fedeb7aed61ccef5  assets/index-DlCV4LK-.js
   52fadd5b81b6abd1eb665bab0c3749a8ad6a293fcb6ee9d9e0309f29d4f82619  assets/pdf.worker.min-iDqQPrd3.mjs
   16bf896354cdf857757111b3790650ef0b75a4bf359569a6757eba231d00f10f  dbFields.json
   137eabc1a1557f3ec640b8f06af17e1fa172ea0b369a4ee241f84a5e6ab43047  HOSTING.txt
-  743130e34f56d21d22c406cdbcc4b7239d38533c5324535718ef23c5c10b7efd  index.html
+  41cd3310c9536777efeb17374db9c1b564cc5ba65ed87b8643fb041cf3c12ade  index.html
   ea7e3e1850cd32c138c14d14b674cbf661cf85b5365775e5f37c941a520a4b80  README.txt
   97420cd231e6f86018db9d361af368a3234b1cd148efbedae263dd0451b858a0  sbom.cyclonedx.json
   6c210091c57a6a78b736ad9d54845e09a86e7f6d06053970c829988c8024b68b  serve.mjs
   27e8bca0bfc39db4a4abb5028a805098a77f0874e73f0d0d71f91c871882c0ff  serve.ps1
   f71f0a7a384026f68af50a4b1ece4ae8cad91737dfaa52b69ace4e6b3e518664  serve.py
   c435df66b8ee66eea357171ee8a54ffe75c0788253145e4ece094d52c4de9f02  Start.cmd
-  fa3c78ca21c81ef8c70038c5a2128389538c4c7d6472f164cc60e5d54e9d9d23  systemFields.json
+  6bb71e354b9d7a0c937b3f366ff7fe4537173a5f6245e69bd33db5f86812906b  systemFields.json
   3810a78c113b2fae41745775edc2a41898397f649857ce4fc4a2dbcac2b473af  web.config

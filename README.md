@@ -77,7 +77,7 @@ Hidden fields read as faint on the page with a `· hidden` label, and carry a
 
 The fields the starter code reads. They belong on every form, whether that form
 needs them or not, because standardising them is the point. Defined in
-[`public/systemFields.json`](public/systemFields.json), 35 of them, all text.
+[`public/systemFields.json`](public/systemFields.json), 37 of them, all text.
 
 Membership is **derived from the name**, exactly as Load Attempted is. Nothing
 is stored on the field, so swapping the file reclassifies everything at once. A

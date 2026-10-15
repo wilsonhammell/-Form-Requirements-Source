@@ -176,6 +176,34 @@ describe('flow ids', () => {
   });
 });
 
+describe('product validation', () => {
+  const passes = (values, codes) =>
+    new Function(
+      '__values',
+      '__codes',
+      `${helperScript()}
+       getSafeValue = function (n) { return __values[n] === undefined ? "" : __values[n]; };
+       return ProductValidation(["PROD_CODE"], __codes);`
+    )(values, codes);
+
+  it('matches PROD_CODE against the codes', () => {
+    expect(passes({ PROD_CODE: 'S1', IN_ACCTNBR: '123' }, ['S1'])).toBe(true);
+    expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '123' }, ['S1'])).toBe(false);
+  });
+
+  it('counts an account number of 0 as M', () => {
+    expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '0' }, ['S1', 'M'])).toBe(true);
+    expect(passes({ PROD_CODE: '', IN_ACCTNBR: '0' }, ['M'])).toBe(true);
+    expect(passes({ PROD_CODE: 'M', IN_ACCTNBR: '123' }, ['M'])).toBe(true);
+    expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '123' }, ['M'])).toBe(false);
+    expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '0' }, ['S1'])).toBe(false);
+  });
+
+  it('still matches PROD_CODE when the account number is 0', () => {
+    expect(passes({ PROD_CODE: 'S1', IN_ACCTNBR: '0' }, ['S1'])).toBe(true);
+  });
+});
+
 // preparePersonESigners writes one slot per row, so its alignment is what tells
 // FileOptics which member signed where. These stub the field access and run it.
 function personESigners({ rows, values = {}, selected = {}, emails = 'e1~e2~e3' }) {
