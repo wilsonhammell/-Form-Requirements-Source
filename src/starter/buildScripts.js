@@ -15,6 +15,7 @@ import {
   hasEsignFields,
   SIGNER_PARTS,
 } from '../core/specialFields.js';
+import { checkBoxGroups, checkBoxParent } from '../core/checkBoxGroups.js';
 
 // One product code field today, so this is a constant rather than a choice.
 export const PRODUCT_CODE_FIELD = 'PROD_CODE';
@@ -216,6 +217,16 @@ function distinct(fields, predicate, pick) {
   return out;
 }
 
+// The save validated check box groups, each as every member's name. The
+// designer keeps the flag the same across a group, so any one carrying it means
+// the group does, which also covers a form saved before that was so.
+export function saveValidationGroups(fields) {
+  const validated = new Set(fields.filter((f) => f.saveValidated).map(checkBoxParent));
+  return [...checkBoxGroups(fields)]
+    .filter(([parent]) => validated.has(parent))
+    .map(([, members]) => members);
+}
+
 export function buildConfigBlock({
   fields = [],
   config = {},
@@ -248,7 +259,22 @@ export function buildConfigBlock({
 
   // Plain Save Validation only. Custom Save Validation is conditional logic that
   // lives in CustomSaveValidation, written per form, not generated.
-  const saveValidation = distinct(fields, (f) => f.saveValidated, (f, name) => str(name));
+  //
+  // A check box group goes in as one entry, an array of its names, where its
+  // first member would have been.
+  const grouped = new Map(saveValidationGroups(fields).flatMap((g) => g.map((name) => [name, g])));
+  const written = new Set();
+  const saveValidation = distinct(
+    fields,
+    (f) => f.saveValidated || grouped.has(f.name.trim()),
+    (f, name) => {
+      const group = grouped.get(name);
+      if (!group) return str(name);
+      if (written.has(group)) return null;
+      written.add(group);
+      return `[${group.map((n) => str(n)).join(', ')}]`;
+    }
+  ).filter(Boolean);
 
   const codes = (config.productCodes ?? []).map((c) => str(c));
 
@@ -294,7 +320,8 @@ var PRODUCT_CODES = ${list(codes)};
 // [field name, friendly name for the error message]
 var LOAD_VALIDATION_FIELDS = ${list(loadValidation)};
 
-// Simple emptiness checks. Conditional ones go in CustomSaveValidation.
+// Simple emptiness checks. Conditional ones go in CustomSaveValidation. An
+// array entry is a check box group, at least one of which has to be ticked.
 var SAVE_VALIDATION_FIELDS = ${list(saveValidation)};
 
 // Written per form when the form needs it. Empty otherwise, and it has to exist

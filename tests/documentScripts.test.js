@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { PDFDocument, PDFName, PDFDict, PDFHexString, PDFRawStream } from 'pdf-lib';
 import { deflateSync } from 'node:zlib';
+import vm from 'node:vm';
 import {
   buildConfigBlock,
   buildMainScript,
@@ -129,6 +130,43 @@ describe('the generated config', () => {
     expect(runConfig({ fields }).SAVE_VALIDATION_FIELDS).toEqual(['A']);
   });
 
+  it('lists a dotted check box group as one entry, at least one to be ticked', () => {
+    const box = (name, extra) => createField({ name, type: 'checkbox', saveValidated: true, ...extra });
+    const fields = [
+      createField({ name: 'BEFORE', saveValidated: true }),
+      box('Trace Reason.A'),
+      createField({ name: 'MIDDLE', saveValidated: true }),
+      box('Trace Reason.B'),
+      box('Trace Reason.B', { page: 1 }),
+      box('Trace Reason.C', { saveValidated: false }),
+      box('Alone.A'),
+      box('Undotted'),
+    ];
+    expect(runConfig({ fields }).SAVE_VALIDATION_FIELDS).toEqual([
+      'BEFORE',
+      ['Trace Reason.A', 'Trace Reason.B', 'Trace Reason.C'],
+      'MIDDLE',
+      'Alone.A',
+      'Undotted',
+    ]);
+  });
+
+  it('leaves a group out when none of it is save validated', () => {
+    const fields = [
+      createField({ name: 'R.A', type: 'checkbox' }),
+      createField({ name: 'R.B', type: 'checkbox' }),
+    ];
+    expect(runConfig({ fields }).SAVE_VALIDATION_FIELDS).toEqual([]);
+  });
+
+  it('only groups check boxes', () => {
+    const fields = [
+      createField({ name: 'Addr.Line1', saveValidated: true }),
+      createField({ name: 'Addr.Line2', saveValidated: true }),
+    ];
+    expect(runConfig({ fields }).SAVE_VALIDATION_FIELDS).toEqual(['Addr.Line1', 'Addr.Line2']);
+  });
+
   it('counts a name placed twice once', () => {
     const twice = [
       createField({ name: 'CUSTNAME', saveValidated: true }),
@@ -183,6 +221,72 @@ describe('the generated Main', () => {
        };`
     )();
     expect(probe).toEqual({ rows: 1, sig: true, date: false, anyName: true });
+  });
+});
+
+describe('save validating a check box group', () => {
+  // Acrobat runs document-level scripts with the document as the global this,
+  // so a vm context standing in for the document is what getSafeField reads.
+  function saveValidate(ticked) {
+    const box = (name) => createField({ name, type: 'checkbox', saveValidated: true });
+    const fields = [box('Trace Reason.A'), box('Trace Reason.B')];
+    const values = {
+      'Trace Reason.A': ticked.includes('A') ? 'Yes' : 'Off',
+      'Trace Reason.B': ticked.includes('B') ? 'Yes' : 'Off',
+    };
+    const form = Object.fromEntries(
+      Object.entries(values).map(([name, value]) => [name, { type: 'checkbox', value, required: false }])
+    );
+    form.ERRORS_FOUND = { value: 0 };
+    form.FORM_MESSAGE = { value: '' };
+    const names = Object.keys(form);
+    const doc = vm.createContext({
+      getField: (name) => form[name] ?? null,
+      numFields: names.length,
+      getNthFieldName: (i) => names[i],
+      app: { alert() {} },
+      display: { hidden: 1, visible: 0 },
+    });
+    vm.runInContext(`${buildConfigBlock({ fields })}\n${helperScript()}\nrunBaseSaveValidationOnly();`, doc);
+    return {
+      errors: form.ERRORS_FOUND.value,
+      red: ['Trace Reason.A', 'Trace Reason.B'].filter((n) => form[n].required),
+    };
+  }
+
+  it('flags both boxes as one error when neither is ticked', () => {
+    expect(saveValidate([])).toEqual({ errors: 1, red: ['Trace Reason.A', 'Trace Reason.B'] });
+  });
+
+  it('flags a lone check box or a radio group left Off, and passes it once set', () => {
+    const run = (type, value) => {
+      const form = {
+        ONE: { type, value, valueAsString: value, required: false },
+        ERRORS_FOUND: { value: 0 },
+        FORM_MESSAGE: { value: '' },
+      };
+      const names = Object.keys(form);
+      const doc = vm.createContext({
+        getField: (name) => form[name] ?? null,
+        numFields: names.length,
+        getNthFieldName: (i) => names[i],
+        app: { alert() {} },
+        display: { hidden: 1, visible: 0 },
+      });
+      const fields = [createField({ name: 'ONE', type: type === 'radiobutton' ? 'radio' : type, saveValidated: true })];
+      vm.runInContext(`${buildConfigBlock({ fields })}\n${helperScript()}\nrunBaseSaveValidationOnly();`, doc);
+      return [form.ERRORS_FOUND.value, form.ONE.required];
+    };
+    expect(run('checkbox', 'Off')).toEqual([1, true]);
+    expect(run('checkbox', 'Yes')).toEqual([0, false]);
+    expect(run('radiobutton', 'Off')).toEqual([1, true]);
+    expect(run('radiobutton', 'Choice1')).toEqual([0, false]);
+  });
+
+  it('passes with either one ticked, or both', () => {
+    expect(saveValidate(['A'])).toEqual({ errors: 0, red: [] });
+    expect(saveValidate(['B'])).toEqual({ errors: 0, red: [] });
+    expect(saveValidate(['A', 'B'])).toEqual({ errors: 0, red: [] });
   });
 });
 
@@ -245,6 +349,32 @@ describe('writing them into a PDF', () => {
     const scripts = readDocumentScripts(doc);
     expect([...scripts.keys()]).toEqual(['Main']);
     expect(scripts.get('Main')).toBe('fresh();');
+  });
+});
+
+describe('exporting a check box group', () => {
+  it('writes separate boxes under one parent, grouped in Main, with group OnBlurs', async () => {
+    const box = (name, x) =>
+      createField({ name, type: 'checkbox', saveValidated: true, rect: { x, y: 700, width: 14, height: 14 } });
+    const { pdfBytes } = await exportPdf({
+      originalBytes: await blankPdf(),
+      fields: [box('Trace Reason.A', 50), box('Trace Reason.B', 100)],
+    });
+    const out = await PDFDocument.load(pdfBytes);
+
+    const top = out.getForm().acroForm.getFields().map(([f]) => f.getPartialName());
+    expect(top).toContain('Trace Reason');
+    expect(top).not.toContain('Trace Reason.A');
+
+    const cfg = new Function(
+      `${readDocumentScripts(out).get('Main').split('//</CONFIG>')[0]}\nreturn SAVE_VALIDATION_FIELDS;`
+    )();
+    expect(cfg).toEqual([['Trace Reason.A', 'Trace Reason.B']]);
+
+    const blur = out.getForm().getCheckBox('Trace Reason.A').acroField.getWidgets()[0]
+      .dict.lookup(PDFName.of('AA'), PDFDict).lookup(PDFName.of('Bl'), PDFDict)
+      .lookup(PDFName.of('JS'));
+    expect(blur.decodeText()).toContain('this.getField("Trace Reason.B").required = false');
   });
 });
 

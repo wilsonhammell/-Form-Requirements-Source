@@ -68,6 +68,7 @@ import {
 } from './core/schema.js';
 
 import { createMarker, markerIssues, DRAW_MARKER } from './core/markers.js';
+import { spreadGroupSave, adoptGroupSave } from './core/checkBoxGroups.js';
 import { importPdf, loadPdfBytes, formatsFromPdf, SOURCE } from './core/pdfImport.js';
 import { exportPdf } from './core/pdfExport.js';
 import { serializeJsonBytes } from './core/pdfEmbed.js';
@@ -562,13 +563,15 @@ export default function App() {
             }
             return reconcileField(next, dbIndex);
           });
-          // The other placements of the name follow, whatever it is called now.
+          // The other placements of the name follow, whatever it is called now,
+          // and Save Validation goes to the rest of a check box group.
           const shared = namePatch(patch);
           const name = patched.find((f) => f.id === id)?.name.trim();
           if (!name || Object.keys(shared).length === 0) return patched;
-          return patched.map((f) =>
+          const named = patched.map((f) =>
             f.id !== id && f.name.trim() === name ? reconcileField({ ...f, ...shared }, dbIndex) : f
           );
+          return spreadGroupSave(named, new Set([name]), patch, (f) => reconcileField(f, dbIndex));
         },
         // A name, a note or an options list is typed, so the keystrokes fold
         // into one step per box. A checkbox or a picker is one decision and
@@ -610,7 +613,7 @@ export default function App() {
       setFields((current) => {
         const field = current.find((f) => f.id === id);
         if (!field) return current;
-        const joined = reconcileField(adoptNameValues(field, current), dbIndex);
+        const joined = reconcileField(adoptGroupSave(adoptNameValues(field, current), current), dbIndex);
         if (sameNameValues(joined, field)) return current;
         return current.map((f) => (f.id === id ? joined : f));
       });
@@ -642,11 +645,12 @@ export default function App() {
           current.filter((f) => ids.has(f.id)).map((f) => f.name.trim()).filter(Boolean)
         );
         const shared = namePatch(patch);
-        return current.map((f) => {
+        const patched = current.map((f) => {
           if (ids.has(f.id)) return reconcileField({ ...f, ...patch }, dbIndex);
           if (names.has(f.name.trim())) return reconcileField({ ...f, ...shared }, dbIndex);
           return f;
         });
+        return spreadGroupSave(patched, names, patch, (f) => reconcileField(f, dbIndex));
       });
     },
     [dbIndex, setFields]

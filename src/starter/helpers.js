@@ -106,10 +106,15 @@ function anyRowHas(part) {
     return false;
 }
 
+// An array is a check box group, every box highlighted and counted as one error.
 function flagError(fieldName) {
-    var field = getSafeField(fieldName);
-    if (field) {
-        field.required = true;
+    var names = typeof fieldName === "string" ? [fieldName] : fieldName;
+
+    for (var i = 0; i < names.length; i++) {
+        var field = getSafeField(names[i]);
+        if (field) {
+            field.required = true;
+        }
     }
 
     var errorCountField = getSafeField("ERRORS_FOUND");
@@ -552,6 +557,22 @@ function PopulateJointData() {
     }
 }
 
+// A group none of whose boxes are on the form has nothing to flag, so it passes.
+function anyBoxTicked(fieldNames) {
+    var placed = false;
+
+    for (var i = 0; i < fieldNames.length; i++) {
+        var field = getSafeField(fieldNames[i]);
+        if (!field) continue;
+        placed = true;
+        if (field.value !== "Off" && field.value !== "") {
+            return true;
+        }
+    }
+
+    return !placed;
+}
+
 function runBaseSaveValidationOnly()
 {
     clearAllRequired();
@@ -559,6 +580,14 @@ function runBaseSaveValidationOnly()
 
     for (var i = 0; i < SAVE_VALIDATION_FIELDS.length; i++) {
         var fieldName = SAVE_VALIDATION_FIELDS[i];
+
+        if (typeof fieldName !== "string") {
+            if (!anyBoxTicked(fieldName)) {
+                flagError(fieldName);
+            }
+            continue;
+        }
+
         var field = getSafeField(fieldName);
 
         if (!field) continue;
@@ -571,7 +600,8 @@ function runBaseSaveValidationOnly()
             val = getSafeValue(fieldName);
         }
 
-        if (val === "") {
+        // An unticked check box or a radio group with nothing chosen reads Off.
+        if (val === "" || ((field.type === "checkbox" || field.type === "radiobutton") && val === "Off")) {
             flagError(fieldName);
         }
     }
@@ -609,7 +639,7 @@ function clearAllRequired() {
         var fieldName = this.getNthFieldName(i);
         var field = getSafeField(fieldName);
 
-        if (field && (field.type === "text" || field.type === "checkbox" || field.type === "combobox")) {
+        if (field && (field.type === "text" || field.type === "checkbox" || field.type === "radiobutton" || field.type === "combobox")) {
             field.required = false;
         }
     }

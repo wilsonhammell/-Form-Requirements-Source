@@ -43,6 +43,10 @@ it later clears the flag.
 **Save Validation** (`saveValidated`) sits beside it but is independent. Any
 field can carry it, named or not, in the DB list or not.
 
+Check boxes with dotted names sharing a parent (`Reason.A`, `Reason.B`) are a
+group, nested under the parent in the field list. Save Validation is set on the
+whole group at once, and means at least one ticked, not all of them.
+
 **Custom Save Validation** (`customSaveValidated`) is the exception case, for a
 field whose save behaviour the plain flag cannot describe. Two rules hold it in
 place:
@@ -508,7 +512,7 @@ config and the PDF cannot disagree:
 | `HAS_ESIGN_FIELDS` | whether the eSign pair is placed |
 | `FILEOPTICS_BUTTON_FIELDS` | the placed buttons, **minus Print** |
 | `LOAD_VALIDATION_FIELDS` | Load Validated, paired with the customer-facing name |
-| `SAVE_VALIDATION_FIELDS` | Save Validated, excluding the custom ones |
+| `SAVE_VALIDATION_FIELDS` | Save Validated, excluding the custom ones. A check box group is one array entry |
 | `MEMBERSHIP_TYPE`, `PRODUCT_CODES` | the Config tab |
 | `CODE_TYPES` | constant `["PROD_CODE"]` |
 

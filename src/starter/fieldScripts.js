@@ -27,6 +27,14 @@ export function clearRequiredOnBlur(fieldName) {
   return `if (${f}.value !== "" && ${f}.value !== "Off") { ${f}.required = false; }`;
 }
 
+// A check box group was flagged as a whole, so ticking any one of them clears
+// the whole group.
+export function clearGroupOnBlur(fieldName, members) {
+  const f = `this.getField(${js(fieldName)})`;
+  const clears = members.map((m) => `\n    this.getField(${js(m)}).required = false;`);
+  return `if (${f}.value !== "" && ${f}.value !== "Off") {${clears.join('')}\n}`;
+}
+
 // How rows past the first get turned on. enableSignerRows enabling only row 1
 // is the design rather than a quirk, since every other row is revealed by its
 // own dropdown.
@@ -76,11 +84,17 @@ const ESIGN_CODE = ESIGN_PARTS.find((p) => p.key === 'code').name;
 
 // Rows come from the same derivation the config block is built from, so the two
 // cannot disagree.
-export function fieldScripts({ fieldNames = [], signerRows = [] } = {}) {
+export function fieldScripts({ fieldNames = [], signerRows = [], saveGroups = [] } = {}) {
   const out = new Map();
 
   for (const name of fieldNames) {
     out.set(name, { OnBlur: clearRequiredOnBlur(name) });
+  }
+
+  for (const members of saveGroups) {
+    for (const name of members) {
+      if (out.has(name)) out.set(name, { OnBlur: clearGroupOnBlur(name, members) });
+    }
   }
 
   signerRows.forEach((row, i) => {

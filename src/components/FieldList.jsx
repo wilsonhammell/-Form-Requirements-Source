@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { isLoadAttempted } from '../core/schema.js';
 import { fieldTone, MARKER_TONE, TONE_TITLE } from '../core/fieldTone.js';
+import { checkBoxGroups, checkBoxParent } from '../core/checkBoxGroups.js';
 
 // The dot beside each row, one class per tone.
 const DOT = {
@@ -13,16 +14,20 @@ const DOT = {
 };
 
 // Two shapes, the same two Acrobat's Fields panel uses. A radio group nests,
-// since its options are parts of one field. Any other repeated name stays flat
-// and numbered. Either suffix is display only and never reaches the stored name.
+// since its options are parts of one field, and so does a dotted check box
+// group, under its parent. Any other repeated name stays flat and numbered.
+// Either suffix is display only and never reaches the stored name.
 
 // Exported because arrow key navigation has to walk the order the eye sees, not
 // the order the field array happens to hold.
 export function fieldListOrder(fields) {
   const ids = [];
+  const boxGroups = checkBoxGroups(fields);
   for (const [, pageFields] of groupByPage(fields)) {
-    for (const group of groupByName(pageFields)) {
-      for (const field of group.fields) ids.push(field.id);
+    for (const entry of listEntries(pageFields, boxGroups)) {
+      for (const group of entry.groups) {
+        for (const field of group.fields) ids.push(field.id);
+      }
     }
   }
   return ids;
@@ -71,6 +76,8 @@ export default function FieldList({
     return { indexById, countByKey };
   }, [fields]);
 
+  const boxGroups = useMemo(() => checkBoxGroups(fields), [fields]);
+
   if (fields.length === 0 && markers.length === 0) {
     return <p className="px-3 py-4 text-sm text-slate-500">No fields yet.</p>;
   }
@@ -106,9 +113,39 @@ export default function FieldList({
             Page {page + 1}
           </div>
           <ul>
-            {groupByName(pageFields).map((group) => {
-              const isRadioGroup = group.name && group.fields[0].type === 'radio';
-              if (!isRadioGroup) {
+            {listEntries(pageFields, boxGroups).map((entry) => {
+              if (entry.kind === 'boxes') {
+                const count = boxGroups.get(entry.parent).length;
+                return (
+                  <li key={entry.key}>
+                    <div className="flex items-baseline gap-2 px-3 pb-0.5 pt-1.5">
+                      <span className="truncate font-mono text-xs font-semibold text-slate-700">
+                        {entry.parent}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        check box group, {count} box{count === 1 ? '' : 'es'}
+                      </span>
+                    </div>
+                    <ul className="ml-3 border-l border-slate-200">
+                      {entry.groups.flatMap((group) => {
+                        const repeated = placement.countByKey.get(group.key) > 1;
+                        return group.fields.map((field) => (
+                          <li key={field.id} ref={field.id === selectedId ? selectedRef : null}>
+                            <FieldRow
+                              {...rowProps(field)}
+                              label={group.name.slice(entry.parent.length + 1)}
+                              index={repeated ? placement.indexById.get(field.id) : undefined}
+                            />
+                          </li>
+                        ));
+                      })}
+                    </ul>
+                  </li>
+                );
+              }
+
+              const [group] = entry.groups;
+              if (entry.kind !== 'radio') {
                 const repeated = group.name && placement.countByKey.get(group.key) > 1;
                 return group.fields.map((field) => (
                   <li key={field.id} ref={field.id === selectedId ? selectedRef : null}>
@@ -205,6 +242,29 @@ function groupKey(field) {
   return name ? `${field.type}:${name}` : '';
 }
 
+// The rows of a page in order. A check box group sits where its first box does,
+// with every member of it on the page beneath.
+function listEntries(pageFields, boxGroups) {
+  const entries = [];
+  const boxes = new Map();
+  for (const group of groupByName(pageFields)) {
+    const first = group.fields[0];
+    const parent = group.name ? checkBoxParent(first) : null;
+    if (parent && boxGroups.has(parent)) {
+      if (!boxes.has(parent)) {
+        const entry = { kind: 'boxes', key: `boxes:${parent}`, parent, groups: [] };
+        boxes.set(parent, entry);
+        entries.push(entry);
+      }
+      boxes.get(parent).groups.push(group);
+      continue;
+    }
+    const kind = group.name && first.type === 'radio' ? 'radio' : 'plain';
+    entries.push({ kind, key: group.key || first.id, groups: [group] });
+  }
+  return entries;
+}
+
 // Placements of one name show together even when something else was drawn
 // between them.
 function groupByName(pageFields) {
@@ -230,13 +290,17 @@ function FieldRow({
   system,
   index,
   asOption,
+  label: shortName,
   onSelect,
   onGoToPage,
 }) {
   const tone = fieldTone(field, { system, attempted });
   // Inside a radio group the option's value is its identity, so it stands in for
-  // the name rather than repeating the group name on every row.
-  const label = asOption ? field.exportValue || '(no value)' : field.name || '(unnamed)';
+  // the name rather than repeating the group name on every row. Inside a check
+  // box group the part after the parent does the same.
+  const label = asOption
+    ? field.exportValue || '(no value)'
+    : shortName || field.name || '(unnamed)';
   return (
     <button
       type="button"

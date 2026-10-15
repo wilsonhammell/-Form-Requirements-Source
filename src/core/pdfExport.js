@@ -44,6 +44,7 @@ import {
   buildDocumentScripts,
   findCustomSaveValidation,
   findFormHooks,
+  saveValidationGroups,
 } from '../starter/buildScripts.js';
 import { fieldScripts } from '../starter/fieldScripts.js';
 import { formatScripts } from './fieldFormat.js';
@@ -127,7 +128,8 @@ export async function exportPdf({
   const scripts = buildFieldScripts(
     groups,
     new Set(systemFields.map((f) => String(f?.identifier ?? f).trim())),
-    deriveSignerRows(fields)
+    deriveSignerRows(fields),
+    saveValidationGroups(fields)
   );
   applyFormats(form, groups, scripts);
   applyFieldScripts(form, groups, scripts);
@@ -200,18 +202,18 @@ function applyFieldSettings(field, group, fontsByFamily, widgets, fromSource) {
 }
 
 // What clearAllRequired walks. A pushbutton has no value to clear.
-const SCRIPTABLE_TYPES = ['text', 'checkbox', 'dropdown'];
+const SCRIPTABLE_TYPES = ['text', 'checkbox', 'radio', 'dropdown'];
 
 // System fields get none, being read-only and filled by code, so nothing ever
 // flags them.
 //
 // This replaces the load time pass the old forms ran, which was only safe once
 // and flattened the dropdown scripts whenever it ran again.
-function buildFieldScripts(groups, systemNames, signerRows) {
+function buildFieldScripts(groups, systemNames, signerRows, saveGroups) {
   const scriptable = [...groups.entries()]
     .filter(([name, group]) => SCRIPTABLE_TYPES.includes(group.type) && !systemNames.has(name))
     .map(([name]) => name);
-  return fieldScripts({ fieldNames: scriptable, signerRows });
+  return fieldScripts({ fieldNames: scriptable, signerRows, saveGroups });
 }
 
 function applyFieldScripts(form, groups, scripts) {

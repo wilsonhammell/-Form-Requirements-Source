@@ -3,6 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   clearRequiredOnBlur,
+  clearGroupOnBlur,
   signerNameOnBlur,
   esignCodeKeystroke,
   fieldScripts,
@@ -26,6 +27,24 @@ describe('the generic OnBlur', () => {
   it('quotes a name with a space or a quote in it', () => {
     expect(compiles(clearRequiredOnBlur('Check Box6'))).toBe(true);
     expect(compiles(clearRequiredOnBlur('od"d'))).toBe(true);
+  });
+});
+
+describe('the check box group OnBlur', () => {
+  const group = ['Trace Reason.A', 'Trace Reason.B'];
+
+  it('clears every box in the group once this one is ticked', () => {
+    const src = clearGroupOnBlur('Trace Reason.B', group);
+    expect(src).toContain('this.getField("Trace Reason.B").value !== "Off"');
+    expect(src).toContain('this.getField("Trace Reason.A").required = false');
+    expect(src).toContain('this.getField("Trace Reason.B").required = false');
+    expect(compiles(src)).toBe(true);
+  });
+
+  it('replaces the generic one on group members only', () => {
+    const out = fieldScripts({ fieldNames: [...group, 'OTHER'], saveGroups: [group] });
+    expect(out.get('Trace Reason.A').OnBlur).toBe(clearGroupOnBlur('Trace Reason.A', group));
+    expect(out.get('OTHER').OnBlur).toBe(clearRequiredOnBlur('OTHER'));
   });
 });
 
