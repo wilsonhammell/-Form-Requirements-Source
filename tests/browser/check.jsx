@@ -1915,6 +1915,37 @@ async function run() {
   const offRotated = await popupsOffPage();
   check('on a turned page every pop-up stays on the page', offRotated.length === 0, offRotated.join('; '));
 
+  // Another PDF opened from page 2 of this one. The old document is destroyed
+  // the moment the new bytes arrive, and handed back while the new one was
+  // still loading, it was asked for a page and pdf.js threw - the app stopped.
+  const errorsBefore = diagnostics.filter((d) => d.startsWith('error')).length;
+  const another = document.querySelector('#root input[type=file][accept*=pdf]');
+  const anotherFile = new DataTransfer();
+  anotherFile.items.add(new File([await samplePdf()], 'another.pdf', { type: 'application/pdf' }));
+  another.files = anotherFile.files;
+  another.dispatchEvent(new Event('change', { bubbles: true }));
+  // and the page changed in the moment between the new form's name showing
+  // and its pages loading, while the old document is still on screen
+  await waitFor('the other PDF named', () =>
+    document.querySelector('#root header span[title]')?.getAttribute('title') === 'another.pdf'
+  );
+  const midLoad = document.querySelector('#root header select[aria-label=Page]');
+  midLoad.value = '1';
+  midLoad.dispatchEvent(new Event('change', { bubbles: true }));
+  midLoad.value = '0';
+  midLoad.dispatchEvent(new Event('change', { bubbles: true }));
+  await waitFor('the other PDF on page 1', () =>
+    document.querySelector('#root header span[title]')?.getAttribute('title') === 'another.pdf' &&
+    document.querySelector('#root canvas')?.style.width === '612px'
+  );
+  await sleep(500);
+  const errorsAfter = diagnostics.filter((d) => d.startsWith('error'));
+  check(
+    'opening another PDF from page 2 throws nothing',
+    errorsAfter.length === errorsBefore,
+    errorsAfter.slice(errorsBefore).join(' | ')
+  );
+
   render();
   document.title = results.every((r) => r.ok) ? 'BROWSER CHECK OK' : 'BROWSER CHECK FAILED';
 }

@@ -1091,6 +1091,11 @@ export default function App() {
               onChangeRect={handleChangeRect}
               onChangeMarkerRect={handleChangeMarkerRect}
             />
+          ) : originalBytes && !pdfError ? (
+            // another PDF, still being read
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              Opening {fileName}…
+            </div>
           ) : (
             <EmptyState />
           )}
