@@ -266,9 +266,12 @@ function ProductValidation(codeTypes, productCodes) {
         }
     }
 
+    // Member, in any case, is skipped. A form for M accounts takes any product,
+    // so Member alone means no product check.
     if (productCodes) {
         for (i = 0; i < productCodes.length; i++) {
-            if (String(productCodes[i]).replace(/^\s+|\s+$/g, "") !== "") {
+            var code = String(productCodes[i]).replace(/^\s+|\s+$/g, "");
+            if (code !== "" && code.toLowerCase() !== "member") {
                 hasConfiguredProductCode = true;
                 break;
             }

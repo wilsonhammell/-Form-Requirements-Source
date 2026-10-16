@@ -196,6 +196,14 @@ describe('product validation', () => {
     expect(passes({ PROD_CODE: '', IN_ACCTNBR: '0' }, [''])).toBe(true);
   });
 
+  it('skips Member in any case, so Member alone means no check', () => {
+    expect(passes({ PROD_CODE: 'S2' }, ['Member'])).toBe(true);
+    expect(passes({ PROD_CODE: 'S2' }, [' MEMBER '])).toBe(true);
+    expect(passes({ PROD_CODE: 'S2' }, ['member', 'M101'])).toBe(false);
+    expect(passes({ PROD_CODE: 'M101' }, ['member', 'M101'])).toBe(true);
+    expect(passes({ PROD_CODE: 'S2' }, ['Members'])).toBe(false);
+  });
+
   it('does not treat an account number of 0 specially', () => {
     expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '0' }, ['M'])).toBe(false);
   });
