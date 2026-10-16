@@ -964,7 +964,8 @@ Four types, matching what the downstream filler handles:
 | Dropdown | `/Ch` + Combo flag | option list, font |
 
 A field's type is chosen with the toolbar's Draw buttons before it is placed and
-is fixed once drawn. The property panel shows it but does not change it.
+is fixed once drawn. There is no Radio button, radio groups only come in on an
+opened PDF. The property panel shows it but does not change it.
 
 ### Export values
 

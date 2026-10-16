@@ -692,36 +692,10 @@ async function run() {
   const cbExport = [...document.querySelectorAll('#root aside input[type=text]')].at(-1);
   check('a checkbox defaults its export value to Yes', cbExport?.value === 'Yes', cbExport?.value);
 
-  // A radio option has no safe default, so it starts blank and is flagged.
-  clickButton('Radio', header);
-  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  await drag([520, 450], [536, 466]);
-  await sleep(150);
-  const radioExport = [...document.querySelectorAll('#root aside input[type=text]')].at(-1);
+  // Radio groups only come in on an opened PDF, there is no button to draw one.
   check(
-    'a radio option gets an Acrobat style placeholder value',
-    radioExport?.value === 'Choice1',
-    JSON.stringify(radioExport?.value)
-  );
-
-  // Clearing it is still an error, the field could never fill without one.
-  setInputValue(radioExport, '');
-  await sleep(150);
-  check(
-    'clearing the export value is reported',
-    document.querySelector('#root aside').textContent.includes('no export value')
-  );
-  setInputValue(radioExport, 'A B');
-  await sleep(150);
-  check(
-    'an export value that would be escaped is rejected',
-    document.querySelector('#root aside').textContent.includes('Letters, digits')
-  );
-  setInputValue(radioExport, 'BASIC');
-  await sleep(150);
-  check(
-    'a valid export value clears the complaint',
-    !document.querySelector('#root aside').textContent.includes('no export value')
+    'there is no Radio draw button',
+    ![...header.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Radio')
   );
 
   // Alignment and wrapping live with the font, both field level.
@@ -789,31 +763,12 @@ async function run() {
     ) && toggle('Multiline') === null
   );
 
-  // Three options of one group: the list should nest and number them the way
-  // Acrobat's Fields panel does, rather than showing three identical rows.
-  clickButton('Radio', header);
-  for (const y of [200, 230, 260]) {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    await drag([600, y], [616, y + 16]);
-    await sleep(80);
-    const nameBox = document.querySelector('#root aside input[type=text]');
-    setInputValue(nameBox, 'COVERAGE');
-    await sleep(120);
-  }
-  const listText = document.querySelector('#root aside').textContent;
-  check(
-    'a radio group is nested under its name',
-    listText.includes('radio group, 3 options'),
-    ''
-  );
-  check(
-    'radio options are labelled by value, not numbered',
-    listText.includes('Choice1') && listText.includes('Choice2') && listText.includes('Choice3')
-  );
-  check(
-    'radio options carry no # suffix, as in Acrobat',
-    !listText.includes('COVERAGE#0')
-  );
+  clickButton('Checkbox', header);
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await drag([600, 200], [616, 216]);
+  await sleep(80);
+  setInputValue(document.querySelector('#root aside input[type=text]'), 'COVERAGE');
+  await sleep(120);
 
   // One name is one PDF field with one type, so a text box cannot take the
   // group's name. Settling it by selecting something else puts the name back.
@@ -827,23 +782,23 @@ async function run() {
   await sleep(120);
   check(
     'the name box says when another type already holds the name',
-    document.querySelector('#root aside').textContent.includes('Already a radio field'),
+    document.querySelector('#root aside').textContent.includes('Already a checkbox field'),
     ''
   );
   const optionRow = [...document.querySelectorAll('#root aside button')].find((b) =>
-    b.textContent.startsWith('Choice3')
+    b.textContent.startsWith('COVERAGE') && b.textContent.includes('checkbox')
   );
   optionRow?.click();
   await sleep(200);
   const afterClash = document.querySelector('#root aside').textContent;
   check(
     'a name another type holds is refused on settle',
-    !afterClash.includes('COVERAGEtext') && afterClash.includes('radio group, 3 options'),
+    !afterClash.includes('COVERAGEtext'),
     ''
   );
   check(
     'the refusal is reported',
-    notices().includes('"COVERAGE" is already a radio field'),
+    notices().includes('"COVERAGE" is already a checkbox field'),
     notices()
   );
   undoKey();
@@ -947,7 +902,7 @@ async function run() {
   };
 
   const editableSeen = {};
-  for (const [type, label] of [['text', 'Text'], ['checkbox', 'Checkbox'], ['radio', 'Radio'], ['dropdown', 'Dropdown']]) {
+  for (const [type, label] of [['text', 'Text'], ['checkbox', 'Checkbox'], ['dropdown', 'Dropdown']]) {
     clickButton(label, header);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await drag([660, 200], [700, 220]);

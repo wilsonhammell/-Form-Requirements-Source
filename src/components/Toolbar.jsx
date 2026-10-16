@@ -11,7 +11,6 @@ const MAX_FONT_SIZE = 72;
 const DRAW_TYPES = [
   { type: 'text', label: 'Text' },
   { type: 'checkbox', label: 'Checkbox' },
-  { type: 'radio', label: 'Radio' },
   { type: 'dropdown', label: 'Dropdown' },
 ];
 
