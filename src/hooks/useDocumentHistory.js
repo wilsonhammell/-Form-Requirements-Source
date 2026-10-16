@@ -58,7 +58,13 @@ export function useDocumentHistory(build) {
   const undo = useCallback(() => setState(history.undo), []);
   const redo = useCallback(() => setState(history.redo), []);
 
+  // The whole stack, to put back exactly as it was. A batch keeps one per
+  // form, so stepping away from a form and back leaves its undo where it was.
+  const restore = useCallback((saved) => setState(saved), []);
+
   return {
+    history: state,
+    restore,
     fields: state.present.fields,
     config: state.present.config,
     markers: state.present.markers,

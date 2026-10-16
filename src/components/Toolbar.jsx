@@ -58,15 +58,18 @@ export default function Toolbar({
     <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 bg-white px-4 py-2">
       {/* Outside the menus, which unmount on close, so the picker a menu item
           opens still has an input to report back to. */}
+      {/* Several at once, a folder's worth: they open as a batch to step
+          through with Prev and Next. */}
       <input
         ref={pdfInput}
         type="file"
         accept="application/pdf,.pdf"
+        multiple
         className="hidden"
         onChange={(e) => {
-          const file = e.target.files?.[0];
+          const files = [...(e.target.files ?? [])];
           e.target.value = '';
-          if (file) onOpenPdf(file);
+          if (files.length > 0) onOpenPdf(files);
         }}
       />
       <input
@@ -213,7 +216,7 @@ export default function Toolbar({
         <Menu
           label="Import"
           items={[
-            { label: 'Open PDF', onClick: () => pdfInput.current?.click() },
+            { label: 'Open PDF(s)', onClick: () => pdfInput.current?.click() },
             { label: 'Import JSON', disabled: !hasPdf, onClick: () => jsonInput.current?.click() },
             { label: 'Fill from Form Table', disabled: !hasPdf, onClick: () => tableInput.current?.click() },
           ]}

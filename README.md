@@ -765,6 +765,36 @@ than stored on the field. That rule lives once, in
 which names the tool recognises and the lists drifting on it would be a silent
 failure downstream.
 
+## Opening a batch
+
+**Open PDF(s)** takes any number of files, and so does dropping them on the
+window. They are listed in natural name order (Form 2 before Form 10), the
+first opens, and a bar along the top steps through the rest: **Prev**,
+**Next**, and a list to jump straight to one. Opening one file is a batch of
+one, and the bar does not show.
+
+Defined in [`src/core/batch.js`](src/core/batch.js), plain data like the
+rest of core, and drawn by [`BatchBar.jsx`](src/components/BatchBar.jsx).
+
+- **Nothing is imported until a form is first shown.** Opening seventy forms
+  reads seventy file handles, not seventy imports.
+- **A form left keeps everything.** Its bytes, its whole undo stack, its
+  page and its notices are stored when another is shown and restored when
+  it comes back, so undo still walks back through that form's own edits.
+- **Every form is marked** in the list: opened, changed and not exported,
+  exported as it stands, or could not be opened. A form is changed when its
+  document differs from the one it opened as, and exported when its PDF was
+  exported from the document it is now.
+- **A PDF that will not open takes its place anyway,** marked and saying
+  why, so Next steps past it rather than trying it again every time.
+- **Closing the tab asks first** while any form has a change not exported.
+
+A destroyed document could come back from `usePdfDocument` when the same
+bytes did: Prev pressed before the next form had finished loading handed the
+page view the previous form's document, already destroyed, and pdf.js threw.
+The hook now forgets a document with its task, and returns only the one for
+the bytes asked about.
+
 ## Opening a PDF
 
 Three cases, in priority order:
@@ -1342,6 +1372,7 @@ the bulk bar says how many of the selection that applies to before you press it.
 ```
 npm test              # 624 unit and integration tests, node
 npm run check:browser # 130 checks driving the real UI in headless Chrome
+node tests/browser/run.mjs http://localhost:5173/tests/browser/batch.html  # the batch, 30 checks
 ```
 
 `tests/formHooks.test.js` runs the generated scripts through `node:vm`, one

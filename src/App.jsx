@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Toolbar from './components/Toolbar.jsx';
+import BatchBar from './components/BatchBar.jsx';
+import { createBatch, stepIndex, storeState, markExported, markFailed, entryStatus, unexported } from './core/batch.js';
 import PdfCanvas from './components/PdfCanvas.jsx';
 import FieldList, { fieldListOrder } from './components/FieldList.jsx';
 import { fieldScope, FIELD_SCOPES, MARKER_SCOPE } from './core/fieldTone.js';
@@ -11,7 +13,7 @@ import FormTablePicker from './components/FormTablePicker.jsx';
 import { PanelTabs, ScopeBar, IssueList, PanelResizer, usePanelWidth } from './components/SidePanel.jsx';
 import { usePdfDocument } from './hooks/usePdfDocument.js';
 import { useDocumentHistory } from './hooks/useDocumentHistory.js';
-import { typingRun } from './core/history.js';
+import { typingRun, emptyHistory } from './core/history.js';
 import { loadDbFields, buildDbIndex, buildCaseInsensitiveIndex } from './core/dbFields.js';
 import {
   signingButtons,
@@ -100,6 +102,8 @@ export default function App() {
   // and how far it is zoomed are where the user left them, not something Ctrl+Z
   // should be walking backwards through.
   const {
+    history: documentHistory,
+    restore: restoreDocument,
     fields,
     config,
     markers,
@@ -111,6 +115,10 @@ export default function App() {
     undo,
     redo,
   } = useDocumentHistory(() => ({ fields: [], config: createConfig(), markers: [] }));
+  // The PDFs opened together and which one is on screen. Opening one file is a
+  // batch of one, so a single form works exactly as it always did and Prev and
+  // Next simply have nowhere to go.
+  const [batch, setBatch] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   // Its own selection. A marker shares none of a field's controls, so the two
   // are never selected at once and picking one clears the other.
@@ -364,22 +372,60 @@ export default function App() {
     [say]
   );
 
-  const handleOpenPdf = (file) =>
-    whileBusy(
+  // Shows one form of the batch. A form shown before comes back exactly as it
+  // was left - its fields, its undo, its page - and one shown for the first
+  // time is imported now, the way opening it on its own would.
+  const showEntry = (target, nextBatch) => {
+    const entry = nextBatch.entries[target];
+    return whileBusy(
       async () => {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        const result = await importPdf(bytes, dbIndex, systemFields, buttons);
-        setOriginalBytes(bytes);
-        setFileName(file.name);
+        const clearSelection = () => {
+          setSelectedId(null);
+          setSelectedMarkerId(null);
+          setSelectedIds(new Set());
+          setIssueFilter(null);
+        };
+        if (entry.state) {
+          const saved = entry.state;
+          setOriginalBytes(saved.bytes);
+          setFileName(saved.fileName);
+          restoreDocument(saved.history);
+          clearSelection();
+          setPageIndex(saved.pageIndex);
+          setShowComments(saved.showComments);
+          setNotices(saved.notices);
+          setBatch({ ...nextBatch, index: target });
+          return;
+        }
+        let bytes;
+        let result;
+        try {
+          bytes = new Uint8Array(await entry.file.arrayBuffer());
+          result = await importPdf(bytes, dbIndex, systemFields, buttons);
+        } catch (err) {
+          // Shown as a form that would not open, in its place in the batch, so
+          // Next goes on past it rather than trying it again every time.
+          const message = `Could not open ${entry.name}: ${err.message}`;
+          setOriginalBytes(null);
+          setFileName(entry.name);
+          resetDocument({ fields: [], config: createConfig(), markers: [] });
+          clearSelection();
+          setPageIndex(0);
+          say([message]);
+          setBatch(markFailed(nextBatch, target, message));
+          return;
+        }
         // A signer name saved as a text field elsewhere comes back a dropdown,
         // the same correction system field types get.
-        resetDocument({
+        const opened = {
           fields: reconcileSpecialTypes(result.fields),
           config: result.config,
           markers: result.markers,
-        });
-        setSelectedId(null);
-        setSelectedMarkerId(null);
+        };
+        setOriginalBytes(bytes);
+        setFileName(entry.name);
+        resetDocument(opened);
+        clearSelection();
         setPageIndex(0);
         setShowComments(true);
         const label = {
@@ -387,10 +433,83 @@ export default function App() {
           [SOURCE.ACROFORM]: 'Existing AcroForm found',
           [SOURCE.FLAT]: 'Flat PDF',
         }[result.source];
-        say([`${label}. ${result.notes.join(' ')}`]);
+        const message = `${label}. ${result.notes.join(' ')}`;
+        say([message]);
+        // Stored straight away, so a form opened and only looked at reads as
+        // opened rather than new, and an edit is anything that differs from this.
+        setBatch(
+          storeState({ ...nextBatch, index: target }, target, {
+            bytes,
+            fileName: entry.name,
+            history: emptyHistory(opened),
+            pageIndex: 0,
+            notices: [message],
+            showComments: true,
+          })
+        );
       },
-      (err) => `Could not open ${file.name}: ${err.message}`
+      (err) => `Could not open ${entry.name}: ${err.message}`
     );
+  };
+
+  // Everything that makes the form on screen what it is, kept when another
+  // form is shown so this one can come back the same.
+  const currentState = () => ({
+    bytes: originalBytes,
+    fileName,
+    history: documentHistory,
+    pageIndex,
+    notices,
+    showComments,
+  });
+
+  // One file or a folder's worth. They are listed by name and the first one
+  // opens; the rest are imported as they are reached.
+  const handleOpenPdf = (files) => {
+    const next = createBatch(Array.isArray(files) || files instanceof FileList ? files : [files]);
+    if (next.entries.length === 0) {
+      say(['None of those files is a PDF.']);
+      return;
+    }
+    showEntry(0, next);
+  };
+
+  const goToEntry = (target) => {
+    if (!batch || busy || target === batch.index || target < 0 || target >= batch.entries.length) return;
+    // A form that would not open has nothing on screen to keep.
+    const leaving = batch.entries[batch.index];
+    const kept = leaving?.failed && !leaving.state ? batch : storeState(batch, batch.index, currentState());
+    showEntry(target, kept);
+  };
+
+  // What each form in the batch is at: not opened yet, opened, edited, or
+  // exported as it now stands. The form on screen is read live, since what was
+  // stored for it is out of date the moment anything is done to it.
+  const batchStatuses = useMemo(
+    () =>
+      batch
+        ? batch.entries.map((entry, i) =>
+            entryStatus(entry, i === batch.index ? documentHistory.present : undefined)
+          )
+        : [],
+    [batch, documentHistory.present]
+  );
+
+  // Closing the tab or reloading would lose every edit not yet exported, in
+  // every form of the batch, so the browser asks first.
+  const unsavedCount = useMemo(
+    () => unexported(batch, documentHistory.present).length,
+    [batch, documentHistory.present]
+  );
+  useEffect(() => {
+    if (unsavedCount === 0) return undefined;
+    const warn = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [unsavedCount]);
 
   const handleImportJson = async (file) => {
     try {
@@ -923,8 +1042,11 @@ export default function App() {
       (err) => `Requirements export failed: ${err.message}`
     );
 
-  const handleExportPdf = () =>
-    whileBusy(
+  const handleExportPdf = () => {
+    // The document the export is taken of, so an edit made after it shows the
+    // form as edited again.
+    const exportedPresent = documentHistory.present;
+    return whileBusy(
       async () => {
         const { pdfBytes, warnings } = await exportPdf({
           originalBytes,
@@ -938,10 +1060,12 @@ export default function App() {
         });
         // The JSON is already inside the PDF. Export JSON is there for a copy.
         downloadBytes(pdfBytes, exportedPdfName(fileName), 'application/pdf');
+        setBatch((current) => markExported(current, current?.index ?? -1, exportedPresent));
         say([`Exported ${exportedPdfName(fileName)}.`, ...warnings]);
       },
       (err) => `Export failed: ${err.message}`
     );
+  };
 
   const handleExportJson = () => {
     const bytes = serializeJsonBytes(
@@ -1009,7 +1133,29 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-slate-100 text-slate-900">
+    <div
+      className="flex h-full flex-col bg-slate-100 text-slate-900"
+      // A folder's worth of PDFs dropped anywhere on the window opens as a batch.
+      onDragOver={(e) => {
+        if ([...(e.dataTransfer?.types ?? [])].includes('Files')) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        if (!e.dataTransfer?.files?.length) return;
+        e.preventDefault();
+        if (!busy) handleOpenPdf([...e.dataTransfer.files]);
+      }}
+    >
+      {batch && batch.entries.length > 1 && (
+        <BatchBar
+          entries={batch.entries}
+          index={batch.index}
+          statuses={batchStatuses}
+          busy={busy}
+          onPrev={() => goToEntry(stepIndex(batch, -1))}
+          onNext={() => goToEntry(stepIndex(batch, 1))}
+          onPick={goToEntry}
+        />
+      )}
       <Toolbar
         fileName={fileName}
         pageIndex={pageIndex}
@@ -1091,6 +1237,20 @@ export default function App() {
               onChangeRect={handleChangeRect}
               onChangeMarkerRect={handleChangeMarkerRect}
             />
+          ) : batch?.entries[batch.index]?.failed && !originalBytes ? (
+            // a form of the batch that would not open: said, and stepped past
+            <div className="flex h-full items-center justify-center p-10">
+              <div className="max-w-md text-center">
+                <h2 className="text-base font-medium text-rose-700">This PDF could not be opened</h2>
+                <p className="mt-2 text-sm text-slate-600">{batch.entries[batch.index].failed}</p>
+                <p className="mt-4 text-xs text-slate-400">Prev and Next carry on through the rest of the batch.</p>
+              </div>
+            </div>
+          ) : originalBytes && !pdfError ? (
+            // the next form of a batch, still being read
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              Opening {fileName}…
+            </div>
           ) : (
             <EmptyState />
           )}
