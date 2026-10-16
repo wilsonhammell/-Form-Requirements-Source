@@ -207,12 +207,12 @@ existing approved runtime. Both are standard library only:
 
 FILE MANIFEST (SHA-256)
 -----------------------
-  856fc1a39da01c59c6c211dcb87a2a4720b63395a33281331a10adf3957ba541  assets/index-B9vLScr5.js
+  5ce75236a8366b7e201ecef918793f73181cd13e22af0e414a5c93286a76a207  assets/index-CBoBooPv.js
   9b141ec335e29f8d144b62a68a85ac0d809837e79597e1b8a5dda11a60a5b6ad  assets/index-CWWNHpn0.css
   52fadd5b81b6abd1eb665bab0c3749a8ad6a293fcb6ee9d9e0309f29d4f82619  assets/pdf.worker.min-iDqQPrd3.mjs
   16bf896354cdf857757111b3790650ef0b75a4bf359569a6757eba231d00f10f  dbFields.json
   137eabc1a1557f3ec640b8f06af17e1fa172ea0b369a4ee241f84a5e6ab43047  HOSTING.txt
-  ad310741d0f2086b701bdc37677da1b364127803bc0dd6162bd24305b0c8861c  index.html
+  4fafd34df37e06ddef0825653e278a286268873d0b3c218802ad8cd1212ac8a8  index.html
   ea7e3e1850cd32c138c14d14b674cbf661cf85b5365775e5f37c941a520a4b80  README.txt
   97420cd231e6f86018db9d361af368a3234b1cd148efbedae263dd0451b858a0  sbom.cyclonedx.json
   6c210091c57a6a78b736ad9d54845e09a86e7f6d06053970c829988c8024b68b  serve.mjs

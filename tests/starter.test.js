@@ -191,16 +191,13 @@ describe('product validation', () => {
     expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '123' }, ['S1'])).toBe(false);
   });
 
-  it('counts an account number of 0 as M', () => {
-    expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '0' }, ['S1', 'M'])).toBe(true);
-    expect(passes({ PROD_CODE: '', IN_ACCTNBR: '0' }, ['M'])).toBe(true);
-    expect(passes({ PROD_CODE: 'M', IN_ACCTNBR: '123' }, ['M'])).toBe(true);
-    expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '123' }, ['M'])).toBe(false);
-    expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '0' }, ['S1'])).toBe(false);
+  it('skips the check when the form has no product codes', () => {
+    expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '0' }, [])).toBe(true);
+    expect(passes({ PROD_CODE: '', IN_ACCTNBR: '0' }, [''])).toBe(true);
   });
 
-  it('still matches PROD_CODE when the account number is 0', () => {
-    expect(passes({ PROD_CODE: 'S1', IN_ACCTNBR: '0' }, ['S1'])).toBe(true);
+  it('does not treat an account number of 0 specially', () => {
+    expect(passes({ PROD_CODE: 'S2', IN_ACCTNBR: '0' }, ['M'])).toBe(false);
   });
 });
 
