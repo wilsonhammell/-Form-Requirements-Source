@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Toolbar from './components/Toolbar.jsx';
 import BatchBar from './components/BatchBar.jsx';
 import { createBatch, stepIndex, storeState, markExported, markFailed, entryStatus, unexported } from './core/batch.js';
+import ReviewBar from './components/ReviewBar.jsx';
+import {
+  VERDICT, fetchReviewForms, fetchVerdicts, saveVerdict, remoteForm, verdictStatus, verdictCounts,
+} from './core/review.js';
 import PdfCanvas from './components/PdfCanvas.jsx';
 import FieldList, { fieldListOrder } from './components/FieldList.jsx';
 import { fieldScope, FIELD_SCOPES, MARKER_SCOPE } from './core/fieldTone.js';
@@ -119,6 +123,10 @@ export default function App() {
   // batch of one, so a single form works exactly as it always did and Prev and
   // Next simply have nowhere to go.
   const [batch, setBatch] = useState(null);
+  // Review mode, when the form cleaner's review station served the app: the
+  // handover's forms and the verdict on each, as kept on disk.
+  const [review, setReview] = useState(null);
+  const [savingVerdict, setSavingVerdict] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   // Its own selection. A marker shares none of a field's controls, so the two
   // are never selected at once and picking one clears the other.
@@ -480,6 +488,69 @@ export default function App() {
     const leaving = batch.entries[batch.index];
     const kept = leaving?.failed && !leaving.state ? batch : storeState(batch, batch.index, currentState());
     showEntry(target, kept);
+  };
+
+  // Served by the review station, every form of the handover opens at once,
+  // with the verdicts given so far.
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      const forms = await fetchReviewForms();
+      if (!live || !forms?.length) return;
+      const verdicts = await fetchVerdicts().catch(() => ({}));
+      if (!live) return;
+      setReview({ forms, verdicts });
+      handleOpenPdf(forms.map((f) => remoteForm(f)));
+    })();
+    return () => {
+      live = false;
+    };
+    // once, on opening
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const reviewForm = review ? batch?.entries[batch.index]?.file?.review ?? null : null;
+  const reviewMarks = useMemo(() => {
+    if (!review || !batch) return undefined;
+    const MARKS = {
+      [VERDICT.NONE]: { mark: '  ', title: 'not reviewed' },
+      [VERDICT.APPROVED]: { mark: '✓', title: 'approved' },
+      [VERDICT.CHANGES]: { mark: '✗', title: 'needs changes' },
+      [VERDICT.REBUILT]: { mark: '↻', title: 'rebuilt since your verdict' },
+    };
+    return batch.entries.map((e) => MARKS[verdictStatus(review.verdicts[e.file?.review?.name], e.file?.review?.sha1)]);
+  }, [review, batch]);
+
+  const giveVerdict = async (status, note) => {
+    if (!reviewForm) return;
+    setSavingVerdict(true);
+    try {
+      const saved = await saveVerdict({ name: reviewForm.name, status, note, sha1: reviewForm.sha1 });
+      setReview((r) => {
+        const verdicts = { ...r.verdicts };
+        if (saved?.status) verdicts[reviewForm.name] = saved;
+        else delete verdicts[reviewForm.name];
+        return { ...r, verdicts };
+      });
+    } catch (err) {
+      say([err.message]);
+    } finally {
+      setSavingVerdict(false);
+    }
+  };
+
+  const nextToReview = () => {
+    if (!review || !batch) return;
+    const n = batch.entries.length;
+    for (let step = 1; step <= n; step += 1) {
+      const i = (batch.index + step) % n;
+      const f = batch.entries[i].file?.review;
+      const s = verdictStatus(review.verdicts[f?.name], f?.sha1);
+      if (s === VERDICT.NONE || s === VERDICT.REBUILT) {
+        goToEntry(i);
+        return;
+      }
+    }
   };
 
   // What each form in the batch is at: not opened yet, opened, edited, or
@@ -1150,10 +1221,22 @@ export default function App() {
           entries={batch.entries}
           index={batch.index}
           statuses={batchStatuses}
+          marks={reviewMarks}
           busy={busy}
           onPrev={() => goToEntry(stepIndex(batch, -1))}
           onNext={() => goToEntry(stepIndex(batch, 1))}
           onPick={goToEntry}
+        />
+      )}
+      {review && reviewForm && (
+        <ReviewBar
+          form={reviewForm}
+          verdict={review.verdicts[reviewForm.name]}
+          status={verdictStatus(review.verdicts[reviewForm.name], reviewForm.sha1)}
+          counts={verdictCounts(review.forms, review.verdicts)}
+          saving={savingVerdict}
+          onVerdict={giveVerdict}
+          onNextToReview={nextToReview}
         />
       )}
       <Toolbar

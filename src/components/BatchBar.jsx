@@ -21,7 +21,9 @@ const TITLE = {
 // The run of PDFs opened together: Prev and Next to step through them in
 // order, and the list to jump straight to one, each marked with where it is at
 // so what still needs looking at is easy to find.
-export default function BatchBar({ entries, index, statuses, busy, onPrev, onNext, onPick }) {
+// marks, in review mode, puts each form's verdict in the list in place of
+// where its editing is at: [{ mark, title }] per entry.
+export default function BatchBar({ entries, index, statuses, marks, busy, onPrev, onNext, onPick }) {
   const count = (status) => statuses.filter((s) => s === status).length;
   const edited = count(STATUS.EDITED);
   const exported = count(STATUS.EXPORTED);
@@ -60,8 +62,8 @@ export default function BatchBar({ entries, index, statuses, busy, onPrev, onNex
           onChange={(e) => onPick(Number(e.target.value))}
         >
           {entries.map((entry, i) => (
-            <option key={entry.id} value={i} title={TITLE[statuses[i]]}>
-              {`${MARK[statuses[i]] ?? ''} ${i + 1}. ${entry.name}`}
+            <option key={entry.id} value={i} title={marks?.[i]?.title ?? TITLE[statuses[i]]}>
+              {`${marks?.[i]?.mark ?? MARK[statuses[i]] ?? ''} ${i + 1}. ${entry.name}`}
             </option>
           ))}
         </select>
