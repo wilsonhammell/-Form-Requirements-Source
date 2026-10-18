@@ -46,8 +46,9 @@ const FLAG_COMBO = 1 << 17;
 // Annotation flag, PDF 32000-1 table 165 bit 2.
 const ANNOT_HIDDEN = 1 << 1;
 
-// Text field flag, PDF 32000-1 table 228 bit 13.
+// Text field flags, PDF 32000-1 table 228 bits 13 and 25.
 const FLAG_MULTILINE = 1 << 12;
+const FLAG_COMB = 1 << 24;
 
 export const SOURCE = {
   EMBEDDED: 'embedded',
@@ -135,10 +136,10 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
 
   const embedded = extractRequirements(pdfDoc);
   if (embedded) {
-    const { fields: parsed, config, markers, predatesFormat, predatesMaxLength } =
+    const { fields: parsed, config, markers, predatesFormat, predatesMaxLength, predatesComb } =
       parseDocument(embedded, dbIndex);
     const { fields: formatted, notes: formatNotes } = formatsFromPdf(parsed, pdfDoc, predatesFormat);
-    const fields = lengthsFromPdf(formatted, pdfDoc, predatesMaxLength);
+    const fields = lengthsFromPdf(formatted, pdfDoc, predatesMaxLength, predatesComb);
     systemNotes.push(...formatNotes);
     return {
       pdfDoc,
@@ -236,17 +237,24 @@ export function formatsFromPdf(fields, pdfDoc, only = null) {
   return { fields: next, notes };
 }
 
-// Character limits for fields whose requirements were written before the limit
-// was, read off the PDF's own MaxLen, so a limit set in Acrobat survives.
-export function lengthsFromPdf(fields, pdfDoc, only = null) {
-  if (only && only.size === 0) return fields;
+// Character limits and combs for fields whose requirements were written before
+// either was, read off the PDF's own MaxLen and Comb flag, so what Acrobat set
+// survives. Each has its own set, the comb having come after the limit.
+export function lengthsFromPdf(fields, pdfDoc, only = null, onlyComb = only) {
+  if (only?.size === 0 && onlyComb?.size === 0) return fields;
   if (!pdfDoc.catalog.getAcroForm()) return fields;
   const form = pdfDoc.getForm();
   return fields.map((f) => {
-    if (f.type !== 'text' || (only && !only.has(f.id))) return f;
+    if (f.type !== 'text') return f;
+    const length = !only || only.has(f.id);
+    const comb = !onlyComb || onlyComb.has(f.id);
+    if (!length && !comb) return f;
     const field = form.getFieldMaybe(f.name.trim());
-    const n = field instanceof PDFTextField ? field.getMaxLength() ?? 0 : 0;
-    return n ? { ...f, maxLength: n } : f;
+    if (!(field instanceof PDFTextField)) return f;
+    const maxLength = length ? field.getMaxLength() ?? 0 : f.maxLength;
+    const combed = maxLength > 0 && (comb ? field.isCombed() : f.comb);
+    if (maxLength === f.maxLength && combed === !!f.comb) return f;
+    return { ...f, maxLength, comb: combed, multiline: combed ? false : f.multiline };
   });
 }
 
@@ -321,6 +329,7 @@ export function reconstructFromAcroForm(pdfDoc, buttonIndex = new Map()) {
         : 'left';
       const multiline = type === 'text' && (flags & FLAG_MULTILINE) !== 0;
       const maxLength = type === 'text' ? numberOf(inherited(context, annot, 'MaxLen')) : 0;
+      const comb = type === 'text' && (flags & FLAG_COMB) !== 0;
       // Visibility rides on the widget, so it is read per placement.
       const hidden = (numberOf(context.lookup(annot.get(PDFName.of('F')))) & ANNOT_HIDDEN) !== 0;
       // Every widget becomes its own entry, and export groups them back into
@@ -344,6 +353,7 @@ export function reconstructFromAcroForm(pdfDoc, buttonIndex = new Map()) {
           alignment,
           multiline,
           maxLength,
+          comb,
           exportValue,
           options,
           // Nothing in a PDF records what a field is called on the printed

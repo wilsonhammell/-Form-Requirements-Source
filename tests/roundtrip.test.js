@@ -857,6 +857,39 @@ describe('character limit', () => {
     expect(maxLen((await PDFDocument.load(third.pdfBytes)).getForm(), 'Free')).toBe(4);
   });
 
+  it('combs only where asked, and round trips the comb with and without the JSON', async () => {
+    const fields = limited().map((f, i) => (i === 0 ? { ...f, comb: true } : f));
+    const { pdfBytes } = await exportPdf({ originalBytes: await buildFlatForm(), fields });
+    const form = (await PDFDocument.load(pdfBytes)).getForm();
+    expect(['AccountNumber', 'Free'].map((n) => form.getTextField(n).isCombed())).toEqual([true, false]);
+    expect((await importPdf(pdfBytes, dbIndex)).fields.map((f) => f.comb)).toEqual([true, false]);
+    const stripped = await PDFDocument.load(pdfBytes);
+    stripped.catalog.delete(PDFName.of(CATALOG_KEY));
+    stripped.catalog.delete(PDFName.of('Names'));
+    const rebuilt = await importPdf(await stripped.save({ updateFieldAppearances: false }), dbIndex);
+    expect(rebuilt.fields.map((f) => f.comb)).toEqual([true, false]);
+    const off = rebuilt.fields.map((f) => ({ ...f, comb: false }));
+    const second = await exportPdf({ originalBytes: pdfBytes, fields: off });
+    expect((await PDFDocument.load(second.pdfBytes)).getForm().getTextField('AccountNumber').isCombed()).toBe(false);
+  });
+
+  it('takes the PDF comb where the requirements were written before combs were', async () => {
+    const fields = limited().map((f, i) => (i === 0 ? { ...f, comb: true } : f));
+    const { pdfBytes } = await exportPdf({ originalBytes: await buildFlatForm(), fields });
+    const doc = structuredClone(extractRequirements(await PDFDocument.load(pdfBytes)));
+    for (const f of doc.fields) delete f.comb;
+    const parsed = parseDocument(doc, dbIndex);
+    expect(parsed.predatesMaxLength.size).toBe(0);
+    const filled = lengthsFromPdf(parsed.fields, await PDFDocument.load(pdfBytes), parsed.predatesMaxLength, parsed.predatesComb);
+    expect(filled.map((f) => [f.maxLength, f.comb])).toEqual([[12, true], [0, false]]);
+  });
+
+  it('needs a limit to comb, and a comb does not wrap', () => {
+    expect(createField({ name: 'X', comb: true }).comb).toBe(false);
+    expect(createField({ name: 'X', maxLength: 9, comb: true, multiline: true })).toMatchObject({ comb: true, multiline: false });
+    expect(createField({ name: 'X', type: 'checkbox', maxLength: 9, comb: true }).comb).toBe(false);
+  });
+
   it('belongs to text only', () => {
     expect(createField({ name: 'X', type: 'checkbox', maxLength: 5 }).maxLength).toBe(0);
     expect(createField({ name: 'X', maxLength: '12.7' }).maxLength).toBe(12);

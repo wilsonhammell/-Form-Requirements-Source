@@ -333,6 +333,7 @@ function groupByName(fields, pageCount, buttonIndex, warnings) {
         // Kept in step across placements, so the first speaks for them all.
         format: f.format,
         maxLength: f.maxLength ?? 0,
+        comb: !!f.comb && f.maxLength > 0,
         rects: [],
       };
       groups.set(name, group);
@@ -721,6 +722,9 @@ function applyTextLayout(field, group) {
   const dict = field.acroField.dict;
   if (group.maxLength > 0) dict.set(PDFName.of('MaxLen'), PDFNumber.of(group.maxLength));
   else dict.delete(PDFName.of('MaxLen'));
+  // After the limit, which a comb is spaced by. Combing also clears multiline.
+  if (group.comb) field.enableCombing();
+  else field.disableCombing();
 }
 
 function makeField(form, name, group) {

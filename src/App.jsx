@@ -400,16 +400,19 @@ export default function App() {
         markers: loadedMarkers,
         predatesFormat,
         predatesMaxLength,
+        predatesComb,
       } = parseDocument(await file.text(), dbIndex);
       // A sidecar saved before the format existed says nothing about it, so the
       // open PDF does, the same as opening a PDF with older embedded JSON. The
-      // character limit likewise.
+      // character limit and comb likewise.
       const openPdf = originalBytes ? await loadPdfBytes(originalBytes) : null;
       const { fields: formatted, notes: formatNotes } =
         predatesFormat.size > 0 && openPdf
           ? formatsFromPdf(parsed, openPdf, predatesFormat)
           : { fields: parsed, notes: [] };
-      const loaded = openPdf ? lengthsFromPdf(formatted, openPdf, predatesMaxLength) : formatted;
+      const loaded = openPdf
+        ? lengthsFromPdf(formatted, openPdf, predatesMaxLength, predatesComb)
+        : formatted;
       // One step, not three. The import replaces the fields, the markers and the
       // config of the PDF still open, so undo puts them all back the way the
       // wrong sidecar found them.

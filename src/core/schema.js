@@ -15,7 +15,7 @@ import { normalizeFormat, sameFormat, isPlainText } from './fieldFormat.js';
 // an older build dropping them exports the same form with a thinner
 // requirements sheet, where a bump would have rejected every file already
 // written. The format came the same way, and a field written before it is read
-// off the PDF instead, see predatesFormat; the character limit too.
+// off the PDF instead, see predatesFormat; the character limit and comb too.
 export const SCHEMA_VERSION = 1;
 
 // Acrobat's "Limit of characters": a whole number of characters, 0 for none.
@@ -173,6 +173,8 @@ function newId() {
 
 export function createField(partial = {}) {
   const type = FIELD_TYPES.includes(partial.type) ? partial.type : 'text';
+  const maxLength = type === 'text' ? normalizeMaxLength(partial.maxLength) : 0;
+  const comb = maxLength > 0 && !!partial.comb;
   return {
     id: partial.id || newId(),
     name: typeof partial.name === 'string' ? partial.name : '',
@@ -191,13 +193,17 @@ export function createField(partial = {}) {
     hidden: !!partial.hidden,
     // Field level, like the font, so every placement of a name shares them.
     alignment: ALIGNMENT_QUADDING[partial.alignment] !== undefined ? partial.alignment : 'left',
-    multiline: !!partial.multiline,
+    // Acrobat's comb draws one box per character, so it rules out wrapping.
+    multiline: !!partial.multiline && !comb,
     // Acrobat's Format tab, text only. Field level, and kept in step across
     // placements, since a field has one Format and one Keystroke script.
     format: type === 'text' ? normalizeFormat(partial.format) : normalizeFormat(null),
     // The most characters the field takes, Acrobat's "Limit of characters".
     // 0 is no limit. Field level like the format: a field has one MaxLen.
-    maxLength: type === 'text' ? normalizeMaxLength(partial.maxLength) : 0,
+    maxLength,
+    // Acrobat's "Comb of characters", spacing the limit evenly across the box.
+    // Field level like the limit, and meaningless without one.
+    comb,
     exportValue:
       typeof partial.exportValue === 'string'
         ? partial.exportValue
@@ -316,8 +322,10 @@ export function reconcileField(field, dbIndex) {
   if ((field.type !== 'text' || isPlainText(field.name)) && field.format?.category !== 'none') {
     patch.format = normalizeFormat(null);
   }
-  // Only text has a character limit.
+  // Only text has a character limit, and a comb needs one.
   if (field.type !== 'text' && field.maxLength) patch.maxLength = 0;
+  if (field.comb && (field.type !== 'text' || !field.maxLength)) patch.comb = false;
+  else if (field.comb && field.multiline) patch.multiline = false;
 
   return Object.keys(patch).length > 0 ? { ...field, ...patch } : field;
 }
@@ -333,6 +341,7 @@ export const NAME_SHARED_KEYS = [
   'note',
   'format',
   'maxLength',
+  'comb',
 ];
 
 // The format is an object, so it compares by value.
@@ -391,6 +400,7 @@ export function unifyNameValues(fields) {
     if (!v.note.trim()) v.note = f.note;
     if (v.format.category === 'none') v.format = f.format;
     if (!v.maxLength) v.maxLength = f.maxLength;
+    v.comb ||= f.comb;
   }
 
   let changed = false;
@@ -445,6 +455,7 @@ export function serializeDocument(fields, meta = {}) {
       multiline: !!f.multiline,
       format: normalizeFormat(f.format),
       maxLength: normalizeMaxLength(f.maxLength),
+      comb: !!f.comb,
       exportValue: f.exportValue ?? '',
       options: (f.options ?? []).map((o) => ({ value: o.value, label: o.label })),
       note: f.note ?? '',
@@ -500,6 +511,10 @@ export function parseDocument(raw, dbIndex) {
     // own MaxLen stands.
     predatesMaxLength: new Set(
       fields.filter((f, i) => data.fields[i]?.maxLength === undefined).map((f) => f.id)
+    ),
+    // And the comb, which came after the limit.
+    predatesComb: new Set(
+      fields.filter((f, i) => data.fields[i]?.comb === undefined).map((f) => f.id)
     ),
   };
 }

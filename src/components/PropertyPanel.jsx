@@ -336,7 +336,7 @@ export default function PropertyPanel({
               <Check
                 label="Multiline"
                 checked={field.multiline}
-                onChange={(multiline) => onChange({ multiline })}
+                onChange={(multiline) => onChange(multiline ? { multiline, comb: false } : { multiline })}
                 hint={field.multiline ? 'wraps' : 'one line'}
               />
             </div>
@@ -364,8 +364,22 @@ export default function PropertyPanel({
             placeholder="None"
             className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             value={field.maxLength || ''}
-            onChange={(e) => onChange({ maxLength: normalizeMaxLength(e.target.value) })}
+            onChange={(e) => {
+              const maxLength = normalizeMaxLength(e.target.value);
+              onChange(maxLength ? { maxLength } : { maxLength, comb: false });
+            }}
           />
+          {/* Acrobat's "Comb of characters", spaced by the limit and never
+              wrapped, so checking it clears Multiline. */}
+          {field.maxLength > 0 && (
+            <div className="mt-2">
+              <Check
+                label="Comb"
+                checked={field.comb}
+                onChange={(comb) => onChange(comb ? { comb, multiline: false } : { comb })}
+              />
+            </div>
+          )}
         </div>
       )}
 
