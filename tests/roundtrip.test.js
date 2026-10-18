@@ -17,7 +17,7 @@ import { importPdf, SOURCE } from '../src/core/pdfImport.js';
 import { createField, SCHEMA_VERSION } from '../src/core/schema.js';
 import { buildDbIndex, normalizeDbFields } from '../src/core/dbFields.js';
 import { extractRequirements, CATALOG_KEY } from '../src/core/pdfEmbed.js';
-import { formatsFromPdf } from '../src/core/pdfImport.js';
+import { formatsFromPdf, lengthsFromPdf } from '../src/core/pdfImport.js';
 import { parseDocument } from '../src/core/schema.js';
 import { esignCodeKeystroke } from '../src/starter/fieldScripts.js';
 
@@ -807,6 +807,60 @@ describe('submission buttons', () => {
     });
     const out = await PDFDocument.load(pdfBytes);
     expect(out.getForm().getFields().map((f) => f.getName())).toContain('SomeOtherButton');
+  });
+});
+
+describe('character limit', () => {
+  const limited = () => [
+    createField({ name: 'AccountNumber', maxLength: 12, page: 0, rect: { x: 50, y: 700, width: 200, height: 18 } }),
+    createField({ name: 'Free', page: 0, rect: { x: 50, y: 650, width: 200, height: 18 } }),
+  ];
+  const maxLen = (form, n) => form.getTextField(n).acroField.dict.get(PDFName.of('MaxLen'))?.asNumber();
+
+  it('writes MaxLen only where a limit is set', async () => {
+    const { pdfBytes } = await exportPdf({ originalBytes: await buildFlatForm(), fields: limited() });
+    const form = (await PDFDocument.load(pdfBytes)).getForm();
+    expect([maxLen(form, 'AccountNumber'), maxLen(form, 'Free')]).toEqual([12, undefined]);
+  });
+
+  it('round trips, from the requirements and out of an AcroForm with no JSON', async () => {
+    const { pdfBytes } = await exportPdf({ originalBytes: await buildFlatForm(), fields: limited() });
+    const reopened = await importPdf(pdfBytes, dbIndex);
+    expect(reopened.fields.map((f) => f.maxLength)).toEqual([12, 0]);
+    const stripped = await PDFDocument.load(pdfBytes);
+    stripped.catalog.delete(PDFName.of(CATALOG_KEY));
+    stripped.catalog.delete(PDFName.of('Names'));
+    const rebuilt = await importPdf(await stripped.save({ updateFieldAppearances: false }), dbIndex);
+    expect(rebuilt.fields.map((f) => f.maxLength)).toEqual([12, 0]);
+  });
+
+  it('takes the PDF limit where the requirements were written before limits were', async () => {
+    const { pdfBytes } = await exportPdf({ originalBytes: await buildFlatForm(), fields: limited() });
+    const doc = structuredClone(extractRequirements(await PDFDocument.load(pdfBytes)));
+    for (const f of doc.fields) delete f.maxLength;
+    const { fields, predatesMaxLength } = parseDocument(doc, dbIndex);
+    expect(fields.map((f) => f.maxLength)).toEqual([0, 0]);
+    const filled = lengthsFromPdf(fields, await PDFDocument.load(pdfBytes), predatesMaxLength);
+    expect(filled.map((f) => f.maxLength)).toEqual([12, 0]);
+  });
+
+  it('removes a limit unset, and writes one shorter than the value already there', async () => {
+    const originalBytes = await buildFlatForm();
+    const first = await exportPdf({ originalBytes, fields: limited() });
+    const off = limited().map((f) => ({ ...f, maxLength: 0 }));
+    const second = await exportPdf({ originalBytes: first.pdfBytes, fields: off });
+    expect(maxLen((await PDFDocument.load(second.pdfBytes)).getForm(), 'AccountNumber')).toBe(undefined);
+    const filled = await PDFDocument.load(first.pdfBytes);
+    filled.getForm().getTextField('Free').setText('a long value already typed');
+    const shorter = limited().map((f) => (f.name === 'Free' ? { ...f, maxLength: 4 } : f));
+    const third = await exportPdf({ originalBytes: await filled.save(), fields: shorter });
+    expect(maxLen((await PDFDocument.load(third.pdfBytes)).getForm(), 'Free')).toBe(4);
+  });
+
+  it('belongs to text only', () => {
+    expect(createField({ name: 'X', type: 'checkbox', maxLength: 5 }).maxLength).toBe(0);
+    expect(createField({ name: 'X', maxLength: '12.7' }).maxLength).toBe(12);
+    expect(createField({ name: 'X', maxLength: -3 }).maxLength).toBe(0);
   });
 });
 

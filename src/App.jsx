@@ -69,7 +69,7 @@ import {
 
 import { createMarker, markerIssues, DRAW_MARKER } from './core/markers.js';
 import { spreadGroupSave, adoptGroupSave } from './core/checkBoxGroups.js';
-import { importPdf, loadPdfBytes, formatsFromPdf, SOURCE } from './core/pdfImport.js';
+import { importPdf, loadPdfBytes, formatsFromPdf, lengthsFromPdf, SOURCE } from './core/pdfImport.js';
 import { exportPdf } from './core/pdfExport.js';
 import { serializeJsonBytes } from './core/pdfEmbed.js';
 import { downloadBytes, sidecarName, exportedPdfName, requirementsName } from './core/download.js';
@@ -399,13 +399,17 @@ export default function App() {
         config: loadedConfig,
         markers: loadedMarkers,
         predatesFormat,
+        predatesMaxLength,
       } = parseDocument(await file.text(), dbIndex);
       // A sidecar saved before the format existed says nothing about it, so the
-      // open PDF does, the same as opening a PDF with older embedded JSON.
-      const { fields: loaded, notes: formatNotes } =
-        predatesFormat.size > 0 && originalBytes
-          ? formatsFromPdf(parsed, await loadPdfBytes(originalBytes), predatesFormat)
+      // open PDF does, the same as opening a PDF with older embedded JSON. The
+      // character limit likewise.
+      const openPdf = originalBytes ? await loadPdfBytes(originalBytes) : null;
+      const { fields: formatted, notes: formatNotes } =
+        predatesFormat.size > 0 && openPdf
+          ? formatsFromPdf(parsed, openPdf, predatesFormat)
           : { fields: parsed, notes: [] };
+      const loaded = openPdf ? lengthsFromPdf(formatted, openPdf, predatesMaxLength) : formatted;
       // One step, not three. The import replaces the fields, the markers and the
       // config of the PDF still open, so undo puts them all back the way the
       // wrong sidecar found them.
