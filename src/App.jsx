@@ -4,7 +4,7 @@ import BatchBar from './components/BatchBar.jsx';
 import { createBatch, stepIndex, storeState, markExported, markFailed, entryStatus, unexported } from './core/batch.js';
 import ReviewBar from './components/ReviewBar.jsx';
 import {
-  VERDICT, fetchReviewForms, fetchVerdicts, saveVerdict, remoteForm, verdictStatus, verdictCounts,
+  VERDICT, fetchReviewForms, fetchVerdicts, fetchChanges, saveVerdict, remoteForm, verdictStatus, verdictCounts,
 } from './core/review.js';
 import PdfCanvas from './components/PdfCanvas.jsx';
 import FieldList, { fieldListOrder } from './components/FieldList.jsx';
@@ -537,6 +537,31 @@ export default function App() {
     } finally {
       setSavingVerdict(false);
     }
+  };
+
+  // A form rebuilt since its verdict says what changed, read from the station.
+  const [reviewChanges, setReviewChanges] = useState(null);
+  const reviewStatus = reviewForm ? verdictStatus(review.verdicts[reviewForm.name], reviewForm.sha1) : null;
+  useEffect(() => {
+    let live = true;
+    setReviewChanges(null);
+    if (reviewForm && reviewStatus === VERDICT.REBUILT) {
+      fetchChanges(reviewForm.name).then((c) => live && setReviewChanges(c));
+    }
+    return () => {
+      live = false;
+    };
+  }, [reviewForm?.name, reviewStatus]);
+
+  // A field named in the change list, shown: its page, and it selected.
+  const showField = (name) => {
+    const f = fields.find((x) => x.name.trim() === name);
+    if (!f) {
+      say([`${name} is not on this form any more.`]);
+      return;
+    }
+    setPageIndex(f.page);
+    selectField(f.id);
   };
 
   const nextToReview = () => {
@@ -1241,6 +1266,8 @@ export default function App() {
           saving={savingVerdict}
           onVerdict={giveVerdict}
           onNextToReview={nextToReview}
+          changes={reviewChanges}
+          onShowField={showField}
         />
       )}
       <Toolbar

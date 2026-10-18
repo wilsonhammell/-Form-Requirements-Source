@@ -36,6 +36,17 @@ export async function fetchVerdicts(fetchImpl = fetch) {
   return res.ok ? res.json() : {};
 }
 
+// What changed on a form since its verdict: [{ field?, page?, what }], and
+// whether that was read off the verdict's own snapshot or the history.
+export async function fetchChanges(name, fetchImpl = fetch) {
+  try {
+    const res = await fetchImpl(`${api('changes')}?name=${encodeURIComponent(name)}`);
+    return res.ok ? await res.json() : { basis: 'none', changes: [] };
+  } catch {
+    return { basis: 'none', changes: [] };
+  }
+}
+
 export async function saveVerdict({ name, status, note, sha1 }, fetchImpl = fetch) {
   const res = await fetchImpl(api('verdicts'), {
     method: 'PUT',

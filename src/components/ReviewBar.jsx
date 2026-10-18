@@ -11,7 +11,7 @@ const LOOK = {
 // The verdict on the form on screen, given here and kept on disk by the
 // review station: Approve, or Needs changes with a note saying what. The note
 // is saved when it loses focus, and with either button.
-export default function ReviewBar({ form, verdict, status, counts, saving, onVerdict, onNextToReview }) {
+export default function ReviewBar({ form, verdict, status, counts, saving, onVerdict, onNextToReview, changes, onShowField }) {
   const [note, setNote] = useState(verdict?.note ?? '');
   // a different form, or a verdict saved: the box shows what is on disk
   useEffect(() => setNote(verdict?.note ?? ''), [form?.name, verdict?.note]);
@@ -85,6 +85,36 @@ export default function ReviewBar({ form, verdict, status, counts, saving, onVer
         {' · '}
         {counts[VERDICT.NONE]} not reviewed
       </span>
+      {status === VERDICT.REBUILT && changes && (
+        <div className="basis-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-200">
+          <span className="font-semibold text-sky-300">
+            What changed since your verdict
+            {changes.basis === 'history' ? ' (from the mapping history)' : ''}:
+          </span>
+          {changes.changes.length === 0 ? (
+            <span> nothing found that a reviewer would see.</span>
+          ) : (
+            <ul className="mt-1 max-h-32 list-none overflow-y-auto">
+              {changes.changes.map((c, i) => (
+                <li key={i}>
+                  {c.field ? (
+                    <button
+                      type="button"
+                      className="font-mono text-sky-300 underline hover:text-sky-200"
+                      onClick={() => onShowField(c.field)}
+                      title="Show this field"
+                    >
+                      {c.field}
+                    </button>
+                  ) : null}
+                  {c.field ? ': ' : '• '}
+                  {c.what}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
   );
 }
