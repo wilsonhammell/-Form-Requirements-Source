@@ -332,6 +332,7 @@ function groupByName(fields, pageCount, buttonIndex, warnings) {
         multiline: !!f.multiline,
         // Kept in step across placements, so the first speaks for them all.
         format: f.format,
+        maxLength: f.maxLength ?? 0,
         rects: [],
       };
       groups.set(name, group);
@@ -715,6 +716,11 @@ function applyTextLayout(field, group) {
   if (group.type !== 'text') return;
   if (group.multiline) field.enableMultiline();
   else field.disableMultiline();
+  // Straight to the dictionary: pdf-lib's setMaxLength refuses a limit shorter
+  // than a value already in the field, and the limit is what was asked for.
+  const dict = field.acroField.dict;
+  if (group.maxLength > 0) dict.set(PDFName.of('MaxLen'), PDFNumber.of(group.maxLength));
+  else dict.delete(PDFName.of('MaxLen'));
 }
 
 function makeField(form, name, group) {

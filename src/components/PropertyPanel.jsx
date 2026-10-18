@@ -12,6 +12,7 @@ import {
   TEXT_RENDERING_TYPES,
   EXPORT_VALUE_TYPES,
   EXPORT_VALUE_PATTERN,
+  normalizeMaxLength,
 } from '../core/schema.js';
 
 // One line per family. The eSign pair used to fall through to the joint text,
@@ -347,6 +348,25 @@ export default function PropertyPanel({
           replace, and the codes are plain text. */}
       {field.type === 'text' && specialPart?.family !== 'esign' && !isPlainText(field.name) && (
         <FormatEditor format={field.format} onChange={(format) => onChange({ format })} />
+      )}
+
+      {/* Acrobat's "Limit of characters": a Libro account number is 12. */}
+      {field.type === 'text' && specialPart?.family !== 'esign' && (
+        <div>
+          <label className="block text-xs font-medium text-slate-600" htmlFor={`maxlen-${field.id}`}>
+            Character Limit
+          </label>
+          <input
+            id={`maxlen-${field.id}`}
+            type="number"
+            min="0"
+            step="1"
+            placeholder="None"
+            className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            value={field.maxLength || ''}
+            onChange={(e) => onChange({ maxLength: normalizeMaxLength(e.target.value) })}
+          />
+        </div>
       )}
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 rounded bg-slate-50 p-2 text-xs">

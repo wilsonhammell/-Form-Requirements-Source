@@ -15,8 +15,14 @@ import { normalizeFormat, sameFormat, isPlainText } from './fieldFormat.js';
 // an older build dropping them exports the same form with a thinner
 // requirements sheet, where a bump would have rejected every file already
 // written. The format came the same way, and a field written before it is read
-// off the PDF instead, see predatesFormat.
+// off the PDF instead, see predatesFormat; the character limit too.
 export const SCHEMA_VERSION = 1;
+
+// Acrobat's "Limit of characters": a whole number of characters, 0 for none.
+export function normalizeMaxLength(value) {
+  const n = Math.floor(Number(value));
+  return Number.isFinite(n) && n > 0 ? Math.min(n, 9999) : 0;
+}
 
 // A button carries no value, so it takes none of the machinery the other four
 // do.
@@ -189,6 +195,9 @@ export function createField(partial = {}) {
     // Acrobat's Format tab, text only. Field level, and kept in step across
     // placements, since a field has one Format and one Keystroke script.
     format: type === 'text' ? normalizeFormat(partial.format) : normalizeFormat(null),
+    // The most characters the field takes, Acrobat's "Limit of characters".
+    // 0 is no limit. Field level like the format: a field has one MaxLen.
+    maxLength: type === 'text' ? normalizeMaxLength(partial.maxLength) : 0,
     exportValue:
       typeof partial.exportValue === 'string'
         ? partial.exportValue
@@ -307,6 +316,8 @@ export function reconcileField(field, dbIndex) {
   if ((field.type !== 'text' || isPlainText(field.name)) && field.format?.category !== 'none') {
     patch.format = normalizeFormat(null);
   }
+  // Only text has a character limit.
+  if (field.type !== 'text' && field.maxLength) patch.maxLength = 0;
 
   return Object.keys(patch).length > 0 ? { ...field, ...patch } : field;
 }
@@ -321,6 +332,7 @@ export const NAME_SHARED_KEYS = [
   'customerFacingName',
   'note',
   'format',
+  'maxLength',
 ];
 
 // The format is an object, so it compares by value.
@@ -378,6 +390,7 @@ export function unifyNameValues(fields) {
     if (!v.customerFacingName.trim()) v.customerFacingName = f.customerFacingName;
     if (!v.note.trim()) v.note = f.note;
     if (v.format.category === 'none') v.format = f.format;
+    if (!v.maxLength) v.maxLength = f.maxLength;
   }
 
   let changed = false;
@@ -431,6 +444,7 @@ export function serializeDocument(fields, meta = {}) {
       alignment: f.alignment ?? 'left',
       multiline: !!f.multiline,
       format: normalizeFormat(f.format),
+      maxLength: normalizeMaxLength(f.maxLength),
       exportValue: f.exportValue ?? '',
       options: (f.options ?? []).map((o) => ({ value: o.value, label: o.label })),
       note: f.note ?? '',
@@ -481,6 +495,11 @@ export function parseDocument(raw, dbIndex) {
     // format the form carries.
     predatesFormat: new Set(
       fields.filter((f, i) => data.fields[i]?.format === undefined).map((f) => f.id)
+    ),
+    // The same for the character limit: 0 there means unknown, and the PDF's
+    // own MaxLen stands.
+    predatesMaxLength: new Set(
+      fields.filter((f, i) => data.fields[i]?.maxLength === undefined).map((f) => f.id)
     ),
   };
 }

@@ -135,8 +135,10 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
 
   const embedded = extractRequirements(pdfDoc);
   if (embedded) {
-    const { fields: parsed, config, markers, predatesFormat } = parseDocument(embedded, dbIndex);
-    const { fields, notes: formatNotes } = formatsFromPdf(parsed, pdfDoc, predatesFormat);
+    const { fields: parsed, config, markers, predatesFormat, predatesMaxLength } =
+      parseDocument(embedded, dbIndex);
+    const { fields: formatted, notes: formatNotes } = formatsFromPdf(parsed, pdfDoc, predatesFormat);
+    const fields = lengthsFromPdf(formatted, pdfDoc, predatesMaxLength);
     systemNotes.push(...formatNotes);
     return {
       pdfDoc,
@@ -234,6 +236,20 @@ export function formatsFromPdf(fields, pdfDoc, only = null) {
   return { fields: next, notes };
 }
 
+// Character limits for fields whose requirements were written before the limit
+// was, read off the PDF's own MaxLen, so a limit set in Acrobat survives.
+export function lengthsFromPdf(fields, pdfDoc, only = null) {
+  if (only && only.size === 0) return fields;
+  if (!pdfDoc.catalog.getAcroForm()) return fields;
+  const form = pdfDoc.getForm();
+  return fields.map((f) => {
+    if (f.type !== 'text' || (only && !only.has(f.id))) return f;
+    const field = form.getFieldMaybe(f.name.trim());
+    const n = field instanceof PDFTextField ? field.getMaxLength() ?? 0 : 0;
+    return n ? { ...f, maxLength: n } : f;
+  });
+}
+
 // Acrobat keeps Format and Keystroke on the field rather than its widgets, so
 // the field's pair is read first, and a widget's only when the field has none.
 function readFieldFormats(pdfDoc) {
@@ -304,6 +320,7 @@ export function reconstructFromAcroForm(pdfDoc, buttonIndex = new Map()) {
         ? alignmentFromQuadding(numberOf(inherited(context, annot, 'Q')))
         : 'left';
       const multiline = type === 'text' && (flags & FLAG_MULTILINE) !== 0;
+      const maxLength = type === 'text' ? numberOf(inherited(context, annot, 'MaxLen')) : 0;
       // Visibility rides on the widget, so it is read per placement.
       const hidden = (numberOf(context.lookup(annot.get(PDFName.of('F')))) & ANNOT_HIDDEN) !== 0;
       // Every widget becomes its own entry, and export groups them back into
@@ -326,6 +343,7 @@ export function reconstructFromAcroForm(pdfDoc, buttonIndex = new Map()) {
           hidden,
           alignment,
           multiline,
+          maxLength,
           exportValue,
           options,
           // Nothing in a PDF records what a field is called on the printed
