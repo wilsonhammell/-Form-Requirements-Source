@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import vm from 'node:vm';
 import { helperScript, mainScript } from '../src/starter/index.js';
 import { buildMainScript, runsBeforeMain, lateScripts, ownScripts } from '../src/starter/buildScripts.js';
+import { fieldScripts } from '../src/starter/fieldScripts.js';
 
 // Enough of Acrobat to get through Main.
 //
@@ -213,6 +214,40 @@ describe('the whole document, run the way Acrobat runs it', () => {
       PERSON
     );
     expect(result).toEqual(['PRINT']);
+  });
+});
+
+describe('the field hooks, run the way Acrobat runs them', () => {
+  // Bill Payment Trace: ticking a different reason clears what the last one
+  // asked for. Acrobat sets event.target to the field whose script is running.
+  const CLEARING = `
+    function CustomFieldMouseUp() {
+      if (event.target.name !== "TraceReason") return;
+      if (this.getField("TraceReason").value !== "IncorrectAmount") {
+        this.getField("AmountPaid").value = "";
+      }
+    }
+  `;
+  const mouseUp = (name) => fieldScripts({ fieldNames: [name] }).get(name).MouseUp;
+  // Read back through getField, since the stub only creates a field once asked.
+  const click = (name) =>
+    `var event = { target: getField(${JSON.stringify(name)}) }; ${mouseUp(name)}
+getField("AmountPaid").value`;
+
+  it('fires from the field\'s own Mouse Up, with event.target naming the field', () => {
+    const values = { ...PERSON, TraceReason: 'IncorrectVendor', AmountPaid: '12.00' };
+    const { result } = runDocument(generated({ Form_Custom: CLEARING }), click('TraceReason'), values);
+    expect(result).toBe('');
+  });
+
+  it('leaves the values alone for the reason that asked for them', () => {
+    const values = { ...PERSON, TraceReason: 'IncorrectAmount', AmountPaid: '12.00' };
+    const { result } = runDocument(generated({ Form_Custom: CLEARING }), click('TraceReason'), values);
+    expect(result).toBe('12.00');
+  });
+
+  it('does nothing on a form that defines none', () => {
+    expect(() => runDocument(generated(), click('TraceReason'), PERSON)).not.toThrow();
   });
 });
 

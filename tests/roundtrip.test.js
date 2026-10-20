@@ -1300,10 +1300,10 @@ describe('preserving what the tool does not model', () => {
       return aa ? aa.keys().map((k) => k.toString()).sort() : [];
     };
 
-    expect(actions('eSign_Code')).toEqual(['/Bl', '/K']);
+    expect(actions('eSign_Code')).toEqual(['/Bl', '/D', '/K']);
     // eSign_Code is placed by this tool, so Acrobat never saw it. Every other
     // field was drawn by a person and is formatted there.
-    expect(actions('CUSTNAME')).toEqual(['/Bl']);
+    expect(actions('CUSTNAME')).toEqual(['/Bl', '/D']);
   });
 
   it('overwrites a pre-existing default appearance with the managed font, even on a field it only moves', async () => {

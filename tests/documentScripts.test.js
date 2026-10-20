@@ -23,6 +23,9 @@ import { exportPdf } from '../src/core/pdfExport.js';
 import { createField, createConfig } from '../src/core/schema.js';
 import { addSignerRow, addSpecialField, addEsignFields } from '../src/core/specialFields.js';
 import { signingButtons, addButton } from '../src/core/signingButtons.js';
+import { importPdf } from '../src/core/pdfImport.js';
+import { buildDbIndex, normalizeDbFields } from '../src/core/dbFields.js';
+import { clearRequiredOnBlur, fieldHookCall } from '../src/starter/fieldScripts.js';
 
 const LETTER = [0, 0, 612, 792];
 const BUTTONS = signingButtons();
@@ -839,6 +842,106 @@ describe('per field scripts', () => {
     const none = await exported({ category: 'none' });
     expect(none.after.get(PDFName.of('F'))).toBeUndefined();
     expect(none.after.get(PDFName.of('Bl'))).toBeDefined();
+  });
+});
+
+// Mouse Up is /A, where Acrobat keeps it. On Blur and Mouse Down are /AA.
+function widgetScripts(doc, widget) {
+  const js = (action) => {
+    const dict = doc.context.lookupMaybe(action, PDFDict);
+    return dict ? doc.context.lookup(dict.get(PDFName.of('JS'))).decodeText() : null;
+  };
+  const aa = doc.context.lookupMaybe(widget.dict.get(PDFName.of('AA')), PDFDict);
+  return {
+    OnBlur: aa ? js(aa.get(PDFName.of('Bl'))) : null,
+    MouseDown: aa ? js(aa.get(PDFName.of('D'))) : null,
+    MouseUpAA: aa ? js(aa.get(PDFName.of('U'))) : null,
+    MouseUp: js(widget.dict.get(PDFName.of('A'))),
+  };
+}
+
+// A form with one check box drawn in Acrobat, carrying a script of its own.
+async function formWithScript(event, source) {
+  const base = await PDFDocument.load(await blankPdf());
+  const box = base.getForm().createCheckBox('TraceReason');
+  box.addToPage(base.getPage(0), { x: 10, y: 10, width: 14, height: 14 });
+  const action = base.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText(source) });
+  const widget = box.acroField.getWidgets()[0].dict;
+  if (event === 'A') widget.set(PDFName.of('A'), action);
+  else widget.set(PDFName.of('AA'), base.context.obj({ [event]: action }));
+  return base.save();
+}
+
+const TRACE_REASON = createField({
+  name: 'TraceReason', type: 'checkbox', rect: { x: 10, y: 10, width: 14, height: 14 },
+});
+
+describe('the field hooks', () => {
+  it('calls all three from every field, and leaves buttons to the button list', async () => {
+    const fields = [
+      createField({ name: 'CUSTNAME' }),
+      ...BUTTONS.reduce((acc, b) => addButton(acc, b, BUTTONS, LETTER), []),
+    ];
+    const { pdfBytes } = await exportPdf({ originalBytes: await blankPdf(), fields, buttons: BUTTONS });
+    const out = await PDFDocument.load(pdfBytes);
+
+    const field = widgetScripts(out, out.getForm().getField('CUSTNAME').acroField.getWidgets()[0]);
+    expect(field.OnBlur.endsWith(fieldHookCall('CustomFieldBlur'))).toBe(true);
+    expect(field.MouseDown).toBe(fieldHookCall('CustomFieldMouseDown'));
+    expect(field.MouseUp).toBe(fieldHookCall('CustomFieldMouseUp'));
+
+    const button = widgetScripts(out, out.getForm().getField('PhoneAuthButton').acroField.getWidgets()[0]);
+    expect(button.MouseUp).toBe('submitPhoneAuth();');
+    expect(button.MouseDown).toBeNull();
+  });
+
+  it('replaces a Mouse Up written on the field, kept as /A or /U', async () => {
+    for (const event of ['A', 'U']) {
+      const { pdfBytes } = await exportPdf({
+        originalBytes: await formWithScript(event, 'clearAmounts();'),
+        fields: [TRACE_REASON],
+        buttons: BUTTONS,
+      });
+      const out = await PDFDocument.load(pdfBytes);
+      const scripts = widgetScripts(out, out.getForm().getField('TraceReason').acroField.getWidgets()[0]);
+      expect(scripts.MouseUp).toBe(fieldHookCall('CustomFieldMouseUp'));
+      // A /U beside the /A would run as a second Mouse Up.
+      expect(scripts.MouseUpAA).toBeNull();
+    }
+  });
+
+  it('carries one written in Main across, the same as the form hooks', () => {
+    const scripts = new Map([['Main', 'function CustomFieldMouseUp() {\n    clearAmounts();\n}']]);
+    expect(findFormHooks(scripts)).toEqual({ CustomFieldMouseUp: '    clearAmounts();\n' });
+    expect(buildMainScript({ hooks: findFormHooks(scripts) })).toContain('function CustomFieldMouseUp() {');
+    expect(replacedFunctions(scripts)).toEqual([]);
+  });
+});
+
+describe('field scripts the form wrote itself', () => {
+  const DB = buildDbIndex(normalizeDbFields([]));
+  const note = async (bytes) =>
+    (await importPdf(bytes, DB)).notes.find((n) => n.startsWith('Export replaces every field'));
+
+  it('names each one export would replace, and where it belongs instead', async () => {
+    expect(await note(await formWithScript('A', 'clearAmounts();'))).toContain('TraceReason (Mouse Up)');
+    expect(await note(await formWithScript('Bl', 'clearAmounts();'))).toContain('TraceReason (On Blur)');
+    const text = await note(await formWithScript('D', 'clearAmounts();'));
+    expect(text).toContain('TraceReason (Mouse Down)');
+    expect(text).toContain('CustomFieldBlur, CustomFieldMouseDown, CustomFieldMouseUp');
+  });
+
+  it('says nothing about a form this tool exported', async () => {
+    const { pdfBytes } = await exportPdf({
+      originalBytes: await formWithScript('A', 'clearAmounts();'),
+      fields: [TRACE_REASON],
+      buttons: BUTTONS,
+    });
+    expect(await note(pdfBytes)).toBeUndefined();
+  });
+
+  it('says nothing about an On Blur from before the field hooks', async () => {
+    expect(await note(await formWithScript('Bl', clearRequiredOnBlur('TraceReason')))).toBeUndefined();
   });
 });
 

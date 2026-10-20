@@ -35,7 +35,10 @@ import {
   OWNED_SCRIPTS,
   ownScripts,
   lateScripts,
+  generatedFieldScripts,
+  FORM_HOOKS,
 } from '../starter/buildScripts.js';
+import { FIELD_HOOKS, fieldHookCall } from '../starter/fieldScripts.js';
 
 // Field flags, PDF 32000-1 tables 221, 226 and 228.
 const FLAG_READ_ONLY = 1 << 0;
@@ -83,12 +86,23 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
     }
 
     const crop = pdfDoc.getPage(0)?.getCropBox();
-    if (!crop) return paired;
-    const box = [crop.x, crop.y, crop.x + crop.width, crop.y + crop.height];
-    const complete = ensureSystemFields(paired, systemFields, box);
-    const added = complete.length - paired.length;
-    if (added > 0) {
-      systemNotes.push(`Placed ${added} missing system field${added === 1 ? '' : 's'}.`);
+    let complete = paired;
+    if (crop) {
+      const box = [crop.x, crop.y, crop.x + crop.width, crop.y + crop.height];
+      complete = ensureSystemFields(paired, systemFields, box);
+      const added = complete.length - paired.length;
+      if (added > 0) {
+        systemNotes.push(`Placed ${added} missing system field${added === 1 ? '' : 's'}.`);
+      }
+    }
+
+    const custom = handWrittenFieldScripts(pdfDoc, complete, systemFields);
+    if (custom.length > 0) {
+      systemNotes.push(
+        `Export replaces every field's On Blur, Mouse Down and Mouse Up. These have code of their own, which will be lost: ${custom.join(
+          ', '
+        )}. Move it to ${Object.values(FIELD_HOOKS).join(', ')} in the form's own document script, such as Form_Custom.`
+      );
     }
     return complete;
   };
@@ -100,7 +114,7 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
   const documentScripts = readDocumentScripts(pdfDoc);
   if (OWNED_SCRIPTS.some((name) => documentScripts.has(name))) {
     systemNotes.push(
-      'Helper_Functions and Main are replaced on export. Anything in them this tool does not generate is lost, apart from CustomSaveValidation, CustomAfterValidation, CustomAfterLoad and CustomBeforeSubmit, which are carried across. Code of your own belongs in its own document script, which is never touched, run from CustomAfterValidation, CustomAfterLoad or CustomBeforeSubmit.'
+      `Helper_Functions and Main are replaced on export. Anything in them this tool does not generate is lost, apart from CustomSaveValidation, ${FORM_HOOKS.slice(0, -1).join(', ')} and ${FORM_HOOKS.at(-1)}, which are carried across. Code of your own belongs in its own document script, which is never touched, run from ${FORM_HOOKS.slice(0, -1).join(', ')} or ${FORM_HOOKS.at(-1)}.`
     );
   }
 
@@ -256,6 +270,70 @@ export function lengthsFromPdf(fields, pdfDoc, only = null, onlyComb = only) {
     if (maxLength === f.maxLength && combed === !!f.comb) return f;
     return { ...f, maxLength, comb: combed, multiline: combed ? false : f.multiline };
   });
+}
+
+// The events export writes on every field, as /AA keys, apart from Mouse Up,
+// which Acrobat keeps as /A.
+const FIELD_EVENTS = [
+  { label: 'On Blur', key: 'OnBlur', aa: 'Bl' },
+  { label: 'Mouse Down', key: 'MouseDown', aa: 'D' },
+  { label: 'Mouse Up', key: 'MouseUp', aa: 'U', activation: true },
+];
+
+// "TraceReason (Mouse Up)" for each field event carrying a script export would
+// not have written, and so will replace.
+//
+// Compared against what export generates for the same fields, so a form this
+// tool exported says nothing. An OnBlur from before the field hooks is the same
+// script without the hook call, and counts as generated too.
+//
+// Buttons are left out, their actions being the button list's. A system field
+// gets no scripts, so anything on one is lost, apart from its Mouse Up, which
+// export does not touch there.
+function handWrittenFieldScripts(pdfDoc, fields, systemFields) {
+  if (!pdfDoc.catalog.getAcroForm()) return [];
+  const context = pdfDoc.context;
+  const systemNames = new Set(systemFields.map((f) => String(f?.identifier ?? f).trim()));
+  const types = new Map(fields.map((f) => [f.name.trim(), f.type]));
+  const generated = generatedFieldScripts(types, systemNames, fields);
+  const blurHook = `\n${fieldHookCall(FIELD_HOOKS.OnBlur)}`;
+
+  const js = (action) => {
+    const dict = context.lookup(action);
+    return dict?.get ? decodeScript(context.lookup(dict.get(PDFName.of('JS')))).trim() : '';
+  };
+  const read = (dict, event) => {
+    const aa = context.lookup(dict.get(PDFName.of('AA')));
+    const fromAa = aa?.get ? js(aa.get(PDFName.of(event.aa))) : '';
+    return fromAa || (event.activation ? js(dict.get(PDFName.of('A'))) : '');
+  };
+
+  const out = [];
+  try {
+    for (const field of pdfDoc.getForm().getFields()) {
+      const name = field.getName();
+      const type = types.get(name);
+      if (!type || type === 'button') continue;
+      const ours = generated.get(name);
+      const dicts = [field.acroField.dict, ...field.acroField.getWidgets().map((w) => w.dict)];
+
+      for (const event of FIELD_EVENTS) {
+        if (event.activation && systemNames.has(name)) continue;
+        const wanted = ours?.[event.key];
+        const accepted = [wanted, wanted?.endsWith(blurHook) && wanted.slice(0, -blurHook.length)]
+          .filter(Boolean)
+          .map((s) => s.trim());
+        const own = dicts.some((dict) => {
+          const script = read(dict, event);
+          return script !== '' && !accepted.includes(script);
+        });
+        if (own) out.push(`${name} (${event.label})`);
+      }
+    }
+  } catch {
+    // Read as nothing, the way the formats are.
+  }
+  return out;
 }
 
 // Acrobat keeps Format and Keystroke on the field rather than its widgets, so

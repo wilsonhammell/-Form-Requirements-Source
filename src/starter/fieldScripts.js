@@ -82,8 +82,26 @@ export function esignCodeKeystroke() {
 
 const ESIGN_CODE = ESIGN_PARTS.find((p) => p.key === 'code').name;
 
+// The field hooks, one per event this tool writes on every field. A form defines
+// them in its own document script, the same way as the form hooks, and reads
+// event.target to know which field fired. See the top of helpers.js.
+export const FIELD_HOOKS = {
+  OnBlur: 'CustomFieldBlur',
+  MouseDown: 'CustomFieldMouseDown',
+  MouseUp: 'CustomFieldMouseUp',
+};
+
+// Guarded with typeof for the same reason the form hooks are: most forms define
+// none, and a bare reference to an undeclared name is a ReferenceError.
+export function fieldHookCall(hook) {
+  return `if (typeof ${hook} === "function") {\n    ${hook}();\n}`;
+}
+
 // Rows come from the same derivation the config block is built from, so the two
 // cannot disagree.
+//
+// Every field gets all three events, so a form's own handling never needs a
+// script of its own on the field, which export would replace.
 export function fieldScripts({ fieldNames = [], signerRows = [], saveGroups = [] } = {}) {
   const out = new Map();
 
@@ -105,6 +123,14 @@ export function fieldScripts({ fieldNames = [], signerRows = [], saveGroups = []
   // Alongside its OnBlur, which is how the real form carries it.
   if (out.has(ESIGN_CODE)) {
     out.get(ESIGN_CODE).Keystroke = esignCodeKeystroke();
+  }
+
+  // Last, after whatever the field's own OnBlur does, so a hook sees the field
+  // with its required flag already settled.
+  for (const scripts of out.values()) {
+    scripts.OnBlur = `${scripts.OnBlur}\n${fieldHookCall(FIELD_HOOKS.OnBlur)}`;
+    scripts.MouseDown = fieldHookCall(FIELD_HOOKS.MouseDown);
+    scripts.MouseUp = fieldHookCall(FIELD_HOOKS.MouseUp);
   }
 
   return out;

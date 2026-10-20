@@ -1414,6 +1414,9 @@ from:
 | `CustomAfterValidation()` | in `Main`, once every load check has passed, before `disableAllSigners` |
 | `CustomAfterLoad()` | last thing `Main` does, **after** `setFileOpticsButtonsState` |
 | `CustomBeforeSubmit()` | in all four submit handlers, once validation has passed |
+| `CustomFieldBlur()` | every field's On Blur, after the generated part |
+| `CustomFieldMouseDown()` | every field's Mouse Down |
+| `CustomFieldMouseUp()` | every field's Mouse Up |
 
 Plain functions, the same shape as `CustomSaveValidation`. The one difference is
 that `CustomSaveValidation` is emitted into `Main`, empty when the form has none,
@@ -1442,6 +1445,11 @@ showing the hooks do not fire.
 `CustomAfterLoad` has to run after the buttons are shown or a form hiding a
 signing channel would be undone, which is what the CUMIS form does. Positions
 were taken from where the example forms already put this code.
+
+The field hooks read `event.target` to know which field fired. Export writes
+On Blur, Mouse Down and Mouse Up on every field except buttons and system
+fields, so a script written on the field itself is replaced. Import names
+each one it finds.
 
 **Hooks take no arguments.** What `Main` worked out is in the run time globals
 below, read the same way the config block already is, so adding a new decision

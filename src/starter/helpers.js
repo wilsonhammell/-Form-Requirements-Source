@@ -33,6 +33,13 @@ var ESIGN_SLOT_COUNT = 6;
 //   CustomAfterValidation()   in Main, once every load check has passed
 //   CustomAfterLoad()         last thing Main does
 //   CustomBeforeSubmit()      in each submit handler, once validation passed
+//   CustomFieldBlur()         every field's On Blur, after its own
+//   CustomFieldMouseDown()    every field's Mouse Down
+//   CustomFieldMouseUp()      every field's Mouse Up
+//
+// The field hooks are called from the field scripts export writes, and read
+// event.target to know which field fired. Export replaces those three events
+// on every field, so a form's own handling for them lives here instead.
 //
 // They take no arguments. What Main worked out is in the run time globals,
 // IS_PERSON, SIGNER_COUNT, JOINT_POPULATED and CURRENT_AUTH_TYPE, read the same

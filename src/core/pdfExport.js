@@ -44,11 +44,9 @@ import {
   buildDocumentScripts,
   findCustomSaveValidation,
   findFormHooks,
-  saveValidationGroups,
+  generatedFieldScripts,
 } from '../starter/buildScripts.js';
-import { fieldScripts } from '../starter/fieldScripts.js';
 import { formatScripts } from './fieldFormat.js';
-import { deriveSignerRows } from './specialFields.js';
 import { normalizeRotation } from './coords.js';
 
 // Annotation flag, PDF 32000-1 table 165, 1 based bit positions there.
@@ -125,11 +123,10 @@ export async function exportPdf({
   // Per field scripts, written before the merge so a merged field keeps the
   // widget's own entry. Regenerated every export like everything else, so a
   // field that is no longer scripted loses the one it had.
-  const scripts = buildFieldScripts(
-    groups,
+  const scripts = generatedFieldScripts(
+    [...groups].map(([name, group]) => [name, group.type]),
     new Set(systemFields.map((f) => String(f?.identifier ?? f).trim())),
-    deriveSignerRows(fields),
-    saveValidationGroups(fields)
+    fields
   );
   applyFormats(form, groups, scripts);
   applyFieldScripts(form, groups, scripts);
@@ -201,28 +198,14 @@ function applyFieldSettings(field, group, fontsByFamily, widgets, fromSource) {
   applyButton(field, group, fontsByFamily);
 }
 
-// What clearAllRequired walks. A pushbutton has no value to clear.
-const SCRIPTABLE_TYPES = ['text', 'checkbox', 'radio', 'dropdown'];
-
-// System fields get none, being read-only and filled by code, so nothing ever
-// flags them.
-//
-// This replaces the load time pass the old forms ran, which was only safe once
-// and flattened the dropdown scripts whenever it ran again.
-function buildFieldScripts(groups, systemNames, signerRows, saveGroups) {
-  const scriptable = [...groups.entries()]
-    .filter(([name, group]) => SCRIPTABLE_TYPES.includes(group.type) && !systemNames.has(name))
-    .map(([name]) => name);
-  return fieldScripts({ fieldNames: scriptable, signerRows, saveGroups });
-}
-
 function applyFieldScripts(form, groups, scripts) {
   for (const field of form.getFields()) {
     const name = field.getName();
     if (!groups.has(name)) continue;
     const script = scripts.get(name);
+    const isButton = groups.get(name).type === 'button';
     for (const widget of field.acroField.getWidgets()) {
-      setFieldActions(widget.dict, script);
+      setFieldActions(widget.dict, script, isButton);
     }
   }
 }
@@ -246,13 +229,27 @@ function fillConfigValues(form, groups, config, warnings) {
   }
 }
 
-// OnBlur is always ours, so nothing to write clears it. A Keystroke is written
-// here only for eSign_Code, and is otherwise the format's, see applyFormats.
-function setFieldActions(dict, scripts) {
+// OnBlur and Mouse Down are always ours, so nothing to write clears them. A
+// Keystroke is written here only for eSign_Code, and is otherwise the format's,
+// see applyFormats.
+//
+// Mouse Up goes in /A, which is where Acrobat keeps it, see applyButton. A /U
+// beside it would run as a second Mouse Up, so it goes. Only on a field that
+// has one, since a button's /A is the button list's. A button's Mouse Down is
+// left as it was for the same reason.
+function setFieldActions(dict, scripts, isButton) {
   writeActions(dict, {
     Bl: scripts?.OnBlur ?? null,
+    ...(isButton ? {} : { D: scripts?.MouseDown ?? null }),
+    ...(scripts?.MouseUp ? { U: null } : {}),
     ...(scripts?.Keystroke ? { K: scripts.Keystroke } : {}),
   });
+  if (scripts?.MouseUp) {
+    dict.set(
+      PDFName.of('A'),
+      dict.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText(scripts.MouseUp) })
+    );
+  }
 }
 
 // Format and Keystroke belong to the field, the dictionary carrying /T, which

@@ -16,6 +16,7 @@ import {
   SIGNER_PARTS,
 } from '../core/specialFields.js';
 import { checkBoxGroups, checkBoxParent } from '../core/checkBoxGroups.js';
+import { FIELD_HOOKS, fieldScripts } from './fieldScripts.js';
 
 // One product code field today, so this is a constant rather than a choice.
 export const PRODUCT_CODE_FIELD = 'PROD_CODE';
@@ -98,8 +99,15 @@ export function findCustomSaveValidation(scripts) {
 // The two this tool writes. Anything else in the name tree is left alone.
 export const OWNED_SCRIPTS = ['Helper_Functions', 'Main'];
 
-// The optional hooks the starter code calls, see the top of helpers.js.
-export const FORM_HOOKS = ['CustomAfterValidation', 'CustomAfterLoad', 'CustomBeforeSubmit'];
+// The optional hooks the starter code calls, see the top of helpers.js. The
+// field hooks are called from each field's own scripts rather than from Main,
+// but are found and carried across the same way.
+export const FORM_HOOKS = [
+  'CustomAfterValidation',
+  'CustomAfterLoad',
+  'CustomBeforeSubmit',
+  ...Object.values(FIELD_HOOKS),
+];
 
 // Hooks written inside Helper_Functions or Main, carried across the way
 // CustomSaveValidation is. Only those two are read: one in a form's own script
@@ -225,6 +233,26 @@ export function saveValidationGroups(fields) {
   return [...checkBoxGroups(fields)]
     .filter(([parent]) => validated.has(parent))
     .map(([, members]) => members);
+}
+
+// A pushbutton has no value to clear, and its action comes from the button list.
+export const SCRIPTABLE_TYPES = ['text', 'checkbox', 'radio', 'dropdown'];
+
+// Every field's scripts, from [name, type] pairs and the placed fields. Export
+// writes these and import compares against them, so the two cannot disagree on
+// what counts as generated.
+//
+// System fields get none, being read-only and filled by code, so nothing ever
+// flags them.
+export function generatedFieldScripts(entries, systemNames, fields) {
+  const scriptable = [...entries]
+    .filter(([name, type]) => SCRIPTABLE_TYPES.includes(type) && !systemNames.has(name))
+    .map(([name]) => name);
+  return fieldScripts({
+    fieldNames: [...new Set(scriptable)],
+    signerRows: deriveSignerRows(fields),
+    saveGroups: saveValidationGroups(fields),
+  });
 }
 
 export function buildConfigBlock({

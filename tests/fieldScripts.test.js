@@ -7,6 +7,8 @@ import {
   signerNameOnBlur,
   esignCodeKeystroke,
   fieldScripts,
+  fieldHookCall,
+  FIELD_HOOKS,
 } from '../src/starter/fieldScripts.js';
 
 const compiles = (src) => {
@@ -15,6 +17,9 @@ const compiles = (src) => {
 };
 
 const full = { name: true, signature: true, signDate: true };
+
+const withBlurHook = (src) => `${src}
+${fieldHookCall(FIELD_HOOKS.OnBlur)}`;
 
 describe('the generic OnBlur', () => {
   it('clears required once the field has a value', () => {
@@ -43,8 +48,8 @@ describe('the check box group OnBlur', () => {
 
   it('replaces the generic one on group members only', () => {
     const out = fieldScripts({ fieldNames: [...group, 'OTHER'], saveGroups: [group] });
-    expect(out.get('Trace Reason.A').OnBlur).toBe(clearGroupOnBlur('Trace Reason.A', group));
-    expect(out.get('OTHER').OnBlur).toBe(clearRequiredOnBlur('OTHER'));
+    expect(out.get('Trace Reason.A').OnBlur).toBe(withBlurHook(clearGroupOnBlur('Trace Reason.A', group)));
+    expect(out.get('OTHER').OnBlur).toBe(withBlurHook(clearRequiredOnBlur('OTHER')));
   });
 });
 
@@ -155,5 +160,30 @@ describe('the eSign code keystroke', () => {
   it('is not invented for a form without the eSign pair', () => {
     const set = fieldScripts({ fieldNames: ['CUSTNAME'] });
     expect([...set.values()].some((s) => s.Keystroke)).toBe(false);
+  });
+});
+
+describe('the field hooks', () => {
+  it('calls each hook from its own event, after whatever the field does on blur', () => {
+    const set = fieldScripts({ fieldNames: ['CUSTNAME'], signerRows: [full] });
+    for (const name of ['CUSTNAME', 'Member1Name']) {
+      const scripts = set.get(name);
+      expect(scripts.OnBlur.endsWith(fieldHookCall('CustomFieldBlur'))).toBe(true);
+      expect(scripts.MouseDown).toBe(fieldHookCall('CustomFieldMouseDown'));
+      expect(scripts.MouseUp).toBe(fieldHookCall('CustomFieldMouseUp'));
+    }
+  });
+
+  it('guards every call, so a form defining none still runs', () => {
+    for (const hook of Object.values(FIELD_HOOKS)) {
+      expect(() => new Function(fieldHookCall(hook))()).not.toThrow();
+    }
+  });
+
+  it('runs a hook the form does define', () => {
+    let ran = 0;
+    const run = new Function('CustomFieldMouseUp', fieldHookCall('CustomFieldMouseUp'));
+    run(() => (ran += 1));
+    expect(ran).toBe(1);
   });
 });
