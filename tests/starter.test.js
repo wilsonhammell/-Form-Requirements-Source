@@ -417,6 +417,7 @@ function runPhoneAuth(rows, selected = {}, values = {}) {
      getSafeValue = function (n) { return __values[n] === undefined ? "" : __values[n]; };
      getSelectedText = function (n) { return __selected[n] === undefined ? "" : __selected[n]; };
      flagError = function (n) { __flagged.push(n); };
+     CustomBeforeSubmit = function () {};
      submitPhoneAuth();
      return __flagged;`
   );

@@ -1404,43 +1404,26 @@ first, which is what every old form did.
 
 ## Form hooks
 
-A form's bespoke code lives in **its own document-level script**. Export
-replaces `Helper_Functions` and `Main` and nothing else, so that script survives
-untouched already. All the generated code has to provide is somewhere to call it
-from:
+A form's own code goes in **six empty functions in `Main`**, there on every
+form beside `CustomSaveValidation`. Each carries a comment in the generated
+script saying when it runs, so the person filling one in reads it in Acrobat.
+Export replaces everything else in `Main` and keeps whatever is written in
+these:
 
 | hook | where it runs |
 | --- | --- |
 | `CustomAfterValidation()` | in `Main`, once every load check has passed, before `disableAllSigners` |
 | `CustomAfterLoad()` | last thing `Main` does, **after** `setFileOpticsButtonsState` |
-| `CustomBeforeSubmit()` | in all four submit handlers, once validation has passed |
+| `CustomBeforeSubmit()` | in all five submit handlers, once validation has passed |
 | `CustomFieldBlur()` | every field's On Blur, after the generated part |
 | `CustomFieldMouseDown()` | every field's Mouse Down |
 | `CustomFieldMouseUp()` | every field's Mouse Up |
 
-Plain functions, the same shape as `CustomSaveValidation`. The one difference is
-that `CustomSaveValidation` is emitted into `Main`, empty when the form has none,
-so it can be called bare. These are never emitted, so **every call site guards
-with `typeof`**: a bare reference to a name nothing declared is a
-`ReferenceError`, and `typeof` is the only operator that tolerates one.
+Called bare, the same as `CustomSaveValidation`, since `Main` always declares
+them. Export reads them out of `Main` and nowhere else.
 
 No editor is needed. The code is written in Acrobat, the same place the fields
 are drawn, and this tool never touches it.
-
-### The script has to sort before Main
-
-Acrobat runs document scripts in **name order**, and `Main()` is called at the
-bottom of the `Main` script. So a script defining these has to have run by then:
-
-| name | | |
-| --- | --- | --- |
-| `Form_Custom` | F < M | runs first, hooks fire |
-| `ZZ_Custom` | Z > M | runs after `Main`, hooks never fire |
-
-Getting this wrong fails **silently**: no error, the code is preserved, it simply
-never runs. Import reports a script that sorts too late for exactly this reason,
-and `tests/formHooks.test.js` proves it by running the scripts in name order and
-showing the hooks do not fire.
 
 `CustomAfterLoad` has to run after the buttons are shown or a form hiding a
 signing channel would be undone, which is what the CUMIS form does. Positions

@@ -99,9 +99,9 @@ export function findCustomSaveValidation(scripts) {
 // The two this tool writes. Anything else in the name tree is left alone.
 export const OWNED_SCRIPTS = ['Helper_Functions', 'Main'];
 
-// The optional hooks the starter code calls, see the top of helpers.js. The
-// field hooks are called from each field's own scripts rather than from Main,
-// but are found and carried across the same way.
+// The hooks the starter code calls, see the top of helpers.js. The field hooks
+// are called from each field's own scripts rather than from Main, but live in
+// Main the same way.
 export const FORM_HOOKS = [
   'CustomAfterValidation',
   'CustomAfterLoad',
@@ -109,24 +109,52 @@ export const FORM_HOOKS = [
   ...Object.values(FIELD_HOOKS),
 ];
 
-// Hooks written inside Helper_Functions or Main, carried across the way
-// CustomSaveValidation is. Only those two are read: one in a form's own script
-// survives export already, and a copy in Main would load after it and win, so
-// later edits to the original would do nothing.
+// Main carries every hook on every form, so this is where a form's own code
+// goes. Each stub says when it runs.
 //
-// Empty ones are left out for the same reason. Main is preferred, being where
-// this tool writes them.
+// The comments are in the generated text rather than only here because the
+// person filling one in reads them in Acrobat.
+const HOOK_STUBS = `// The form's own code goes in these. Every form has all six, empty until
+// something is written in one, and export keeps whatever is.
+
+// Runs when the form opens, once every load check has passed, before the
+// signer rows are set up.
+function CustomAfterValidation() {
+}
+
+// Runs when the form opens, as the last step, after the signing buttons are
+// shown.
+function CustomAfterLoad() {
+}
+
+// Runs when a submit or print button is clicked, once validation has passed.
+// CURRENT_AUTH_TYPE says which: PHONE, ESIGN, DIGITAL, SUBMIT or PRINT.
+function CustomBeforeSubmit() {
+}
+
+// Runs when any field loses focus. event.target.name says which field.
+function CustomFieldBlur() {
+}
+
+// Runs when the mouse is pressed on any field. event.target.name says which
+// field.
+function CustomFieldMouseDown() {
+}
+
+// Runs when the mouse is released on any field. event.target.name says which
+// field.
+function CustomFieldMouseUp() {
+}
+`;
+
+// Each hook's body, read out of Main, where the stubs are, so whatever was
+// written in one goes back into the next export. Empty ones are left out.
 export function findFormHooks(scripts) {
-  const sources = asScriptMap(scripts);
+  const main = asScriptMap(scripts).get('Main');
   const hooks = {};
   for (const name of FORM_HOOKS) {
-    for (const script of ['Main', 'Helper_Functions']) {
-      const body = extractFunctionBody(sources.get(script), name);
-      if (body) {
-        hooks[name] = body;
-        break;
-      }
-    }
+    const body = extractFunctionBody(main, name);
+    if (body) hooks[name] = body;
   }
   return hooks;
 }
@@ -140,20 +168,9 @@ const RETIRED = ['injectErrorFlagClearing'];
 // nothing.
 const RENAMED = ['setKCU_TAG'];
 
-// Main() is called at the bottom of the Main script, so a script sorting after
-// it loads too late. The typeof guard is false and the hook silently does not
-// fire.
-export function runsBeforeMain(scriptName) {
-  return String(scriptName ?? '') < 'Main';
-}
-
 // Where a form keeps its own code, since export leaves these alone.
 export function ownScripts(scripts) {
   return [...asScriptMap(scripts).keys()].filter((name) => !OWNED_SCRIPTS.includes(name)).sort();
-}
-
-export function lateScripts(scripts) {
-  return ownScripts(scripts).filter((name) => !runsBeforeMain(name));
 }
 
 function functionNames(source) {
@@ -306,10 +323,11 @@ export function buildConfigBlock({
 
   const codes = (config.productCodes ?? []).map((c) => str(c));
 
-  // Only the ones the form had. The call sites check typeof, so an absent hook
-  // is simply not run.
-  const carriedHooks = FORM_HOOKS.filter((name) => hooks[name]).map(
-    (name) => `\nfunction ${name}() {\n${hooks[name]}}\n`
+  // Every stub, with the form's own body in any it has. Called bare, so each
+  // has to exist whether or not anything is written in it.
+  const hookStubs = FORM_HOOKS.reduce(
+    (text, name) => text.replace(`function ${name}() {\n}`, `function ${name}() {\n${hooks[name] ?? ''}}`),
+    HOOK_STUBS
   );
 
   return `${CONFIG_OPEN}
@@ -354,10 +372,12 @@ var SAVE_VALIDATION_FIELDS = ${list(saveValidation)};
 
 // Written per form when the form needs it. Empty otherwise, and it has to exist
 // either way because runBaseSaveValidationOnly calls it. Everything else in
-// these two scripts is regenerated, this is the one part carried across.
+// these two scripts is regenerated apart from this and the six below, which
+// are carried across.
 function CustomSaveValidation() {
 ${customSaveValidation}}
-${carriedHooks.length ? `\n// The form's own hooks, carried across the same way.\n${carriedHooks.join('')}` : ''}
+
+${hookStubs}
 ${CONFIG_CLOSE}`;
 }
 

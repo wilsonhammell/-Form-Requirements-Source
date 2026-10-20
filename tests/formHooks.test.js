@@ -2,21 +2,21 @@
 //
 // Everything else that checks the starter code either compiles it or runs a
 // single helper. This runs the whole thing the way Acrobat does: every document
-// script concatenated in name order into one shared scope, then Main() called at
-// the bottom of its own script. That is the only way to prove a hook actually
-// fires, and the only way to prove the ordering rule is real.
+// script run in name order in one shared scope, then Main() called at the
+// bottom of its own script. That is the only way to prove a hook actually
+// fires.
 import { describe, it, expect } from 'vitest';
 import vm from 'node:vm';
 import { helperScript, mainScript } from '../src/starter/index.js';
-import { buildMainScript, runsBeforeMain, lateScripts, ownScripts } from '../src/starter/buildScripts.js';
+import { buildMainScript, ownScripts, FORM_HOOKS } from '../src/starter/buildScripts.js';
 import { fieldScripts } from '../src/starter/fieldScripts.js';
 
 // Enough of Acrobat to get through Main.
 //
 // Each document script is run as its own program in one shared global, which is
 // what Acrobat does. Concatenating them instead would hoist every declaration
-// into a single scope and the ordering rule would be untestable: a script named
-// to sort after Main would still appear to define its functions in time.
+// into a single scope, and which copy of a function wins would no longer depend
+// on the order the scripts run in.
 //
 // getSafeField reaches the document as this.getField and is called as a plain
 // function, so "this" is the global object at that point. In Acrobat the
@@ -59,8 +59,7 @@ function makeDocument(values = {}) {
   };
 }
 
-// Name order, the order Acrobat runs them in. Main() is called at the bottom of
-// the Main script, so anything defining a hook has to have run by then.
+// Name order, the order Acrobat runs them in.
 function runDocument(scripts, tail, values) {
   const doc = makeDocument(values);
   const sandbox = vm.createContext(doc.context);
@@ -71,115 +70,87 @@ function runDocument(scripts, tail, values) {
   return { result, alerts: doc.alerts, fields: doc.fields };
 }
 
-// A form with nothing placed on it. PRIMARY_MEMBERSHIP_TYPE is P because the default
-// config is a person membership, and Main returns early on a mismatch: without
-// it the run would stop before reaching anything worth checking.
-function generated(extra = {}) {
+// A form with nothing placed on it and the given hook bodies filled in, the way
+// export writes them into Main. A_Setup sorts first, so anything a hook records
+// into exists before Main() runs.
+//
+// PRIMARY_MEMBERSHIP_TYPE is P because the default config is a person
+// membership, and Main returns early on a mismatch: without it the run would
+// stop before reaching anything worth checking.
+function generated(hooks = {}, setup = '') {
   const scripts = new Map([
     ['Helper_Functions', helperScript()],
-    ['Main', buildMainScript({})],
+    ['Main', buildMainScript({ hooks })],
   ]);
-  for (const [name, src] of Object.entries(extra)) scripts.set(name, src);
+  if (setup) scripts.set('A_Setup', setup);
   return scripts;
 }
 
 const PERSON = { PRIMARY_MEMBERSHIP_TYPE: 'P' };
 
 describe('the whole document, run the way Acrobat runs it', () => {
-  const HOOKS = `
-      var __ran = [];
-      function CustomAfterValidation() { __ran.push("afterValidation"); }
-      function CustomAfterLoad() { __ran.push("afterLoad"); }
-  `;
+  const BOTH = {
+    CustomAfterValidation: '    __ran.push("afterValidation");\n',
+    CustomAfterLoad: '    __ran.push("afterLoad");\n',
+  };
 
   it('gets all the way through Main on a form with nothing placed', () => {
-    // No signer rows, no buttons, no validation fields, no hooks. The smallest
-    // real form, and the case nothing else covers: a form offering no signing
-    // channel at all. Reaching the end is asserted through a hook rather than
-    // by not throwing, because Main returns early on several paths and a test
-    // that only checks for an exception would pass on every one of them.
-    const { result } = runDocument(generated({ Form_Custom: HOOKS }), '__ran', PERSON);
+    // No signer rows, no buttons, no validation fields. The smallest real form,
+    // and the case nothing else covers: a form offering no signing channel at
+    // all. Reaching the end is asserted through a hook rather than by not
+    // throwing, because Main returns early on several paths and a test that
+    // only checks for an exception would pass on every one of them.
+    const { result } = runDocument(generated(BOTH, 'var __ran = [];'), '__ran', PERSON);
     expect(result).toEqual(['afterValidation', 'afterLoad']);
-  });
-
-  it('fires both Main hooks, in order, from a script sorting before Main', () => {
-    const { result } = runDocument(generated({ Form_Custom: HOOKS }), '__ran', PERSON);
-    expect(result).toEqual(['afterValidation', 'afterLoad']);
-  });
-
-  it('fires hooks carried into Main from an older form', () => {
-    const main = buildMainScript({
-      hooks: {
-        CustomAfterValidation: '    __ran.push("afterValidation");\n',
-        CustomAfterLoad: '    __ran.push("afterLoad");\n',
-      },
-    });
-    const scripts = generated({ Main: main, A_Setup: 'var __ran = [];' });
-    const { result } = runDocument(scripts, '__ran', PERSON);
-    expect(result).toEqual(['afterValidation', 'afterLoad']);
-  });
-
-  it('fires neither when the script sorts after Main', () => {
-    // The whole point of the naming rule. Same code, later name, silently dead:
-    // no error, nothing logged, the hook simply never runs.
-    const { result } = runDocument(
-      generated({ ZZ_Custom: HOOKS }),
-      'typeof __ran === "undefined" ? "never loaded" : __ran',
-      PERSON
-    );
-    expect(result).toEqual([]);
   });
 
   it('runs afterValidation before the signers are set up', () => {
     // Position, not just presence. disableAllSigners runs after the hook, so a
     // signer field touched by the hook must still be untouched at that point.
-    const custom = `
-      var __signerAtHookTime = null;
-      function CustomAfterValidation() {
-        __signerAtHookTime = this.getField("Member1Signature").readonly;
-      }
-    `;
     const { result } = runDocument(
-      generated({ Form_Custom: custom }),
+      generated(
+        { CustomAfterValidation: '    __signerAtHookTime = this.getField("Member1Signature").readonly;\n' },
+        'var __signerAtHookTime = null;'
+      ),
       '__signerAtHookTime',
       PERSON
     );
     expect(result).toBe(false);
   });
 
-  it('does not mind a form defining only one of them', () => {
-    const custom = `
-      var __ran = [];
-      function CustomAfterLoad() { __ran.push("afterLoad"); }
-    `;
-    const { result } = runDocument(generated({ Form_Custom: custom }), '__ran', PERSON);
+  it('runs with only one of them filled in', () => {
+    const { result } = runDocument(
+      generated({ CustomAfterLoad: BOTH.CustomAfterLoad }, 'var __ran = [];'),
+      '__ran',
+      PERSON
+    );
     expect(result).toEqual(['afterLoad']);
   });
 
-  it('does not mind a hook name that is not a function', () => {
-    const custom = 'var CustomAfterLoad = "not a function";';
-    expect(() => runDocument(generated({ Form_Custom: custom }), '1', PERSON)).not.toThrow();
-  });
-
-  it('does not mind a form declaring no hooks at all', () => {
-    // The common case. A bare reference to an undeclared name is a
-    // ReferenceError, so this is what the typeof guards are for.
+  it('runs with every one of them empty', () => {
+    // The common case. Each is called bare, so this is what the stubs are for.
     expect(() => runDocument(generated(), '1', PERSON)).not.toThrow();
   });
 
   it('lets a hook read what Main worked out, which is why they take no arguments', () => {
-    const custom = `
-      var __seen = null;
-      function CustomAfterLoad() {
-        __seen = {
-          isPerson: IS_PERSON,
-          signers: SIGNER_COUNT,
-          joint: JOINT_POPULATED,
-          membership: MEMBERSHIP_TYPE
-        };
-      }
-    `;
-    const { result } = runDocument(generated({ Form_Custom: custom }), '__seen', PERSON);
+    const { result } = runDocument(
+      generated(
+        {
+          CustomAfterLoad: [
+            '    __seen = {',
+            '        isPerson: IS_PERSON,',
+            '        signers: SIGNER_COUNT,',
+            '        joint: JOINT_POPULATED,',
+            '        membership: MEMBERSHIP_TYPE',
+            '    };',
+            '',
+          ].join('\n'),
+        },
+        'var __seen = null;'
+      ),
+      '__seen',
+      PERSON
+    );
     expect(result).toMatchObject({
       isPerson: true,
       membership: 'person',
@@ -204,12 +175,8 @@ describe('the whole document, run the way Acrobat runs it', () => {
   });
 
   it('fires beforeSubmit on the print channel', () => {
-    const custom = `
-      var __submits = [];
-      function CustomBeforeSubmit() { __submits.push(CURRENT_AUTH_TYPE); }
-    `;
     const { result } = runDocument(
-      generated({ Form_Custom: custom }),
+      generated({ CustomBeforeSubmit: '    __submits.push(CURRENT_AUTH_TYPE);\n' }, 'var __submits = [];'),
       'submitPrintOnly(); __submits',
       PERSON
     );
@@ -220,63 +187,46 @@ describe('the whole document, run the way Acrobat runs it', () => {
 describe('the field hooks, run the way Acrobat runs them', () => {
   // Bill Payment Trace: ticking a different reason clears what the last one
   // asked for. Acrobat sets event.target to the field whose script is running.
-  const CLEARING = `
-    function CustomFieldMouseUp() {
-      if (event.target.name !== "TraceReason") return;
-      if (this.getField("TraceReason").value !== "IncorrectAmount") {
-        this.getField("AmountPaid").value = "";
-      }
-    }
-  `;
+  const CLEARING = {
+    CustomFieldMouseUp: [
+      '    if (event.target.name !== "TraceReason") return;',
+      '    if (this.getField("TraceReason").value !== "IncorrectAmount") {',
+      '        this.getField("AmountPaid").value = "";',
+      '    }',
+      '',
+    ].join('\n'),
+  };
   const mouseUp = (name) => fieldScripts({ fieldNames: [name] }).get(name).MouseUp;
   // Read back through getField, since the stub only creates a field once asked.
   const click = (name) =>
-    `var event = { target: getField(${JSON.stringify(name)}) }; ${mouseUp(name)}
-getField("AmountPaid").value`;
+    `var event = { target: getField(${JSON.stringify(name)}) }; ${mouseUp(name)}\ngetField("AmountPaid").value`;
 
   it('fires from the field\'s own Mouse Up, with event.target naming the field', () => {
     const values = { ...PERSON, TraceReason: 'IncorrectVendor', AmountPaid: '12.00' };
-    const { result } = runDocument(generated({ Form_Custom: CLEARING }), click('TraceReason'), values);
+    const { result } = runDocument(generated(CLEARING), click('TraceReason'), values);
     expect(result).toBe('');
   });
 
   it('leaves the values alone for the reason that asked for them', () => {
     const values = { ...PERSON, TraceReason: 'IncorrectAmount', AmountPaid: '12.00' };
-    const { result } = runDocument(generated({ Form_Custom: CLEARING }), click('TraceReason'), values);
+    const { result } = runDocument(generated(CLEARING), click('TraceReason'), values);
     expect(result).toBe('12.00');
   });
 
-  it('does nothing on a form that defines none', () => {
+  it('does nothing on a form that leaves them empty', () => {
     expect(() => runDocument(generated(), click('TraceReason'), PERSON)).not.toThrow();
   });
 });
 
-describe('the naming rule', () => {
-  it('is a plain comparison against the name Main', () => {
-    expect(runsBeforeMain('Form_Custom')).toBe(true);
-    expect(runsBeforeMain('Helper_Functions')).toBe(true);
-    expect(runsBeforeMain('Custom')).toBe(true);
-    expect(runsBeforeMain('ZZ_Custom')).toBe(false);
-    expect(runsBeforeMain('Zebra')).toBe(false);
-    // Main itself is not before Main.
-    expect(runsBeforeMain('Main')).toBe(false);
-  });
-
-  it('reports a script that loads too late, and stays quiet about ones that do not', () => {
+describe('the scripts a form keeps', () => {
+  it('names any script other than the two this tool writes', () => {
     const scripts = new Map([
       ['Helper_Functions', ''],
       ['Main', ''],
       ['Form_Custom', ''],
-      ['ZZ_Custom', ''],
     ]);
-    expect(lateScripts(scripts)).toEqual(['ZZ_Custom']);
-    expect(ownScripts(scripts)).toEqual(['Form_Custom', 'ZZ_Custom']);
-  });
-
-  it('never calls the two scripts this tool writes late or its own', () => {
-    const scripts = new Map([['Helper_Functions', ''], ['Main', '']]);
-    expect(lateScripts(scripts)).toEqual([]);
-    expect(ownScripts(scripts)).toEqual([]);
+    expect(ownScripts(scripts)).toEqual(['Form_Custom']);
+    expect(ownScripts(new Map([['Helper_Functions', ''], ['Main', '']]))).toEqual([]);
   });
 });
 
@@ -291,21 +241,18 @@ describe('the generated text', () => {
   const main = code(mainScript());
   const helpers = code(helperScript());
 
-  it('guards every hook call with typeof', () => {
-    // A bare reference to a name nothing declared is a ReferenceError, so an
-    // unguarded call would break every form that defines no hooks, which is
-    // most of them.
-    for (const hook of ['CustomAfterValidation', 'CustomAfterLoad', 'CustomBeforeSubmit']) {
-      const text = hook === 'CustomBeforeSubmit' ? helpers : main;
-      const calls = text.split(hook + '();').length - 1;
-      const guards = text.split('typeof ' + hook + ' === "function"').length - 1;
-      expect(calls).toBeGreaterThan(0);
-      expect(guards).toBe(calls);
+  it('declares every hook in Main, since each is called bare', () => {
+    for (const hook of FORM_HOOKS) {
+      expect(main).toContain(`function ${hook}() {`);
     }
+  });
+
+  it('matches what export writes, so the template cannot drift from it', () => {
+    const region = (text) => text.slice(text.indexOf('function CustomAfterValidation'), text.indexOf('//</CONFIG>'));
+    expect(region(mainScript())).toBe(region(buildMainScript({})));
   });
 
   it('calls beforeSubmit on all five channels', () => {
     expect(helpers.split('CustomBeforeSubmit();').length - 1).toBe(5);
   });
-
 });

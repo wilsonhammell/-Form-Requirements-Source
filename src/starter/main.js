@@ -68,6 +68,38 @@ var SAVE_VALIDATION_FIELDS = [];
 function CustomSaveValidation() {
 }
 
+// The form's own code goes in these. Every form has all six, empty until
+// something is written in one, and export keeps whatever is.
+
+// Runs when the form opens, once every load check has passed, before the
+// signer rows are set up.
+function CustomAfterValidation() {
+}
+
+// Runs when the form opens, as the last step, after the signing buttons are
+// shown.
+function CustomAfterLoad() {
+}
+
+// Runs when a submit or print button is clicked, once validation has passed.
+// CURRENT_AUTH_TYPE says which: PHONE, ESIGN, DIGITAL, SUBMIT or PRINT.
+function CustomBeforeSubmit() {
+}
+
+// Runs when any field loses focus. event.target.name says which field.
+function CustomFieldBlur() {
+}
+
+// Runs when the mouse is pressed on any field. event.target.name says which
+// field.
+function CustomFieldMouseDown() {
+}
+
+// Runs when the mouse is released on any field. event.target.name says which
+// field.
+function CustomFieldMouseUp() {
+}
+
 //</CONFIG>
 
 //Not for config. Worked out at run time rather than generated, and readable by
@@ -110,9 +142,7 @@ function Main()
     // Everything above decides whether the form runs at all, so this is the
     // first point a form's own code can rely on. Two forms in the example set
     // put their setup exactly here.
-    if (typeof CustomAfterValidation === "function") {
-        CustomAfterValidation();
-    }
+    CustomAfterValidation();
 
     disableAllSigners();
 
@@ -133,9 +163,7 @@ function Main()
 
     // After the buttons are shown, not before: a form that hides a channel has
     // to run second or it would be undone.
-    if (typeof CustomAfterLoad === "function") {
-        CustomAfterLoad();
-    }
+    CustomAfterLoad();
 }
 
 Main();

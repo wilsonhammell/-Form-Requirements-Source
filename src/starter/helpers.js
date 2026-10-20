@@ -16,19 +16,12 @@
 // element 12, which is what caps a form at six signer rows.
 var ESIGN_SLOT_COUNT = 6;
 
-// Hooks a form defines for itself.
+// The form's own code.
 //
-// A form's bespoke code lives in its own document-level script, or in Main.
-// Export replaces Helper_Functions and Main and nothing else, but carries these
-// across when it finds them in either, so all the generated code has to do is
-// call them if they exist. Nothing here knows what they do.
-//
-// Written as plain functions, the same shape as CustomSaveValidation. The one
-// difference is that CustomSaveValidation is emitted into Main, empty when the
-// form has none, so it can be called bare. These are emitted only when the form
-// has them, so every call site guards with typeof: a bare reference to a name
-// nothing declared is a ReferenceError, and typeof is the only operator that
-// tolerates one.
+// Main carries six empty functions on every form, each with a comment saying
+// when it runs. A form's own code goes in them, and export keeps whatever is
+// written there while replacing everything around it. Nothing here knows what
+// they do.
 //
 //   CustomAfterValidation()   in Main, once every load check has passed
 //   CustomAfterLoad()         last thing Main does
@@ -37,18 +30,13 @@ var ESIGN_SLOT_COUNT = 6;
 //   CustomFieldMouseDown()    every field's Mouse Down
 //   CustomFieldMouseUp()      every field's Mouse Up
 //
-// The field hooks are called from the field scripts export writes, and read
-// event.target to know which field fired. Export replaces those three events
-// on every field, so a form's own handling for them lives here instead.
+// Called bare, the way CustomSaveValidation is, since Main always declares
+// them. The field hooks are called from the field scripts export writes, and
+// read event.target to know which field fired.
 //
 // They take no arguments. What Main worked out is in the run time globals,
 // IS_PERSON, SIGNER_COUNT, JOINT_POPULATED and CURRENT_AUTH_TYPE, read the same
 // way the config block already is.
-//
-// ORDER MATTERS. Acrobat runs document scripts in name order and Main() is
-// called at the bottom of its own script, so a script defining these has to
-// sort before "Main" or its functions do not exist yet and the hook silently
-// does not fire. Form_Custom works, ZZ_Custom does not.
 
 function getSafeField(fieldName) {
     var field = this.getField(fieldName);
@@ -1020,9 +1008,7 @@ function submitPhoneAuth() {
         return;
     }
 
-    if (typeof CustomBeforeSubmit === "function") {
-        CustomBeforeSubmit();
-    }
+    CustomBeforeSubmit();
 
     commonSubmitTags();
     sendToFileOptics(getFlowId("PHONE"), "");
@@ -1040,9 +1026,7 @@ function submitRemoteESign() {
         return;
     }
 
-    if (typeof CustomBeforeSubmit === "function") {
-        CustomBeforeSubmit();
-    }
+    CustomBeforeSubmit();
 
     wipeManualSignatures();
 
@@ -1098,9 +1082,7 @@ function submitDigitalSignature() {
         return;
     }
 
-    if (typeof CustomBeforeSubmit === "function") {
-        CustomBeforeSubmit();
-    }
+    CustomBeforeSubmit();
 
     wipeManualSignatures();
     commonSubmitTags();
@@ -1124,9 +1106,7 @@ function submitForProcessing() {
         return;
     }
 
-    if (typeof CustomBeforeSubmit === "function") {
-        CustomBeforeSubmit();
-    }
+    CustomBeforeSubmit();
 
     commonSubmitTags();
     sendToFileOptics(getFlowId("SUBMIT"), "");
@@ -1140,9 +1120,7 @@ function submitPrintOnly() {
         return;
     }
 
-    if (typeof CustomBeforeSubmit === "function") {
-        CustomBeforeSubmit();
-    }
+    CustomBeforeSubmit();
 
     commonSubmitTags();
 

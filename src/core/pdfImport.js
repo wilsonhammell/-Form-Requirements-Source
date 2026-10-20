@@ -34,7 +34,6 @@ import {
   replacedFunctions,
   OWNED_SCRIPTS,
   ownScripts,
-  lateScripts,
   generatedFieldScripts,
   FORM_HOOKS,
 } from '../starter/buildScripts.js';
@@ -101,7 +100,7 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
       systemNotes.push(
         `Export replaces every field's On Blur, Mouse Down and Mouse Up. These have code of their own, which will be lost: ${custom.join(
           ', '
-        )}. Move it to ${Object.values(FIELD_HOOKS).join(', ')} in the form's own document script, such as Form_Custom.`
+        )}. Move it into ${Object.values(FIELD_HOOKS).join(', ')} in Main.`
       );
     }
     return complete;
@@ -114,7 +113,7 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
   const documentScripts = readDocumentScripts(pdfDoc);
   if (OWNED_SCRIPTS.some((name) => documentScripts.has(name))) {
     systemNotes.push(
-      `Helper_Functions and Main are replaced on export. Anything in them this tool does not generate is lost, apart from CustomSaveValidation, ${FORM_HOOKS.slice(0, -1).join(', ')} and ${FORM_HOOKS.at(-1)}, which are carried across. Code of your own belongs in its own document script, which is never touched, run from ${FORM_HOOKS.slice(0, -1).join(', ')} or ${FORM_HOOKS.at(-1)}.`
+      `Helper_Functions and Main are replaced on export. Anything in them this tool does not generate is lost, apart from what is written in CustomSaveValidation, ${FORM_HOOKS.slice(0, -1).join(', ')} and ${FORM_HOOKS.at(-1)}, which is where code of your own goes.`
     );
   }
 
@@ -124,14 +123,6 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
     systemNotes.push(`Export leaves these scripts untouched: ${own.join(', ')}.`);
   }
 
-  // Loading after Main() has run means a hook defined there never fires, and
-  // nothing reports an error.
-  const late = lateScripts(documentScripts);
-  if (late.length > 0) {
-    systemNotes.push(
-      `${late.join(', ')} sorts after Main, so it loads too late to define a hook. Rename it to sort before Main, such as Form_Custom.`
-    );
-  }
 
   systemNotes.push(...declaredValidationNotes(declaredValidation(documentScripts), dbIndex));
 
@@ -297,10 +288,12 @@ function handWrittenFieldScripts(pdfDoc, fields, systemFields) {
   const types = new Map(fields.map((f) => [f.name.trim(), f.type]));
   const generated = generatedFieldScripts(types, systemNames, fields);
   const blurHook = `\n${fieldHookCall(FIELD_HOOKS.OnBlur)}`;
+  // Acrobat can rewrite line breaks when it saves, so spacing is not compared.
+  const squash = (s) => s.replace(/\s+/g, ' ').trim();
 
   const js = (action) => {
     const dict = context.lookup(action);
-    return dict?.get ? decodeScript(context.lookup(dict.get(PDFName.of('JS')))).trim() : '';
+    return dict?.get ? squash(decodeScript(context.lookup(dict.get(PDFName.of('JS'))))) : '';
   };
   const read = (dict, event) => {
     const aa = context.lookup(dict.get(PDFName.of('AA')));
@@ -322,7 +315,7 @@ function handWrittenFieldScripts(pdfDoc, fields, systemFields) {
         const wanted = ours?.[event.key];
         const accepted = [wanted, wanted?.endsWith(blurHook) && wanted.slice(0, -blurHook.length)]
           .filter(Boolean)
-          .map((s) => s.trim());
+          .map(squash);
         const own = dicts.some((dict) => {
           const script = read(dict, event);
           return script !== '' && !accepted.includes(script);

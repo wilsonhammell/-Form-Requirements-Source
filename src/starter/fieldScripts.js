@@ -82,8 +82,8 @@ export function esignCodeKeystroke() {
 
 const ESIGN_CODE = ESIGN_PARTS.find((p) => p.key === 'code').name;
 
-// The field hooks, one per event this tool writes on every field. A form defines
-// them in its own document script, the same way as the form hooks, and reads
+// The field hooks, one per event this tool writes on every field. Main carries
+// all three on every form, empty until a form writes in them, and a hook reads
 // event.target to know which field fired. See the top of helpers.js.
 export const FIELD_HOOKS = {
   OnBlur: 'CustomFieldBlur',
@@ -91,10 +91,10 @@ export const FIELD_HOOKS = {
   MouseUp: 'CustomFieldMouseUp',
 };
 
-// Guarded with typeof for the same reason the form hooks are: most forms define
-// none, and a bare reference to an undeclared name is a ReferenceError.
+// Called bare, the way Main calls CustomSaveValidation, since Main always
+// declares every hook.
 export function fieldHookCall(hook) {
-  return `if (typeof ${hook} === "function") {\n    ${hook}();\n}`;
+  return `${hook}();`;
 }
 
 // Rows come from the same derivation the config block is built from, so the two

@@ -16,6 +16,7 @@ import {
   findFormHooks,
   replacedFunctions,
   OWNED_SCRIPTS,
+  FORM_HOOKS,
 } from '../src/starter/buildScripts.js';
 import { installDocumentScripts, readDocumentScripts } from '../src/core/pdfScripts.js';
 import { helperScript } from '../src/starter/index.js';
@@ -634,51 +635,43 @@ describe('carrying the form hooks across', () => {
     return readDocumentScripts(await PDFDocument.load(pdfBytes));
   };
 
-  it('moves all three from Helper_Functions into Main', async () => {
+  it('keeps what is written in the stubs in Main', async () => {
     const scripts = await exportWith([
       {
-        name: 'Helper_Functions',
+        name: 'Main',
         source: [
-          'function CustomAfterValidation() {\n    a();\n}',
           'function CustomAfterLoad() {\n    if (x) { b(); }\n}',
-          'function CustomBeforeSubmit() {\n    c();\n}',
+          'function CustomFieldBlur() {\n    c();\n}',
         ].join('\n'),
       },
     ]);
     const main = scripts.get('Main');
-    expect(main).toContain('function CustomAfterValidation() {\n    a();\n}');
     expect(main).toContain('function CustomAfterLoad() {\n    if (x) { b(); }\n}');
-    expect(main).toContain('function CustomBeforeSubmit() {\n    c();\n}');
-    expect(scripts.get('Helper_Functions')).not.toContain('a();');
+    expect(main).toContain('function CustomFieldBlur() {\n    c();\n}');
   });
 
-  it('prefers Main, where this tool writes them', () => {
+  it('reads only Main, where the stubs are', () => {
     const hooks = findFormHooks(
       new Map([
         ['Main', 'function CustomAfterLoad() {\n    fresh();\n}'],
-        ['Helper_Functions', 'function CustomAfterLoad() {\n    stale();\n}'],
+        ['Helper_Functions', 'function CustomFieldBlur() {\n    elsewhere();\n}'],
       ])
     );
     expect(hooks).toEqual({ CustomAfterLoad: '    fresh();\n' });
   });
 
-  it('leaves one in a form script alone, rather than copying it into Main', async () => {
-    // A copy in Main would load after the original and win, so later edits to
-    // the original would do nothing.
-    const scripts = await exportWith([
-      { name: 'Form_Custom', source: 'function CustomAfterLoad() {\n    mine();\n}' },
-    ]);
-    expect(scripts.get('Main')).not.toContain('CustomAfterLoad() {');
-    expect(scripts.get('Form_Custom')).toContain('mine();');
+  it('writes every stub, empty, on a form without any', async () => {
+    const main = (await exportWith([])).get('Main');
+    for (const name of FORM_HOOKS) {
+      expect(main).toContain(`function ${name}() {\n}`);
+      expect(main.match(new RegExp(`function ${name}\\(`, 'g'))).toHaveLength(1);
+    }
   });
 
-  it('emits nothing for a form without them, or with an empty one', async () => {
-    const scripts = await exportWith([
-      { name: 'Main', source: 'function CustomAfterLoad() {\n}' },
-    ]);
-    for (const name of ['CustomAfterValidation', 'CustomAfterLoad', 'CustomBeforeSubmit']) {
-      expect(scripts.get('Main')).not.toContain(`function ${name}`);
-    }
+  it('says above each stub when it runs', async () => {
+    const main = (await exportWith([])).get('Main');
+    expect(main).toContain('// Runs when any field loses focus. event.target.name says which field.\nfunction CustomFieldBlur() {');
+    expect(main).toContain('CURRENT_AUTH_TYPE says which: PHONE, ESIGN, DIGITAL, SUBMIT or PRINT.\nfunction CustomBeforeSubmit() {');
   });
 
   it('does not drift across repeated exports', async () => {
@@ -938,6 +931,11 @@ describe('field scripts the form wrote itself', () => {
       buttons: BUTTONS,
     });
     expect(await note(pdfBytes)).toBeUndefined();
+  });
+
+  it('says nothing about one of ours whose line breaks Acrobat rewrote', async () => {
+    const ours = `${clearRequiredOnBlur('TraceReason')}\n${fieldHookCall('CustomFieldBlur')}`;
+    expect(await note(await formWithScript('Bl', ours.replace(/\n/g, '\r')))).toBeUndefined();
   });
 
   it('says nothing about an On Blur from before the field hooks', async () => {

@@ -174,12 +174,6 @@ describe('the field hooks', () => {
     }
   });
 
-  it('guards every call, so a form defining none still runs', () => {
-    for (const hook of Object.values(FIELD_HOOKS)) {
-      expect(() => new Function(fieldHookCall(hook))()).not.toThrow();
-    }
-  });
-
   it('runs a hook the form does define', () => {
     let ran = 0;
     const run = new Function('CustomFieldMouseUp', fieldHookCall('CustomFieldMouseUp'));
