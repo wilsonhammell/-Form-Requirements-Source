@@ -5,7 +5,7 @@
 // to find and impossible for a user to rename. The attachment is the same bytes
 // in Acrobat's attachment pane, reachable without this tool.
 
-import { PDFName, PDFDict, PDFArray, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
+import { PDFName, PDFDict, PDFArray, PDFRef, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
 
 export const CATALOG_KEY = 'PdfRequirementDesigner';
 export const SIDECAR_FILENAME = 'form.fields.json';
@@ -24,8 +24,13 @@ export async function embedRequirements(pdfDoc, doc) {
     Type: CATALOG_KEY,
     SchemaVersion: doc.schemaVersion,
   });
+  const previous = pdfDoc.catalog.get(PDFName.of(CATALOG_KEY));
+  if (previous instanceof PDFRef) pdfDoc.context.delete(previous);
   pdfDoc.catalog.set(PDFName.of(CATALOG_KEY), pdfDoc.context.register(stream));
 
+  // pdf-lib's attach appends, so a reexported form would carry one attachment
+  // per export.
+  removeAttachments(pdfDoc, SIDECAR_FILENAME);
   await pdfDoc.attach(bytes, SIDECAR_FILENAME, {
     mimeType: 'application/json',
     description: 'Form field requirements written by the PDF Requirement Designer.',
@@ -34,6 +39,36 @@ export async function embedRequirements(pdfDoc, doc) {
   });
 
   return bytes;
+}
+
+function removeAttachments(pdfDoc, fileName) {
+  const names = pdfDoc.catalog.lookupMaybe(PDFName.of('Names'), PDFDict);
+  const embedded = names?.lookupMaybe(PDFName.of('EmbeddedFiles'), PDFDict);
+  const list = embedded?.lookupMaybe(PDFName.of('Names'), PDFArray);
+  if (!list) return;
+
+  const removed = [];
+  // The array alternates name, file spec.
+  for (let i = list.size() - 2; i >= 0; i -= 2) {
+    if (String(list.lookup(i)?.decodeText?.() ?? '') !== fileName) continue;
+    removed.push(list.get(i + 1));
+    list.remove(i + 1);
+    list.remove(i);
+  }
+  if (removed.length === 0) return;
+
+  const af = pdfDoc.catalog.lookupMaybe(PDFName.of('AF'), PDFArray);
+  for (let i = (af?.size() ?? 0) - 1; i >= 0; i--) {
+    if (removed.includes(af.get(i))) af.remove(i);
+  }
+
+  for (const ref of removed) {
+    if (!(ref instanceof PDFRef)) continue;
+    const spec = pdfDoc.context.lookup(ref);
+    const file = spec instanceof PDFDict ? spec.lookupMaybe(PDFName.of('EF'), PDFDict)?.get(PDFName.of('F')) : null;
+    if (file instanceof PDFRef) pdfDoc.context.delete(file);
+    pdfDoc.context.delete(ref);
+  }
 }
 
 // Returns the parsed JSON, or null when the PDF was not written by this tool.

@@ -210,6 +210,21 @@ describe('export then reopen', () => {
     expect(again.source).toBe(SOURCE.EMBEDDED);
   });
 
+  it('replaces the attachment on a second export rather than adding another', async () => {
+    const originalBytes = await buildFlatForm();
+    const first = await exportPdf({ originalBytes, fields: sampleFields() });
+    const reopened = await importPdf(first.pdfBytes, dbIndex);
+    const second = await exportPdf({ originalBytes: first.pdfBytes, fields: reopened.fields });
+
+    const pdfDoc = await PDFDocument.load(second.pdfBytes);
+    const list = pdfDoc.catalog
+      .lookup(PDFName.of('Names'), PDFDict)
+      .lookup(PDFName.of('EmbeddedFiles'), PDFDict)
+      .lookup(PDFName.of('Names'), PDFArray);
+    expect(list.size()).toBe(2);
+    expect(pdfDoc.catalog.lookup(PDFName.of('AF'), PDFArray).size()).toBe(1);
+  });
+
   it('writes a sidecar JSON document at the current schema version', async () => {
     const originalBytes = await buildFlatForm();
     const { doc, jsonBytes } = await exportPdf({ originalBytes, fields: sampleFields() });
