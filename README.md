@@ -814,7 +814,10 @@ The tool owns exactly ten things on a field: name, type, rect, page,
 read-only, visibility, font, alignment, wrapping, and the embedded JSON. Everything else already in the PDF is
 preserved — border and background style, tab order, and any property this build
 does not model. A field that only moves keeps that styling; a field whose type
-changed is rebuilt. `NeedAppearances` is set so viewers render filled values.
+changed is rebuilt. `NeedAppearances` is never set. With it on, Acrobat runs the
+format of a field placed twice before the fields exist, and Main alerts "was not
+found" on open. Export draws the buttons and the FORM_ID and FORM_NAME values
+itself.
 
 ## Yes/No checkbox pairs
 
@@ -1128,8 +1131,8 @@ models and the panel exposes, so `/Q` is owned the way `/AA /Bl` is.
 
 On export, each field's font is written into its `/DA` string and every family
 used is embedded and registered in the AcroForm's `/DR` dictionary. That
-registration matters: with `NeedAppearances` set, the viewer builds each field's
-appearance at render time and resolves the font named in `/DA` against `/DR`.
+registration matters: whenever the viewer redraws a field, on a value typed or
+set by script, it resolves the font named in `/DA` against `/DR`.
 pdf-lib does not populate `/DR`, so [`pdfExport.js`](src/core/pdfExport.js) does
 it by hand, merging alongside whatever the original PDF already had.
 

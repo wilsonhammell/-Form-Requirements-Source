@@ -13,7 +13,6 @@ import {
   PDFName,
   PDFDict,
   PDFArray,
-  PDFBool,
   PDFNumber,
   PDFString,
   PDFHexString,
@@ -137,9 +136,13 @@ export async function exportPdf({
   // onto the widget.
   fillConfigValues(form, groups, doc.config, warnings);
 
-  // Keeps a filled value visible without this tool regenerating, and so
-  // overwriting, appearances it did not create.
-  form.acroForm.dict.set(PDFName.of('NeedAppearances'), PDFBool.True);
+  // NeedAppearances is never set, and comes off a PDF that arrives with it.
+  // With it on, Acrobat redraws every field while the file opens, and a field
+  // placed more than once with a Format action on the first page runs that
+  // script before the fields exist. Main's lookups then fail, every one alerts
+  // "was not found", and the buttons never show. Acrobat itself never sets it.
+  form.acroForm.dict.delete(PDFName.of('NeedAppearances'));
+  drawOwnedAppearances(form, groups, fontsByFamily);
 
   mergeSingleWidgetFields(pdfDoc, new Set(groups.keys()));
 
@@ -226,6 +229,33 @@ function fillConfigValues(form, groups, config, warnings) {
       // A MaxLen shorter than the value is the one way this throws.
       warnings.push(`Could not write ${identifier}: ${err.message}`);
     }
+  }
+}
+
+// Without NeedAppearances a viewer shows the stored appearance until the value
+// changes, so anything whose look export owns is drawn here. That is a button,
+// its caption and colours, and the config values, the only values export
+// writes. Drawn every export, since a form exported while the flag was on
+// carries a grey button and a blank FORM_NAME. Everything else keeps the
+// appearance it arrived with.
+//
+// pdf-lib rewrites /DA as it draws, keeping only colour, font and size, so each
+// one is put back as it was, see applyFont.
+function drawOwnedAppearances(form, groups, fontsByFamily) {
+  const configNames = new Set(CONFIG_VALUE_FIELDS.map((f) => f.identifier));
+  for (const [name, group] of groups) {
+    if (group.type !== 'button' && !(group.type === 'text' && configNames.has(name))) continue;
+    const field = form.getFieldMaybe(name);
+    const font = fontsByFamily.get(group.type === 'button' ? DEFAULT_FONT.family : group.font.family);
+    if (!field || typeOf(field) !== group.type || !font) continue;
+
+    const dicts = [field.acroField.dict, ...field.acroField.getWidgets().map((w) => w.dict)];
+    const kept = dicts.map((dict) => dict.get(PDFName.of('DA')));
+    field.updateAppearances(font);
+    dicts.forEach((dict, index) => {
+      if (kept[index]) dict.set(PDFName.of('DA'), kept[index]);
+      else dict.delete(PDFName.of('DA'));
+    });
   }
 }
 
@@ -404,8 +434,8 @@ async function embedTextFonts(pdfDoc, groups) {
   return fontsByFamily;
 }
 
-// Under NeedAppearances the viewer resolves the font named in /DA against the
-// AcroForm's /DR. pdf-lib does not populate /DR, so this does it by hand,
+// Whenever the viewer redraws a field, on a value typed or set by script, it
+// resolves the font named in /DA against the AcroForm's /DR. pdf-lib does not populate /DR, so this does it by hand,
 // merging alongside whatever entries the original PDF had.
 function registerFontResources(pdfDoc, fontsByFamily) {
   const acroDict = pdfDoc.getForm().acroForm.dict;

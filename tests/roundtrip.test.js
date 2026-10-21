@@ -7,9 +7,12 @@ import {
   PDFName,
   PDFDict,
   PDFArray,
+  PDFBool,
   PDFNumber,
+  PDFString,
   PDFHexString,
   StandardFonts,
+  decodePDFRawStream,
   rgb,
 } from 'pdf-lib';
 import { exportPdf } from '../src/core/pdfExport.js';
@@ -145,6 +148,17 @@ function persisted(fields) {
 }
 
 const round = (n) => Math.round(n * 10000) / 10000;
+
+// A widget's normal appearance as the content stream text, which is what a
+// viewer shows until the value changes.
+function appearanceOf(doc, widget) {
+  const ap = widget.dict.lookup(PDFName.of('AP'), PDFDict);
+  const stream = doc.context.lookup(ap.get(PDFName.of('N')));
+  return Buffer.from(decodePDFRawStream(stream).decode()).toString('latin1');
+}
+
+// pdf-lib shows text with a standard font as a hex string.
+const shown = (text) => `<${Buffer.from(text, 'latin1').toString('hex').toUpperCase()}>`;
 
 async function annotationsByName(bytes) {
   const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes), isEvalSupported: false })
@@ -372,6 +386,59 @@ describe('the config values in FORM_ID and FORM_NAME', () => {
     });
     expect(await textOf(pdfBytes, 'FORM_ID')).toBe('K_COV');
   });
+
+  // Some forms show them, and with no NeedAppearances nothing but the export
+  // draws the value.
+  const drawnOn = (doc, name) =>
+    appearanceOf(doc, doc.getForm().getTextField(name).acroField.getWidgets()[0]);
+
+  it('draws the value it writes', async () => {
+    const { pdfBytes } = await exportPdf({
+      originalBytes: await buildFlatForm(),
+      fields: systemBoxes(),
+      meta: { config: { formId: 'K_COV', formName: 'Coverdraft Protection' } },
+    });
+    const out = await PDFDocument.load(pdfBytes);
+    expect(drawnOn(out, 'FORM_ID')).toContain(shown('K_COV'));
+    expect(drawnOn(out, 'FORM_NAME')).toContain(shown('Coverdraft Protection'));
+  });
+
+  it('stops drawing a value it clears', async () => {
+    const first = await exportPdf({
+      originalBytes: await buildFlatForm(),
+      fields: systemBoxes(),
+      meta: { config: { formId: 'K_COV', formName: 'Coverdraft Protection' } },
+    });
+    const reopened = await importPdf(first.pdfBytes, dbIndex);
+    const second = await exportPdf({
+      originalBytes: first.pdfBytes,
+      fields: reopened.fields,
+      meta: { config: { ...reopened.config, formId: '' } },
+    });
+    const out = await PDFDocument.load(second.pdfBytes);
+    expect(drawnOn(out, 'FORM_ID')).not.toContain(shown('K_COV'));
+    expect(drawnOn(out, 'FORM_NAME')).toContain(shown('Coverdraft Protection'));
+  });
+
+  it('keeps the /DA a form arrived with while it draws', async () => {
+    const source = await PDFDocument.create();
+    const page = source.addPage([612, 792]);
+    const name = source.getForm().createTextField('FORM_NAME');
+    name.addToPage(page, { x: 70, y: 10, width: 120, height: 12 });
+    name.acroField.getWidgets()[0].dict.set(PDFName.of('DA'), PDFString.of('/Helv 10 Tf 0 0 1 rg'));
+    const originalBytes = await source.save();
+
+    const opened = await importPdf(originalBytes, dbIndex);
+    const { pdfBytes } = await exportPdf({
+      originalBytes,
+      fields: opened.fields,
+      meta: { config: { ...opened.config, formName: 'Coverdraft Protection' } },
+    });
+    const out = await PDFDocument.load(pdfBytes);
+    const widget = out.getForm().getTextField('FORM_NAME').acroField.getWidgets()[0];
+    expect(widget.dict.get(PDFName.of('DA')).decodeText()).toBe('/Helv 10 Tf 0 0 1 rg');
+    expect(appearanceOf(out, widget)).toContain(shown('Coverdraft Protection'));
+  });
 });
 
 describe('the exported PDF as an AcroForm', () => {
@@ -398,12 +465,42 @@ describe('the exported PDF as an AcroForm', () => {
     expect(annots.get('SIGNDATE').pageIndex).toBe(2);
   });
 
-  it('sets NeedAppearances so a viewer renders filled values', async () => {
+  // With it on, Acrobat runs the Format of a field placed twice before the
+  // fields exist, and Main alerts on every lookup.
+  it('never sets NeedAppearances', async () => {
     const originalBytes = await buildFlatForm();
     const { pdfBytes } = await exportPdf({ originalBytes, fields: sampleFields() });
     const doc = await PDFDocument.load(pdfBytes);
     const acro = doc.catalog.lookup(PDFName.of('AcroForm'));
-    expect(acro.get(PDFName.of('NeedAppearances'))?.toString()).toBe('true');
+    expect(acro.get(PDFName.of('NeedAppearances'))).toBeUndefined();
+  });
+
+  it('takes NeedAppearances off a form exported while it was set', async () => {
+    const first = await exportPdf({ originalBytes: await buildFlatForm(), fields: sampleFields() });
+    const flagged = await PDFDocument.load(first.pdfBytes);
+    flagged.getForm().acroForm.dict.set(PDFName.of('NeedAppearances'), PDFBool.True);
+    const originalBytes = await flagged.save();
+
+    const { fields } = await importPdf(originalBytes, dbIndex);
+    const { pdfBytes } = await exportPdf({ originalBytes, fields });
+    const acro = (await PDFDocument.load(pdfBytes)).catalog.lookup(PDFName.of('AcroForm'));
+    expect(acro.get(PDFName.of('NeedAppearances'))).toBeUndefined();
+  });
+
+  it('leaves the appearance of a field it does not write alone', async () => {
+    const source = await PDFDocument.create();
+    const page = source.addPage([612, 792]);
+    const field = source.getForm().createTextField('CUSTNAME');
+    field.setText('Acme Industrial Supply');
+    field.addToPage(page, { x: 100, y: 650, width: 220, height: 18 });
+    const originalBytes = await source.save();
+    const before = await PDFDocument.load(originalBytes);
+    const drawn = appearanceOf(before, before.getForm().getTextField('CUSTNAME').acroField.getWidgets()[0]);
+
+    const { fields } = await importPdf(originalBytes, dbIndex);
+    const { pdfBytes } = await exportPdf({ originalBytes, fields });
+    const out = await PDFDocument.load(pdfBytes);
+    expect(appearanceOf(out, out.getForm().getTextField('CUSTNAME').acroField.getWidgets()[0])).toBe(drawn);
   });
 
   it('fills by name and reads the value back', async () => {
@@ -765,6 +862,53 @@ describe('submission buttons', () => {
     expect(dr.lookup(PDFName.of('Font'), PDFDict).get(PDFName.of(named))).toBeDefined();
   });
 
+  // The viewer shows what is drawn. pdf-lib draws a new button grey, and only
+  // NeedAppearances used to have Acrobat redraw it from /MK.
+  it('is drawn green with its caption at size 10', async () => {
+    const { pdfBytes } = await exportPdf({
+      originalBytes: await buildFlatForm(),
+      fields: placed(),
+      buttons: BUTTONS,
+    });
+    const out = await PDFDocument.load(pdfBytes);
+    const drawn = appearanceOf(out, out.getForm().getFields()[0].acroField.getWidgets()[0]);
+    expect(drawn).toContain('0 1 0 rg');
+    expect(drawn).not.toContain('0.75 0.75 0.75 rg');
+    expect(drawn).toContain(shown('Print Form'));
+    expect(drawn).toMatch(/\/\S+ 10 Tf/);
+  });
+
+  it('stays hidden once drawn, for Main to show', async () => {
+    const { pdfBytes } = await exportPdf({
+      originalBytes: await buildFlatForm(),
+      fields: [{ ...placed()[0], hidden: true }],
+      buttons: BUTTONS,
+    });
+    const out = await PDFDocument.load(pdfBytes);
+    const widget = out.getForm().getFields()[0].acroField.getWidgets()[0];
+    expect(widget.dict.get(PDFName.of('F')).asNumber() & 2).toBe(2);
+    expect(appearanceOf(out, widget)).toContain('0 1 0 rg');
+  });
+
+  it('redraws a button kept from an earlier export', async () => {
+    const first = await exportPdf({
+      originalBytes: await buildFlatForm(),
+      fields: placed(),
+      buttons: BUTTONS,
+    });
+    const reopened = await importPdf(first.pdfBytes, dbIndex, [], BUTTONS);
+    const renamed = [{ ...BUTTONS[0], caption: 'Print' }, BUTTONS[1]];
+    const { pdfBytes } = await exportPdf({
+      originalBytes: first.pdfBytes,
+      fields: reopened.fields,
+      buttons: renamed,
+    });
+    const out = await PDFDocument.load(pdfBytes);
+    const drawn = appearanceOf(out, out.getForm().getFields()[0].acroField.getWidgets()[0]);
+    expect(drawn).toContain(shown('Print'));
+    expect(drawn).not.toContain(shown('Print Form'));
+  });
+
   it('writes no action while the list carries no script', async () => {
     const { pdfBytes } = await exportPdf({
       originalBytes: await buildFlatForm(),
@@ -1085,7 +1229,7 @@ describe('field and widget merging', () => {
 
 describe('font handling', () => {
   // Reading the AcroForm structure directly with pdf-lib, since this is
-  // exactly what a compliant reader resolves NeedAppearances against: the
+  // exactly what a compliant reader resolves a redrawn field against: the
   // font named in a field's /DA has to exist as a resource in the form's /DR.
   function fontDict(doc) {
     const acro = doc.catalog.lookup(PDFName.of('AcroForm'));
@@ -1829,6 +1973,23 @@ describe('formats', () => {
     const placements = back.fields.filter((f) => f.name === 'POLICYNUM');
     expect(placements).toHaveLength(2);
     for (const f of placements) expect(f.format).toMatchObject({ ...format, separator: 'comma' });
+  });
+
+  // LIF Spousal Consent's shape, two dated boxes on the page that opens. It
+  // alerted on open while NeedAppearances was set, and the fix is the flag, not
+  // where the scripts sit.
+  it('keeps a date on a field placed twice on the first page, with the flag off', async () => {
+    const date = (y) =>
+      createField({ name: 'Member1SignDate', page: 0, rect: { x: 400, y, width: 100, height: 18 }, format: { category: 'date' } });
+    const { pdfBytes } = await exportPdf({ originalBytes: await buildFlatForm(), fields: [date(200), date(150)] });
+
+    const out = await PDFDocument.load(pdfBytes);
+    const field = out.getForm().getField('Member1SignDate');
+    expect(field.acroField.getWidgets()).toHaveLength(2);
+    expect(script(out, field.acroField.dict, 'F')).toBe('AFDate_FormatEx("dd-mmm-yyyy");');
+    expect(script(out, field.acroField.dict, 'K')).toBe('AFDate_KeystrokeEx("dd-mmm-yyyy");');
+    for (const widget of field.acroField.getWidgets()) expect(script(out, widget.dict, 'F')).toBeNull();
+    expect(out.getForm().acroForm.dict.get(PDFName.of('NeedAppearances'))).toBeUndefined();
   });
 
   it('reads the format off the PDF for JSON written before there was one', async () => {
