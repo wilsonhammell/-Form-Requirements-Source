@@ -19,6 +19,8 @@
   { "identifier": "PROD_CODE", "placement": "compact" },
   { "identifier": "PRIMARY_FULL_LEGAL_NAME", "placement": "compact" },
   { "identifier": "ENVIRONMENT", "placement": "compact" },
+  { "identifier": "PRIMARY_SIGN_DATE", "placement": "compact" },
+  { "identifier": "REQUESTUSER", "placement": "compact" },
 
   { "identifier": "FORM_MESSAGE", "placement": "wide", "multiline": true },
   { "identifier": "DNA_REQ", "placement": "wide", "multiline": true },
