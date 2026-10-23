@@ -25,6 +25,7 @@ import {
   completeEsignPair,
   removeEsignFields,
   moveEsignCluster,
+  ESIGN_ANCHOR,
   MAX_SIGNER_ROWS,
   MAX_JOINT_ROWS,
   COMBINED_JOINT_NAME,
@@ -450,6 +451,18 @@ describe('the Remote eSign cluster', () => {
     const nudged = placed.find((f) => f.name === 'eSign_Code').rect.y;
     const after = moveEsignCluster(placed, 10, 0);
     expect(after.find((f) => f.name === 'eSign_Code').rect.y).toBe(nudged);
+  });
+
+  it('moves the button and the other part when one part is dragged', () => {
+    const placed = [...place(ESIGN_ANCHOR), ...addEsignFields([], BUTTON)];
+    const label = placed.find((f) => f.name === 'eSignLBL');
+    const before = placed.map((f) => ({ ...f.rect }));
+    const after = moveEsignCluster(placed, 15, 5, label.id);
+    after.forEach((f, i) => {
+      const shift = f.id === label.id ? 0 : 1;
+      expect(f.rect.x).toBe(before[i].x + 15 * shift);
+      expect(f.rect.y).toBe(before[i].y + 5 * shift);
+    });
   });
 
   it('leaves everything else where it is', () => {

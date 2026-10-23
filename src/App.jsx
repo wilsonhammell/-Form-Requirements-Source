@@ -48,6 +48,7 @@ import {
   addEsignFields,
   removeEsignFields,
   moveEsignCluster,
+  isEsignCluster,
 } from './core/specialFields.js';
 import {
   createField,
@@ -674,10 +675,12 @@ export default function App() {
           const field = current.find((f) => f.id === id);
           const moved = current.map((f) => (f.id === id ? { ...f, rect } : f));
           // The label and code box sit against the Remote eSign button, so dragging
-          // the button drags them too. A delta rather than a re-layout, so nudging
-          // either one by hand survives the button moving afterwards.
-          if (field?.name.trim() !== ESIGN_ANCHOR) return moved;
-          return moveEsignCluster(moved, rect.x - field.rect.x, rect.y - field.rect.y);
+          // any of the three drags all three. Resizing the label or code box is
+          // still its own, only the button's left or top edge carries the rest.
+          if (!field || !isEsignCluster(field.name)) return moved;
+          const resized = rect.width !== field.rect.width || rect.height !== field.rect.height;
+          if (resized && field.name.trim() !== ESIGN_ANCHOR) return moved;
+          return moveEsignCluster(moved, rect.x - field.rect.x, rect.y - field.rect.y, id);
         },
         { merge: gesture ? `rect:${gesture}` : null, within: Infinity }
       );

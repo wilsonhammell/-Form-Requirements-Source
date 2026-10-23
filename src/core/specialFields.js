@@ -233,13 +233,19 @@ export function removeEsignFields(fields) {
   return fields.filter((f) => !names.includes(f.name.trim()));
 }
 
-// Dragging the button drags the pair. A delta rather than a re-layout, so a
-// nudge to either one survives the button being moved afterwards.
-export function moveEsignCluster(fields, dx, dy) {
+const ESIGN_CLUSTER = [ESIGN_ANCHOR, ...ESIGN_PARTS.map((p) => p.name)];
+
+export function isEsignCluster(name) {
+  return ESIGN_CLUSTER.includes(name.trim());
+}
+
+// Dragging any one of the button, label or code box drags the other two, all
+// but the one under the pointer, which the drag has already moved. A delta
+// rather than a re-layout, so the gaps between them stay as they were.
+export function moveEsignCluster(fields, dx, dy, draggedId = null) {
   if (dx === 0 && dy === 0) return fields;
-  const names = ESIGN_PARTS.map((p) => p.name);
   return fields.map((f) =>
-    names.includes(f.name.trim())
+    f.id !== draggedId && isEsignCluster(f.name)
       ? { ...f, rect: { ...f.rect, x: f.rect.x + dx, y: f.rect.y + dy } }
       : f
   );
