@@ -34,7 +34,7 @@ import {
   DEFAULT_FONT,
 } from './schema.js';
 import { BUTTON_STYLE, buildButtonIndex } from './signingButtons.js';
-import { MESSAGE_BOXES, CONFIG_VALUE_FIELDS } from './systemFields.js';
+import { MESSAGE_BOXES, OWNED_VALUE_FIELDS, ownedValue } from './systemFields.js';
 import { embedRequirements } from './pdfEmbed.js';
 import { daMatchesFont, replaceDaFont } from './defaultAppearance.js';
 import { stripComments } from './pdfComments.js';
@@ -134,7 +134,7 @@ export async function exportPdf({
 
   // Before the merge, since /V is a field entry and the merge carries it down
   // onto the widget.
-  fillConfigValues(form, groups, doc.config, warnings);
+  fillOwnedValues(form, groups, doc.config, warnings);
 
   // NeedAppearances is never set, and comes off a PDF that arrives with it.
   // With it on, Acrobat redraws every field while the file opens, and a field
@@ -216,12 +216,13 @@ function applyFieldScripts(form, groups, scripts) {
 // Owned the way the scripts are, so a blank Config box clears the field. Only
 // written when it differs, so a form that already says the same thing is left
 // exactly as it was.
-function fillConfigValues(form, groups, config, warnings) {
-  for (const { identifier, key } of CONFIG_VALUE_FIELDS) {
+function fillOwnedValues(form, groups, config, warnings) {
+  for (const entry of OWNED_VALUE_FIELDS) {
+    const { identifier } = entry;
     if (groups.get(identifier)?.type !== 'text') continue;
     const field = form.getFieldMaybe(identifier);
     if (!(field instanceof PDFTextField)) continue;
-    const wanted = (config[key] ?? '').trim();
+    const wanted = ownedValue(entry, config);
     if ((field.acroField.getValue()?.decodeText() ?? '') === wanted) continue;
     try {
       field.setText(wanted || undefined);
@@ -242,9 +243,9 @@ function fillConfigValues(form, groups, config, warnings) {
 // pdf-lib rewrites /DA as it draws, keeping only colour, font and size, so each
 // one is put back as it was, see applyFont.
 function drawOwnedAppearances(form, groups, fontsByFamily) {
-  const configNames = new Set(CONFIG_VALUE_FIELDS.map((f) => f.identifier));
+  const ownedNames = new Set(OWNED_VALUE_FIELDS.map((f) => f.identifier));
   for (const [name, group] of groups) {
-    if (group.type !== 'button' && !(group.type === 'text' && configNames.has(name))) continue;
+    if (group.type !== 'button' && !(group.type === 'text' && ownedNames.has(name))) continue;
     const field = form.getFieldMaybe(name);
     const font = fontsByFamily.get(group.type === 'button' ? DEFAULT_FONT.family : group.font.family);
     if (!field || typeOf(field) !== group.type || !font) continue;

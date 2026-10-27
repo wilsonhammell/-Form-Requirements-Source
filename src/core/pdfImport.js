@@ -21,7 +21,7 @@ import {
   ensureSystemFields,
   reconcileSystemTypes,
   buildSystemIndex,
-  CONFIG_VALUE_FIELDS,
+  OWNED_VALUE_FIELDS,
 } from './systemFields.js';
 import { extractRequirements } from './pdfEmbed.js';
 import { fontFromDa } from './defaultAppearance.js';
@@ -192,8 +192,8 @@ export async function importPdf(bytes, dbIndex, systemFields = [], buttons = [])
 function withFieldValues(config, pdfDoc) {
   if (!pdfDoc.catalog.getAcroForm()) return config;
   const filled = { ...config };
-  for (const { identifier, key } of CONFIG_VALUE_FIELDS) {
-    if (filled[key].trim()) continue;
+  for (const { identifier, key } of OWNED_VALUE_FIELDS) {
+    if (!key || filled[key].trim()) continue;
     try {
       const field = pdfDoc.getForm().getFieldMaybe(identifier);
       if (field instanceof PDFTextField) filled[key] = field.acroField.getValue()?.decodeText() ?? '';

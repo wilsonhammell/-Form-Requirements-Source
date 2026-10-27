@@ -62,13 +62,16 @@ function messageBoxRect(box, [x0, y0, x1, y1]) {
   return { x, y: y1 - MESSAGE_MARGIN.top, width, height: box.height };
 }
 
-// The system fields whose value comes from Config rather than the filler, and
-// the config entry each is read from. Every example form carries both, as K_COV
-// and Coverdraft Protection.
-export const CONFIG_VALUE_FIELDS = [
+// The system fields whose value export writes rather than the filler, each read
+// from a config entry or fixed. Every example form carries FORM_ID and
+// FORM_NAME, as K_COV and Coverdraft Protection.
+export const OWNED_VALUE_FIELDS = [
   { identifier: 'FORM_ID', key: 'formId' },
   { identifier: 'FORM_NAME', key: 'formName' },
+  { identifier: 'PACK', value: '1of1' },
 ];
+
+export const ownedValue = (entry, config) => entry.value ?? (config[entry.key] ?? '').trim();
 
 // A column per signer along the bottom, roughly where they land on a real form.
 const SIGNER = { columns: 5, height: 10, rowGap: 2, colGap: 4, margin: 6 };

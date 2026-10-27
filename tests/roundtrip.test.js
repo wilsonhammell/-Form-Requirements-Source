@@ -347,6 +347,18 @@ describe('the config values in FORM_ID and FORM_NAME', () => {
     expect(await textOf(pdfBytes, 'FORM_NAME')).toBe('Coverdraft Protection');
   });
 
+  it('always writes and draws 1of1 in PACK', async () => {
+    const { pdfBytes } = await exportPdf({
+      originalBytes: await buildFlatForm(),
+      fields: [createField({ name: 'PACK', page: 0, rect: { x: 10, y: 30, width: 54, height: 10 } })],
+      meta: { config: {} },
+    });
+    expect(await textOf(pdfBytes, 'PACK')).toBe('1of1');
+    const out = await PDFDocument.load(pdfBytes);
+    expect(appearanceOf(out, out.getForm().getTextField('PACK').acroField.getWidgets()[0]))
+      .toContain(shown('1of1'));
+  });
+
   it('clears one when its box is emptied, and it stays cleared', async () => {
     const first = await exportPdf({
       originalBytes: await buildFlatForm(),

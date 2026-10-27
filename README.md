@@ -453,8 +453,8 @@ one set per document, carried in the requirements JSON.
 
 - **Form Menu Group(s)**, **Form Name**, **FO Form ID**, **FO Form Description**
   and **FO Cabinet**, free text, all carried into the requirements workbook.
-  Export also writes FO Form ID into `FORM_ID` and Form Name into `FORM_NAME`. A
-  blank box clears the field. Opening a PDF fills a blank box from the field, so
+  Export also writes FO Form ID into `FORM_ID` and Form Name into `FORM_NAME`,
+  and always `1of1` into `PACK`. A blank box clears the field. Opening a PDF fills a blank box from the field, so
   a form that already carries them keeps them.
 - **Post Processing**, **Admin Queue** and **Support Services**, checkboxes.
   They fill the first three rows of the workbook's FO Processing block, a ticked
@@ -1644,9 +1644,10 @@ line rather than every name.
 
 ## Out of scope for this build
 
-**Initial field values, apart from two.** The real form ships 15 fields carrying
+**Initial field values, apart from three.** The real form ships 15 fields carrying
 a value, from constants like `VALID_ID` = `1` to per-form ones like `FORM_ID` and
-`PACK_TYPE`. Only `FORM_ID` and `FORM_NAME` are set here, from Config. The rest
+`PACK_TYPE`. Only `FORM_ID` and `FORM_NAME` are set here, from Config, and `PACK`,
+always `1of1`. The rest
 are the downstream filler's job, the same as the data line, and its list covers
 the static ones too, such as `eSignLBL` = `Remote eSign Code:` and the
 `DNA_REQ` message, which are captions rather than data.
