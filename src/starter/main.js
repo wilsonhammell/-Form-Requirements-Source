@@ -166,4 +166,8 @@ function Main()
     CustomAfterLoad();
 }
 
-Main();
+// Not called here. The document's open action calls Main once the file has
+// opened, see installOpenAction. A filled form carries NeedAppearances, set by
+// the filler, and with it Acrobat can run this script while the first page is
+// still being drawn, before any field exists. Called from here, Main found no
+// fields and alerted on every lookup.

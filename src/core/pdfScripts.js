@@ -20,6 +20,12 @@ const NAMES = PDFName.of('Names');
 const JAVASCRIPT = PDFName.of('JavaScript');
 const KIDS = PDFName.of('Kids');
 const LIMITS = PDFName.of('Limits');
+const OPEN_ACTION = PDFName.of('OpenAction');
+const NEXT = PDFName.of('Next');
+
+// All the open action does. Exported so a test can run the document the way
+// Acrobat does, scripts first and then this.
+export const OPEN_ACTION_SCRIPT = 'Main();';
 
 // Exported because a field's Format and Keystroke are stored the same way.
 export function decodeScript(obj) {
@@ -101,6 +107,32 @@ export function installDocumentScripts(pdfDoc, scripts) {
   namesDict.set(JAVASCRIPT, rebuilt);
 
   return entries.map((e) => e.name);
+}
+
+// Main runs from the document's open action, which Acrobat runs once the file
+// has opened, rather than from the end of its own script, see main.js.
+//
+// Whatever the file did on opening before, usually going to page 1, runs after
+// it. Ours from an earlier export is replaced rather than wrapped again.
+export function installOpenAction(pdfDoc) {
+  const { context, catalog } = pdfDoc;
+  // An action is a dictionary. Anything else is a destination.
+  const isAction = (obj) => obj !== undefined && context.lookup(obj) instanceof PDFDict;
+
+  let then = catalog.get(OPEN_ACTION);
+  if (isAction(then) && runsMain(context, context.lookup(then))) then = context.lookup(then).get(NEXT);
+
+  const run = context.obj({ S: 'JavaScript', JS: PDFHexString.fromText(OPEN_ACTION_SCRIPT) });
+  if (then) {
+    // A destination on its own is shorthand for going to it.
+    run.set(NEXT, isAction(then) ? then : context.obj({ S: 'GoTo', D: then }));
+  }
+  catalog.set(OPEN_ACTION, context.register(run));
+}
+
+function runsMain(context, action) {
+  const js = action.get(PDFName.of('JS'));
+  return js !== undefined && decodeScript(context.lookup(js)).trim() === OPEN_ACTION_SCRIPT;
 }
 
 /** Reads them back, for tests and for checking an export. */

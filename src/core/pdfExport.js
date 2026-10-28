@@ -38,7 +38,7 @@ import { MESSAGE_BOXES, OWNED_VALUE_FIELDS, ownedValue } from './systemFields.js
 import { embedRequirements } from './pdfEmbed.js';
 import { daMatchesFont, replaceDaFont } from './defaultAppearance.js';
 import { stripComments } from './pdfComments.js';
-import { installDocumentScripts, readDocumentScripts } from './pdfScripts.js';
+import { installDocumentScripts, installOpenAction, readDocumentScripts } from './pdfScripts.js';
 import {
   buildDocumentScripts,
   findCustomSaveValidation,
@@ -146,6 +146,8 @@ export async function exportPdf({
   // placed more than once with a Format action on the first page runs that
   // script before the fields exist. Main's lookups then fail, every one alerts
   // "was not found", and the buttons never show. Acrobat itself never sets it.
+  // The filler sets it again on every form it fills, which is why Main also
+  // runs from the open action, see installOpenAction.
   form.acroForm.dict.delete(PDFName.of('NeedAppearances'));
   drawOwnedAppearances(form, groups, fontsByFamily);
 
@@ -172,6 +174,7 @@ export async function exportPdf({
     pdfDoc,
     buildDocumentScripts({ fields, config: doc.config, buttons, customSaveValidation, hooks })
   );
+  installOpenAction(pdfDoc);
 
   const jsonBytes = await embedRequirements(pdfDoc, doc);
 

@@ -4,7 +4,7 @@
 // The config block is executed here rather than matched against strings, so
 // these check what Main will actually see when the form is opened.
 import { describe, it, expect } from 'vitest';
-import { PDFDocument, PDFName, PDFDict, PDFHexString, PDFRawStream } from 'pdf-lib';
+import { PDFDocument, PDFName, PDFDict, PDFArray, PDFHexString, PDFRawStream } from 'pdf-lib';
 import { deflateSync } from 'node:zlib';
 import vm from 'node:vm';
 import {
@@ -18,7 +18,13 @@ import {
   OWNED_SCRIPTS,
   FORM_HOOKS,
 } from '../src/starter/buildScripts.js';
-import { installDocumentScripts, readDocumentScripts } from '../src/core/pdfScripts.js';
+import {
+  decodeScript,
+  installDocumentScripts,
+  installOpenAction,
+  OPEN_ACTION_SCRIPT,
+  readDocumentScripts,
+} from '../src/core/pdfScripts.js';
 import { helperScript } from '../src/starter/index.js';
 import { exportPdf } from '../src/core/pdfExport.js';
 import { createField, createConfig } from '../src/core/schema.js';
@@ -204,10 +210,12 @@ describe('the generated Main', () => {
     expect(main.match(/\/\/<CONFIG>/g)).toHaveLength(1);
   });
 
-  it('keeps Main itself, and still calls it', () => {
+  // Called from the script, Main could run before the fields exist, see
+  // installOpenAction.
+  it('keeps Main itself, and leaves calling it to the open action', () => {
     const main = buildMainScript({});
     expect(main).toMatch(/function Main\(\)/);
-    expect(main.trimEnd().endsWith('Main();')).toBe(true);
+    expect(main).not.toMatch(/^\s*Main\(\);/m);
   });
 
   it('drives the helpers, which is the whole point', () => {
@@ -301,7 +309,7 @@ describe('writing them into a PDF', () => {
     const scripts = readDocumentScripts(doc);
     expect([...scripts.keys()]).toEqual(['Helper_Functions', 'Main']);
     expect(scripts.get('Helper_Functions')).toContain('function getSafeField');
-    expect(scripts.get('Main')).toContain('Main();');
+    expect(scripts.get('Main')).toContain('function Main()');
   });
 
   it('sorts them, which is what makes the helpers load first', async () => {
@@ -353,6 +361,63 @@ describe('writing them into a PDF', () => {
     const scripts = readDocumentScripts(doc);
     expect([...scripts.keys()]).toEqual(['Main']);
     expect(scripts.get('Main')).toBe('fresh();');
+  });
+});
+
+// LIF Spousal Consent, filled, alerted "was not found" on open with Main called
+// from its own script, and ran clean with Main called from here.
+describe('the open action that runs Main', () => {
+  const openAction = (doc) => doc.context.lookup(doc.catalog.get(PDFName.of('OpenAction')), PDFDict);
+  const scriptOf = (doc, action) => decodeScript(doc.context.lookup(action.get(PDFName.of('JS'))));
+  const nextOf = (doc, action) => doc.context.lookupMaybe(action.get(PDFName.of('Next')), PDFDict);
+  const goToPage = (doc) => doc.context.obj([doc.getPage(0).ref, PDFName.of('XYZ'), null, null, 1]);
+
+  it('runs Main, then goes where the file used to open', async () => {
+    const doc = await PDFDocument.load(await blankPdf());
+    doc.catalog.set(PDFName.of('OpenAction'), goToPage(doc));
+    installOpenAction(doc);
+
+    const action = openAction(doc);
+    expect(scriptOf(doc, action)).toBe(OPEN_ACTION_SCRIPT);
+    const next = nextOf(doc, action);
+    expect(next.get(PDFName.of('S')).asString()).toBe('/GoTo');
+    expect(next.lookup(PDFName.of('D'))).toBeInstanceOf(PDFArray);
+  });
+
+  it('keeps an action the file opened with as the one that runs next', async () => {
+    const doc = await PDFDocument.load(await blankPdf());
+    const theirs = doc.context.obj({ S: 'JavaScript', JS: PDFHexString.fromText('theirs();') });
+    doc.catalog.set(PDFName.of('OpenAction'), doc.context.register(theirs));
+    installOpenAction(doc);
+    expect(scriptOf(doc, nextOf(doc, openAction(doc)))).toBe('theirs();');
+  });
+
+  it('replaces its own rather than wrapping it, however many times it runs', async () => {
+    const doc = await PDFDocument.load(await blankPdf());
+    doc.catalog.set(PDFName.of('OpenAction'), goToPage(doc));
+    installOpenAction(doc);
+    installOpenAction(doc);
+    installOpenAction(doc);
+
+    const next = nextOf(doc, openAction(doc));
+    expect(next.get(PDFName.of('S')).asString()).toBe('/GoTo');
+    expect(nextOf(doc, next)).toBeUndefined();
+  });
+
+  it('just runs Main on a file with no open action', async () => {
+    const doc = await PDFDocument.load(await blankPdf());
+    installOpenAction(doc);
+    expect(scriptOf(doc, openAction(doc))).toBe(OPEN_ACTION_SCRIPT);
+    expect(nextOf(doc, openAction(doc))).toBeUndefined();
+  });
+
+  it('is written on export, once, over a form exported before', async () => {
+    const first = await exportPdf({ originalBytes: await blankPdf(), fields: [] });
+    const second = await exportPdf({ originalBytes: first.pdfBytes, fields: [] });
+    const doc = await PDFDocument.load(second.pdfBytes);
+    const action = openAction(doc);
+    expect(scriptOf(doc, action)).toBe(OPEN_ACTION_SCRIPT);
+    expect(nextOf(doc, action)).toBeUndefined();
   });
 });
 

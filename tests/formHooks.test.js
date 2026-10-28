@@ -2,14 +2,15 @@
 //
 // Everything else that checks the starter code either compiles it or runs a
 // single helper. This runs the whole thing the way Acrobat does: every document
-// script run in name order in one shared scope, then Main() called at the
-// bottom of its own script. That is the only way to prove a hook actually
+// script run in name order in one shared scope, then the document's open
+// action, which calls Main(). That is the only way to prove a hook actually
 // fires.
 import { describe, it, expect } from 'vitest';
 import vm from 'node:vm';
 import { helperScript, mainScript } from '../src/starter/index.js';
 import { buildMainScript, ownScripts, FORM_HOOKS } from '../src/starter/buildScripts.js';
 import { fieldScripts } from '../src/starter/fieldScripts.js';
+import { OPEN_ACTION_SCRIPT } from '../src/core/pdfScripts.js';
 
 // Enough of Acrobat to get through Main.
 //
@@ -66,6 +67,7 @@ function runDocument(scripts, tail, values) {
   for (const [, source] of [...scripts.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     vm.runInContext(source, sandbox);
   }
+  if (scripts.has('Main')) vm.runInContext(OPEN_ACTION_SCRIPT, sandbox);
   const result = tail ? vm.runInContext(tail, sandbox) : undefined;
   return { result, alerts: doc.alerts, fields: doc.fields };
 }
