@@ -56,6 +56,11 @@ const FLAG_HIDDEN = 1 << 1;
 const FLAG_NO_TOGGLE_TO_OFF = 1 << 14;
 const FLAG_RADIOS_IN_UNISON = 1 << 25;
 
+// Acrobat's Medium line thickness. The border has no colour so nothing is drawn
+// normally, but Acrobat outlines a required field in red at this width, and
+// Thin was too easy to miss.
+const FIELD_BORDER_WIDTH = 2;
+
 export async function exportPdf({
   originalBytes,
   fields,
@@ -198,7 +203,20 @@ function applyFieldSettings(field, group, fontsByFamily, widgets, fromSource) {
   setReadOnly(field, !group.editable);
   applyFont(field, group, fontsByFamily, fromSource, widgets);
   applyTextLayout(field, group);
+  applyBorderWidth(field, group, widgets);
   applyButton(field, group, fontsByFamily);
+}
+
+// Text fields only. The message box keeps the border it is drawn with. Any
+// other /BS entry, the style among them, is left as it was.
+function applyBorderWidth(field, group, widgets) {
+  if (group.type !== 'text' || MESSAGE_BOXES[field.getName()]) return;
+  for (const widget of widgets) {
+    const existing = widget.dict.lookupMaybe(PDFName.of('BS'), PDFDict);
+    const bs = existing ?? field.acroField.dict.context.obj({});
+    bs.set(PDFName.of('W'), PDFNumber.of(FIELD_BORDER_WIDTH));
+    if (!existing) widget.dict.set(PDFName.of('BS'), bs);
+  }
 }
 
 function applyFieldScripts(form, groups, scripts) {

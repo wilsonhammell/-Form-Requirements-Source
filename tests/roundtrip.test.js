@@ -1517,14 +1517,15 @@ describe('preserving what the tool does not model', () => {
   });
 
   it('keeps a custom border style on a field it only moves', async () => {
-    // Border and background are not modelled, so unlike font above, an
-    // existing style survives a move.
+    // Border colour and style are not modelled, so unlike font above, they
+    // survive a move. The width is always Medium.
     const base = await PDFDocument.create();
     const page = base.addPage([612, 792]);
     const text = base.getForm().createTextField('CUSTNAME');
     text.addToPage(page, { x: 10, y: 10, width: 100, height: 20 });
     const widget = text.acroField.getWidgets()[0];
-    widget.getOrCreateBorderStyle().setWidth(2);
+    widget.getOrCreateBorderStyle().setWidth(1);
+    widget.getOrCreateBorderStyle().dict.set(PDFName.of('S'), PDFName.of('D'));
     widget.getOrCreateAppearanceCharacteristics().setBorderColor([1, 0, 0]);
     const originalBytes = await base.save();
 
@@ -1539,7 +1540,37 @@ describe('preserving what the tool does not model', () => {
     const field = out.getForm().getTextField('CUSTNAME');
     const outWidget = field.acroField.getWidgets()[0];
     expect(outWidget.getOrCreateBorderStyle().getWidth()).toBe(2);
+    expect(outWidget.getOrCreateBorderStyle().dict.get(PDFName.of('S'))).toBe(PDFName.of('D'));
     expect(outWidget.getOrCreateAppearanceCharacteristics().getBorderColor()).toEqual([1, 0, 0]);
+  });
+
+  it('gives a drawn field a Medium border, so a required one stands out', async () => {
+    const { pdfBytes } = await exportPdf({
+      originalBytes: await buildFlatForm(),
+      fields: [
+        createField({ name: 'CUSTNAME', page: 0, rect: { x: 200, y: 400, width: 150, height: 22 } }),
+      ],
+    });
+
+    const out = await PDFDocument.load(pdfBytes);
+    const widget = out.getForm().getTextField('CUSTNAME').acroField.getWidgets()[0];
+    expect(widget.getOrCreateBorderStyle().getWidth()).toBe(2);
+  });
+
+  it('leaves the border width of a checkbox alone', async () => {
+    const base = await PDFDocument.create();
+    const page = base.addPage([612, 792]);
+    const box = base.getForm().createCheckBox('AGREE');
+    box.addToPage(page, { x: 10, y: 10, width: 12, height: 12 });
+    box.acroField.getWidgets()[0].getOrCreateBorderStyle().setWidth(1);
+    const originalBytes = await base.save();
+
+    const imported = await importPdf(originalBytes, dbIndex);
+    const { pdfBytes } = await exportPdf({ originalBytes, fields: imported.fields });
+
+    const out = await PDFDocument.load(pdfBytes);
+    const widget = out.getForm().getCheckBox('AGREE').acroField.getWidgets()[0];
+    expect(widget.getOrCreateBorderStyle().getWidth()).toBe(1);
   });
 
   it('removes a modelled field the user deleted', async () => {

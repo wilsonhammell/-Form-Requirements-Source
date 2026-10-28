@@ -86,7 +86,12 @@ function snapshot(doc) {
             ? normal.keys().map((k) => k.toString()).sort().join(',')
             : '',
         appearanceCharacteristics: mk ? mk.toString() : '',
-        borderStyle: bs ? bs.toString() : '',
+        // Less a text field's width, which export sets, see applyBorderWidth.
+        borderStyle: !bs
+          ? ''
+          : String(inherited(ctx, dict, 'FT')) === '/Tx'
+            ? withoutWidth(ctx, bs)
+            : bs.toString(),
         options: opt ? opt.toString() : '',
         // Normalised, because several forms carry rects written corner first,
         // which reads back as a negative width or height. Export writes the same
@@ -108,6 +113,12 @@ function snapshot(doc) {
     );
   }
   return out;
+}
+
+function withoutWidth(ctx, bs) {
+  const copy = bs.clone(ctx);
+  copy.delete(PDFName.of('W'));
+  return copy.keys().length > 0 ? copy.toString() : '';
 }
 
 // Properties whose value belongs to the widget and must come back untouched.
